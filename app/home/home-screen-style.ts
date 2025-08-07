@@ -20,12 +20,18 @@ export const createStyles = ({ colorScheme }: any) => {
       gap: 10
     },
     gridItem: {
-      width: 150,
-      height: 150,
+      width: 170,
+      height: 170,
       backgroundColor: colors.lightGrey,
       borderRadius: 20,
       justifyContent: 'center',
-      alignItems: 'center'
+      alignItems: 'center',
+      gap: 10
+    },
+    gridItemText: {
+      fontFamily: 'PlayfairDisplay-Bold',
+      fontSize: 19,
+      textAlign: 'center'
     }
   })
 };

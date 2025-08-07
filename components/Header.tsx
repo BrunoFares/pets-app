@@ -9,11 +9,11 @@ export const Header = () => {
             <Text style={styles.title}>Pet Care</Text>
             <View style={styles.actions}>
                 <TouchableOpacity onPress={() => alert('Search tapped')}>
-                    <Ionicons name="search" size={24} color="#fff" style={styles.icon} />
+                    <Ionicons name="search" size={24} color={colors.white} style={styles.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => alert('Profile tapped')}>
-                    <Ionicons name="person-circle" size={28} color="#fff" />
+                    <Ionicons name="person-circle" size={28} color={colors.white} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -32,9 +32,9 @@ const styles = StyleSheet.create({
     height: 70
   },
   title: {
-    fontSize: 22,
-    color: '#fff',
-    fontWeight: 'bold',
+    fontSize: 30,
+    color: colors.white,
+    fontFamily: 'PlayfairDisplay-Bold'
   },
   actions: {
     flexDirection: 'row',
