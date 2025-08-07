@@ -7,6 +7,10 @@ export default function RootLayout() {
     'PlayfairDisplay-Bold': require('../assets/fonts/PlayfairDisplay-Bold.ttf'),
   });
 
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return <Stack 
     screenOptions={{
       headerShown: false, // disables header globally
