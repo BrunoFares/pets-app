@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { StyleSheet } from 'react-native';
 
-export const createStyles = ({ colorScheme }: any) => {
+const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -35,3 +35,5 @@ export const createStyles = ({ colorScheme }: any) => {
     }
   })
 };
+
+export default createStyles;
