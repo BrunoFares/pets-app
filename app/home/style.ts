@@ -29,7 +29,7 @@ const createStyles = ({ darkMode }: any) => {
       gap: 10
     },
     gridItemText: {
-      fontFamily: 'PlayfairDisplay-Bold',
+      fontFamily: 'Poppins-Bold',
       fontSize: 19,
       textAlign: 'center'
     }
