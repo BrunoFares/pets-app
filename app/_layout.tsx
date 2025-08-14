@@ -16,9 +16,9 @@ export default function RootLayout() {
     return null;
   }
 
-  return <Stack 
-    screenOptions={{
-      headerShown: false, // disables header globally
-    }}
-  />;
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{headerShown: false}}/>
+    </Stack>
+  );
 }

@@ -6,7 +6,7 @@ export const AdaptiveView = ({ style, otherProps, children }: any) => {
 
   return <View 
     style={[{ 
-      backgroundColor: darkMode ? colors.darkGreen : colors.lightLightGreen2,
+      backgroundColor: darkMode ? colors.darkGreen : colors.white,
     }, style]} {...otherProps}
   >
     {children}
