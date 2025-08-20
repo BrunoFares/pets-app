@@ -1,8 +1,9 @@
 import { colors } from '@/constants/colors';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useLinkBuilder } from '@react-navigation/native';
-import React, { useEffect } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import React, { useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, useColorScheme, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import TabBarButton from './TabBarButton';
 
 export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -10,8 +11,33 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
   const style = createStyles({ darkMode });
   const { buildHref } = useLinkBuilder();
 
+  const [dimensions, setDimensions] = useState({height: 20, width: 100});
+  const buttonWidth = dimensions.width / state.routes.length;
+
+  const onTabBarLayout = (e: LayoutChangeEvent) => {
+    setDimensions({
+      height: e.nativeEvent.layout.height,
+      width: e.nativeEvent.layout.width
+    })
+  }
+
+  const tabPositionX = useSharedValue(0);
+  const animatedStyle = useAnimatedStyle(() => {
+    return ({
+      transform: [{translateX: tabPositionX.value,}]
+    })
+  })
+
   return (
-    <View style={style.container}>
+    <View onLayout={onTabBarLayout} style={style.container}>
+      <Animated.View style={[animatedStyle, {
+        position: 'absolute',
+        backgroundColor: colors.green,
+        borderRadius: 30,
+        marginHorizontal: 12,
+        width: buttonWidth - 25,
+        height: dimensions.width - 310
+      }]} />
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const label =
@@ -24,6 +50,7 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
         const isFocused = state.index === index;
 
         const onPress = () => {
+          tabPositionX.value = withSpring(buttonWidth * index, {duration: 1500});
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,
@@ -41,10 +68,6 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
             target: route.key,
           });
         };
-
-        useEffect(() => {
-          console.log(descriptors[route.key].options.title)
-        }, []);
 
         return (
           <TabBarButton
@@ -70,13 +93,13 @@ const createStyles = ({ darkMode }: any) => {
     return StyleSheet.create({
         container: {
             position: 'absolute',
-            bottom: 50, 
+            bottom: 30, 
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
             width: '90%',
             alignSelf: 'center',
-            backgroundColor: colors.white,
+            backgroundColor: darkMode ? colors.darkGrey : colors.white,
             paddingVertical: 15, 
             borderRadius: 35, 
 
@@ -84,8 +107,8 @@ const createStyles = ({ darkMode }: any) => {
             shadowColor: colors.black,
             shadowOffset: {width: 0, height: 10},
             shadowRadius: 10,
-            shadowOpacity: 0.1,
-            elevation: 4
+            shadowOpacity: 0.2,
+            elevation: 8
         },
     })
 }
