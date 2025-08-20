@@ -1,8 +1,9 @@
 import { colors } from '@/constants/colors';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { PlatformPressable, Text } from '@react-navigation/elements';
 import { useLinkBuilder } from '@react-navigation/native';
+import React, { useEffect } from 'react';
 import { StyleSheet, useColorScheme, View } from 'react-native';
+import TabBarButton from './TabBarButton';
 
 export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
   const darkMode = useColorScheme() === 'dark';
@@ -41,21 +42,24 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
           });
         };
 
+        useEffect(() => {
+          console.log(descriptors[route.key].options.title)
+        }, []);
+
         return (
-          <PlatformPressable
+          <TabBarButton
             key={route.name}
-            href={buildHref(route.name, route.params)}
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarButtonTestID}
             onPress={onPress}
             onLongPress={onLongPress}
-            style={{ flex: 1 }}
-          >
-            <Text style={{ color: isFocused ? colors.black : colors.black }}>
-              {label}
-            </Text>
-          </PlatformPressable>
+            isFocused={isFocused}
+            routeName={(
+              route.name === 'index' || 
+              route.name === 'explore' || 
+              route.name === 'profile' || 
+              route.name === 'chatbot')
+            ? route.name : 'index'}
+            label={typeof label === 'string' ? label : descriptors[route.key].options.title || ""}
+          />
         );
       })}
     </View>
@@ -70,8 +74,18 @@ const createStyles = ({ darkMode }: any) => {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
+            width: '90%',
+            alignSelf: 'center',
             backgroundColor: colors.white,
-            marginHorizontal: 80,
+            paddingVertical: 15, 
+            borderRadius: 35, 
+
+            // shadow
+            shadowColor: colors.black,
+            shadowOffset: {width: 0, height: 10},
+            shadowRadius: 10,
+            shadowOpacity: 0.1,
+            elevation: 4
         },
     })
 }
