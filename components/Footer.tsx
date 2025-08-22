@@ -34,8 +34,8 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
         position: 'absolute',
         backgroundColor: colors.green,
         borderRadius: 30,
-        marginHorizontal: 12,
-        width: buttonWidth - 25,
+        marginHorizontal: 8,
+        width: buttonWidth - 15,
         height: dimensions.width - 310
       }]} />
       {state.routes.map((route, index) => {
@@ -78,8 +78,9 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
             routeName={(
               route.name === 'index' || 
               route.name === 'explore' || 
-              route.name === 'profile' || 
-              route.name === 'chatbot')
+              route.name === 'chatbot' || 
+              route.name === 'forum' || 
+              route.name === 'profile')
             ? route.name : 'index'}
             label={typeof label === 'string' ? label : descriptors[route.key].options.title || ""}
           />
