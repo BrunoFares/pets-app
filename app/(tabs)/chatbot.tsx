@@ -2,16 +2,21 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { Header } from "@/components/Header";
 import { colors } from "@/constants/colors";
-import { StyleSheet, useColorScheme } from "react-native";
+import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { Animated, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChatbotScreen() {
   const darkMode = useColorScheme() === 'dark';
   const styles = createStyles({ darkMode });
 
+  const { translateY } = useHeaderSlide({ showOnFocus: false, height: 200 });
+  
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
+      <Animated.View style={{ transform: [{ translateY }] }}>
+        <Header />
+      </Animated.View>
 
       <AdaptiveView style={styles.body}><AdaptiveText>Chatbot Screen</AdaptiveText></AdaptiveView>
     </SafeAreaView>
