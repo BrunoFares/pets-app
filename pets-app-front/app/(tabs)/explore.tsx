@@ -1,5 +1,3 @@
-import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
 import { colors } from "@/constants/colors";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import React, { useRef, useState } from "react";
@@ -13,6 +11,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import PetPlacesTab from "../explore-tabs/pet-places-tab";
+import PetShopssTab from "../explore-tabs/pet-shops-tab";
+import VetsTab from "../explore-tabs/vets-tab";
 
 export default function Explore() {
   const darkMode = useColorScheme() === "dark";
@@ -89,21 +90,15 @@ export default function Explore() {
         )}
       >
         <View style={[styles.page, { width }]}>
-          <AdaptiveView style={styles.body}>
-            <AdaptiveText>Vets</AdaptiveText>
-          </AdaptiveView>
+          <VetsTab />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <AdaptiveView style={styles.body}>
-            <AdaptiveText>Pet Shops</AdaptiveText>
-          </AdaptiveView>
+          <PetPlacesTab />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <AdaptiveView style={styles.body}>
-            <AdaptiveText>Pet Places</AdaptiveText>
-          </AdaptiveView>
+          <PetShopssTab />
         </View>
       </Animated.ScrollView>
     </SafeAreaView>
@@ -125,7 +120,7 @@ const createStyles = ({ darkMode }: any) => {
     tabs: {
       flexDirection: "row",
       alignSelf: "center",
-      backgroundColor: colors.darkGrey,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
       gap: 14,
       paddingHorizontal: 16,
       width: '80%',
