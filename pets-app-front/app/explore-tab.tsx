@@ -1,5 +1,6 @@
 import { AdaptiveView } from "@/components/AdaptiveView";
 import ShopItem from "@/components/ShopItem";
+import SortByModal from "@/components/SortByModal";
 import { colors } from "@/constants/colors";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -10,6 +11,7 @@ const ExploreTab = ({ items }: any) => {
     const darkMode = useColorScheme() === 'dark';
     const styles = createStyles({ darkMode });
     const router = useRouter();
+    const [sortByModal, setSortByModal] = useState(false);
 
     items = [
         {
@@ -53,7 +55,21 @@ const ExploreTab = ({ items }: any) => {
 
     const filterItems = () => {}
 
-    const sortItems = () => {}
+    const sortItems = (order: string) => {
+        switch(order) {
+            case 'popular':
+                displayedItems.sort((a: any, b: any) => b.rating - a.rating);
+                break;
+            case 'atoz':
+                displayedItems.sort((a: any, b: any) => a.name.localeCompare(b.name));
+                break;
+            case 'ztoa':
+                displayedItems.sort((a: any, b: any) => b.name.localeCompare(a.name));
+                break;
+            default:
+                break;
+        }
+    }
     
     return (
         <AdaptiveView style={{flex: 1, alignItems: "center", justifyContent: "center",}}>
@@ -62,7 +78,7 @@ const ExploreTab = ({ items }: any) => {
                     <FontAwesome6 name="filter" size={24} color={darkMode ? colors.white : colors.black} />
                 </TouchableOpacity>
 
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => setSortByModal(!sortByModal)}>
                     <MaterialIcons name="sort" size={24} color={darkMode ? colors.white : colors.black} />
                 </TouchableOpacity>
                 
@@ -101,6 +117,8 @@ const ExploreTab = ({ items }: any) => {
                     }}>No Items found.</Text>
                 }
             </ScrollView>
+
+            <SortByModal visible={sortByModal} onClose={() => setSortByModal(false)} onDone={(value) => sortItems(value)} />
         </AdaptiveView>
     )
 };
