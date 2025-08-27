@@ -11,9 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import PetPlacesTab from "../explore-tabs/pet-places-tab";
-import PetShopssTab from "../explore-tabs/pet-shops-tab";
-import VetsTab from "../explore-tabs/vets-tab";
+import ExploreTab from "../explore-tab";
 
 export default function Explore() {
   const darkMode = useColorScheme() === "dark";
@@ -90,15 +88,15 @@ export default function Explore() {
         )}
       >
         <View style={[styles.page, { width }]}>
-          <VetsTab />
+          <ExploreTab />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <PetPlacesTab />
+          <ExploreTab />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <PetShopssTab />
+          <ExploreTab />
         </View>
       </Animated.ScrollView>
     </SafeAreaView>
@@ -120,7 +118,7 @@ const createStyles = ({ darkMode }: any) => {
     tabs: {
       flexDirection: "row",
       alignSelf: "center",
-      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightLightGreen1,
       gap: 14,
       paddingHorizontal: 16,
       width: '80%',
@@ -150,7 +148,7 @@ const createStyles = ({ darkMode }: any) => {
       left: 0,
       height: 50,
       borderRadius: 24,
-      backgroundColor: darkMode ? colors.white : colors.black,
+      backgroundColor: darkMode ? colors.white : colors.green,
       opacity: 0.1
     },
     // --- pages ---
