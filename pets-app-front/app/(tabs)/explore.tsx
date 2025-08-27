@@ -138,6 +138,7 @@ const createStyles = ({ darkMode }: any) => {
       color: darkMode ? colors.white : colors.black,
       fontSize: 14,
       fontWeight: "600",
+      fontFamily: 'Poppins-Medium',
     },
     textActive: {
       opacity: 1,
