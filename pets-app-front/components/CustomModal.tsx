@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { BlurView } from "expo-blur";
 import React, { useRef, useState } from "react";
 import { Animated, Dimensions, Easing, Modal, PanResponder, StyleSheet, TouchableOpacity, View, ViewStyle, useColorScheme } from 'react-native';
 
@@ -78,14 +79,14 @@ const CustomModal: React.FC<CustomModalProps> = ({
 
     return (
         <Modal visible={true} animationType="none" transparent={true}>
-            <View style={styles.overlay}>
+            <BlurView style={styles.overlay}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
                 <Animated.View style={[styles.modalView, { transform: [{ translateY: slideAnim }] }, style]}>
                     <View style={styles.closeHandle} {...panResponder.panHandlers}/>
                     <View style={styles.centerHorizontalLine} />
                     {children}
                 </Animated.View>
-            </View>
+            </BlurView>
         </Modal>
     )
 }
@@ -98,7 +99,7 @@ export const createStyles = ({ darkMode }: any) =>
             flex: 1,
             justifyContent: "flex-end",
             alignItems: "center",
-            backgroundColor: darkMode ? "rgba(0, 0, 0, 0.81)" : "rgba(255, 255, 255, 0.91)",
+            backgroundColor: "rgba(0, 0, 0, 0.5)" 
         },
         modalView: {
             backgroundColor: darkMode ? colors.darkGrey : colors.white,

@@ -1,4 +1,5 @@
 import { AdaptiveView } from "@/components/AdaptiveView";
+import FilterByModal from "@/components/FilterByModal";
 import ShopItem from "@/components/ShopItem";
 import SortByModal from "@/components/SortByModal";
 import { colors } from "@/constants/colors";
@@ -12,6 +13,7 @@ const ExploreTab = ({ items }: any) => {
     const styles = createStyles({ darkMode });
     const router = useRouter();
     const [sortByModal, setSortByModal] = useState(false);
+    const [filterByModal, setFilterByModal] = useState(false);
 
     items = [
         {
@@ -53,7 +55,7 @@ const ExploreTab = ({ items }: any) => {
         setDisplayedItems(display);
     }
 
-    const filterItems = () => {}
+    const filterItems = (filters: string[]) => {}
 
     const sortItems = (order: string) => {
         switch(order) {
@@ -74,7 +76,7 @@ const ExploreTab = ({ items }: any) => {
     return (
         <AdaptiveView style={{flex: 1, alignItems: "center", justifyContent: "center",}}>
             <View style={styles.utilityBar}>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => setFilterByModal(!filterByModal)}>
                     <FontAwesome6 name="filter" size={24} color={darkMode ? colors.white : colors.black} />
                 </TouchableOpacity>
 
@@ -118,7 +120,16 @@ const ExploreTab = ({ items }: any) => {
                 }
             </ScrollView>
 
-            <SortByModal visible={sortByModal} onClose={() => setSortByModal(false)} onDone={(value) => sortItems(value)} />
+            <FilterByModal 
+                visible={filterByModal} 
+                onClose={() => setFilterByModal(false)} 
+                onDone={(value) => filterItems(value)} 
+            />
+            <SortByModal 
+                visible={sortByModal} 
+                onClose={() => setSortByModal(false)} 
+                onDone={(value) => sortItems(value)} 
+            />
         </AdaptiveView>
     )
 };
