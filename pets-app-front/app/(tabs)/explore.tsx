@@ -21,7 +21,7 @@ export default function Explore() {
   const { translateY } = useHeaderSlide({ showOnFocus: false, height: 200 });
 
   // --- swipeable tabs state ---
-  const labels = ["Vets", "Pet Shops", "Pet Places"];
+  const labels = ["Vets", "Pet Shops"];
   const { width } = useWindowDimensions();
   const tabWidth = (width * 0.8) / labels.length;
 
@@ -87,10 +87,6 @@ export default function Explore() {
           { useNativeDriver: true }
         )}
       >
-        <View style={[styles.page, { width }]}>
-          <ExploreTab />
-        </View>
-
         <View style={[styles.page, { width }]}>
           <ExploreTab />
         </View>

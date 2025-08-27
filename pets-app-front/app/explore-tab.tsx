@@ -1,13 +1,15 @@
 import { AdaptiveView } from "@/components/AdaptiveView";
-import ShopItem from "@/components/shop-item";
+import ShopItem from "@/components/ShopItem";
 import { colors } from "@/constants/colors";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 
 const ExploreTab = ({ items }: any) => {
     const darkMode = useColorScheme() === 'dark';
     const styles = createStyles({ darkMode });
+    const router = useRouter();
 
     items = [
         {
@@ -15,7 +17,7 @@ const ExploreTab = ({ items }: any) => {
             name: 'Dr. Abou Breiss',
             location: 'Hamra, Beirut',
             rating: 3.8,
-            image: ''
+            image: 'Users/brunofares/Desktop/mourinho.jpeg'
         },
         {
             key: 2,
@@ -73,14 +75,21 @@ const ExploreTab = ({ items }: any) => {
             <ScrollView style={{width: '100%', marginTop: 15}}>
                 {
                     displayedItems ? displayedItems.map((item: any) => {
+                        const payload = encodeURIComponent(JSON.stringify(item));
+                        
                         return (
-                            <ShopItem
+                            <TouchableOpacity
                                 key={item.key}
-                                name={item.name}
-                                location={item.location}
-                                rating={item.rating}
-                                image={item.image}
-                            />
+                                onPress={() => {router.push({ pathname: "/shop/[key]", params: { key: String(item.key), payload } })}}
+                            >
+                                <ShopItem
+                                    key={item.key}
+                                    name={item.name}
+                                    location={item.location}
+                                    rating={item.rating}
+                                    image={item.image}
+                                />
+                            </TouchableOpacity>
                         );
                     }) 
                     :
