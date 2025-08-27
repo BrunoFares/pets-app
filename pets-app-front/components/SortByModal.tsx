@@ -54,7 +54,7 @@ const createStyle = ({ darkMode }: any) => {
         title: {
             color: darkMode ? colors.white : colors.black,
             fontFamily: 'Poppins-Bold',
-            fontSize: 26
+            fontSize: 28
         },
         text: {
             color: darkMode ? colors.white : colors.black,
@@ -70,8 +70,8 @@ const createStyle = ({ darkMode }: any) => {
             borderRadius: 20
         },
         btnText: {
-            color: darkMode ? colors.white : colors.black,
-            fontFamily: 'Poppins-SemiBold',
+            color: colors.white,
+            fontFamily: 'Poppins-Bold',
             fontSize: 18
         }
     });
