@@ -35,13 +35,12 @@ const ShopItem = ({
 const createStyles = ({ darkMode }: any) => {
     return StyleSheet.create({
         container: {
-            width: '93%',
+            width: '100%',
             backgroundColor: darkMode ? colors.darkGrey : colors.white,
             borderColor: darkMode ? '' : colors.lightGrey,
             borderWidth: darkMode ? 0 : 2,
             borderRadius: 10,
             alignSelf: 'center',
-            marginBottom: 15
         },
         image: {
             height: 200,

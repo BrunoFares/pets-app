@@ -6,7 +6,7 @@ import { colors } from "@/constants/colors";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
+import { FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 
 const ExploreTab = ({ items }: any) => {
     const darkMode = useColorScheme() === 'dark';
@@ -63,18 +63,24 @@ const ExploreTab = ({ items }: any) => {
                     <FontAwesome name="search" size={24} color={darkMode ? colors.white : colors.black} />
                 </TouchableOpacity>
             </View>
-            <ScrollView style={{width: '100%', marginTop: 15}}>
-                {
-                    displayedItems ? displayedItems.map((item: any) => {
+
+            {displayedItems ?
+                <FlatList
+                    data={displayedItems}
+                    keyExtractor={(item) => String(item.key)}
+                    contentContainerStyle={{ width: 370 }}
+                    renderItem={({ item }) => {
                         const payload = encodeURIComponent(JSON.stringify(item));
-                        
                         return (
                             <TouchableOpacity
-                                key={item.key}
-                                onPress={() => {router.push({ pathname: "/shop/[key]", params: { key: String(item.key), payload } })}}
+                                onPress={() =>
+                                router.push({
+                                    pathname: "/shop/[key]",
+                                    params: { key: String(item.key), payload },
+                                })
+                                }
                             >
                                 <ShopItem
-                                    key={item.key}
                                     name={item.name}
                                     location={item.location}
                                     rating={item.rating}
@@ -82,16 +88,20 @@ const ExploreTab = ({ items }: any) => {
                                 />
                             </TouchableOpacity>
                         );
-                    }) 
-                    :
-                    <Text style={{
-                        color: darkMode ? colors.white : colors.black, 
-                        fontFamily: 'Poppins-SemiBold',
-                        alignSelf: 'center',
-                        marginTop: 250
-                    }}>No Items found.</Text>
-                }
-            </ScrollView>
+                    }}
+                    
+                    ListHeaderComponent={<View style={{ height: 20 }} />} // top padding
+                    ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
+                    ListFooterComponent={<View style={{ height: Platform.select({ ios: 90, android: 100}) }} />} // bottom padding
+                />
+            :
+                <Text style={{
+                    color: darkMode ? colors.white : colors.black,
+                    alignSelf: 'center',
+                    fontFamily: 'Poppins-SemiBold',
+                    marginTop: 250
+                }}>No items found.</Text>
+            }
 
             <FilterByModal 
                 visible={filterByModal} 
@@ -121,8 +131,9 @@ const createStyles = ({ darkMode }: any) => {
             width: '60%',
             fontFamily: "Poppins-Regular",
             backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+            color: darkMode ? colors.white : colors.black,
             borderRadius: 30,
-            paddingLeft: 15
+            paddingLeft: 20
         },
     })
 }
