@@ -17,6 +17,54 @@ export default function Explore() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
 
+  const vetItems = [
+    {
+        key: 1,
+        name: 'Dr. Abou Breiss',
+        location: 'Hamra, Beirut',
+        rating: 3.8,
+        image: 'Users/brunofares/Desktop/mourinho.jpeg'
+    },
+    {
+        key: 3,
+        name: 'Diddy Kong',
+        location: 'New Sehaileh, Mount Lebanon',
+        rating: 5.0,
+        image: ''
+    },
+    {
+        key: 4,
+        name: 'Dr. Amara ya amara la totla3i aal shajara',
+        location: 'Ajaltoun, Mount Lebanon',
+        rating: 0.3,
+        image: ''
+    },
+  ]
+
+  const shopItems = [
+    {
+        key: 1,
+        name: 'Kalinka & Minouche Ta3awouniye',
+        location: 'Mansourieh, Mount Lebanon',
+        rating: 4.8,
+        image: ''
+    },
+    {
+        key: 3,
+        name: 'Emmak Shop',
+        location: 'Borj el Brajneh, Mount Lebanon',
+        rating: 5.0,
+        image: ''
+    },
+    {
+        key: 4,
+        name: 'Victor Gyökeres wa shoraka2ihi',
+        location: 'Andaket, Akkar',
+        rating: 0.3,
+        image: ''
+    },
+  ]
+
   // Hide header on this screen
   const { translateY } = useHeaderSlide({ showOnFocus: false, height: 200 });
 
@@ -88,11 +136,11 @@ export default function Explore() {
         )}
       >
         <View style={[styles.page, { width }]}>
-          <ExploreTab />
+          <ExploreTab items={vetItems} />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <ExploreTab />
+          <ExploreTab items={shopItems} />
         </View>
       </Animated.ScrollView>
     </SafeAreaView>
@@ -117,6 +165,7 @@ const createStyles = ({ darkMode }: any) => {
       backgroundColor: darkMode ? colors.darkGrey : colors.lightLightGreen1,
       gap: 14,
       paddingHorizontal: 16,
+      height: 50,
       width: '80%',
       paddingVertical: 10,
       borderRadius: 24,

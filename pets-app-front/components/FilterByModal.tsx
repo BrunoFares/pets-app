@@ -56,7 +56,7 @@ const createStyle = ({ darkMode }: any) => {
         container: {
             marginTop: 30,
             marginBottom: 40,
-            gap: 10,
+            gap: 20,
             width: 300,
             alignSelf: 'center',
         },
@@ -70,6 +70,7 @@ const createStyle = ({ darkMode }: any) => {
             fontFamily: 'Poppins-Light',
             fontSize: 18,
             textAlign: 'center',
+            height: 25
         },
         button: {
             marginBottom: 40,

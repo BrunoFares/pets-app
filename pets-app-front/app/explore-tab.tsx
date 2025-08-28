@@ -14,38 +14,6 @@ const ExploreTab = ({ items }: any) => {
     const router = useRouter();
     const [sortByModal, setSortByModal] = useState(false);
     const [filterByModal, setFilterByModal] = useState(false);
-
-    items = [
-        {
-            key: 1,
-            name: 'Dr. Abou Breiss',
-            location: 'Hamra, Beirut',
-            rating: 3.8,
-            image: 'Users/brunofares/Desktop/mourinho.jpeg'
-        },
-        {
-            key: 2,
-            name: 'Kalinka & Minouche Ta3awouniye',
-            location: 'Mansourieh, Mount Lebanon',
-            rating: 4.8,
-            image: ''
-        },
-        {
-            key: 3,
-            name: 'Diddy Kong',
-            location: 'New Sehaileh, Mount Lebanon',
-            rating: 5.0,
-            image: ''
-        },
-        {
-            key: 4,
-            name: 'Dr. Amara ya amara la totla3i aal shajara',
-            location: 'Ajaltoun, Mount Lebanon',
-            rating: 0.3,
-            image: ''
-        },
-    ]
-
     const [displayedItems, setDisplayedItems] = useState(items);
 
     const searchItems = (prompt: string) => {
@@ -84,7 +52,12 @@ const ExploreTab = ({ items }: any) => {
                     <MaterialIcons name="sort" size={24} color={darkMode ? colors.white : colors.black} />
                 </TouchableOpacity>
                 
-                <TextInput onChangeText={searchItems} style={styles.textInput} placeholder="Search for vet clinics" />
+                <TextInput
+                    onChangeText={searchItems}
+                    style={styles.textInput}
+                    placeholder="Search for vet clinics"
+                    placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+                />
 
                 <TouchableOpacity>
                     <FontAwesome name="search" size={24} color={darkMode ? colors.white : colors.black} />
@@ -143,14 +116,12 @@ const createStyles = ({ darkMode }: any) => {
             alignItems: 'center'
         },
         textInput: {
-            height: 40,
-            paddingHorizontal: 10,
-            fontSize: 16,
+            height: 50,
+            alignItems: 'center',
             width: '60%',
-            color: darkMode ? colors.white : colors.black,
             fontFamily: "Poppins-Regular",
             backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
-            borderRadius: 20,
+            borderRadius: 30,
             paddingLeft: 15
         },
     })
