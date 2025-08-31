@@ -3,11 +3,13 @@ import { colors } from "@/constants/colors";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { AntDesign } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Animated, FlatList, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChatbotScreen() {
+  const router = useRouter();
   const darkMode = useColorScheme() === 'dark';
   const styles = createStyles({ darkMode });
   const [chats, setChats] = useState<any[]>([]);
@@ -22,12 +24,11 @@ export default function ChatbotScreen() {
         {key: 4, title: 'fourthChat', content: 'content4'},
         {key: 5, title: 'fifthChat', content: 'content5'},
       ]
-
       setChats(userChats);
     }, [])
   )
 
-  const { translateY } = useHeaderSlide({ height: 200 });
+  const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
   
   return (
     <SafeAreaView style={styles.container}>
@@ -43,7 +44,9 @@ export default function ChatbotScreen() {
           keyExtractor={(item) => String(item.key)}
           renderItem={({item}) => {
             return (
-              <TouchableOpacity style={styles.chat}>
+              <TouchableOpacity style={styles.chat}
+                onPress={() => router.push({ pathname: "/(tabs)/chatbot/[id]", params: { id: String(item.key) } })}
+              >
                 <View>
                   <AdaptiveText style={styles.chatTitle}>{item.title}</AdaptiveText>
                   <AdaptiveText style={styles.chatContent}>{item.content}</AdaptiveText>
