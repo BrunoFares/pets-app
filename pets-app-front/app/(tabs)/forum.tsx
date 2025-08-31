@@ -1,6 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
-import { Header } from "@/components/Header";
+import { MainHeader } from "@/components/MainHeader";
 import { colors } from "@/constants/colors";
 import { StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,7 +11,7 @@ export default function ForumScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
+      <MainHeader />
 
       <AdaptiveView style={styles.body}><AdaptiveText>Forum Screen</AdaptiveText></AdaptiveView>
     </SafeAreaView>

@@ -1,6 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
-import { Header } from "@/components/Header";
+import { MainHeader } from "@/components/MainHeader";
 import { colors } from "@/constants/colors";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { Animated, StyleSheet, useColorScheme } from "react-native";
@@ -15,7 +15,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={{ transform: [{ translateY }] }}>
-        <Header />
+        <MainHeader />
       </Animated.View>
 
       <AdaptiveView style={styles.body}>
