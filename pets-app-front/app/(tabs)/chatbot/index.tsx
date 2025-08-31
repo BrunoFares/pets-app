@@ -1,11 +1,12 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { AntDesign } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Animated, FlatList, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Animated, FlatList, StyleSheet, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChatbotScreen() {
@@ -13,6 +14,7 @@ export default function ChatbotScreen() {
   const darkMode = useColorScheme() === 'dark';
   const styles = createStyles({ darkMode });
   const [chats, setChats] = useState<any[]>([]);
+  const { showFooter, setShowFooter } = useGlobal();
 
   useFocusEffect(
     useCallback(() => {
@@ -37,6 +39,19 @@ export default function ChatbotScreen() {
         <AdaptiveText style={styles.subtitle}>Your personal assistant's {'\n'} personal assistant.</AdaptiveText>
       </Animated.View>
 
+      <View style={[styles.txtInputContainer, (showFooter !== undefined && !showFooter) && { bottom: 0 }]}>
+        <TextInput 
+          placeholder="Enter a new prompt..."
+          placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+          style={styles.txtInput}
+          onFocus={() => setShowFooter?.(false)} // when user is typing, make footer disappear
+          onBlur={() => setShowFooter?.(true)} // when no longer typing, make footer reappear
+        />
+        <TouchableOpacity>
+          <AntDesign name="arrowup" size={24} color={darkMode ? colors.white : colors.black} />
+        </TouchableOpacity>
+      </View>
+
       {chats ?
         <FlatList 
           data={chats}
@@ -56,7 +71,7 @@ export default function ChatbotScreen() {
             )
           }}
 
-          ListHeaderComponent={<View style={{ height: 30 }} />} // top padding
+          // ListHeaderComponent={<View style={{ height: 30 }} />} // top padding
           ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
         />
       :
@@ -108,6 +123,32 @@ const createStyles = ({ darkMode }: any) => {
     },
     chatContent: {
       fontFamily: 'Poppins-Light'
+    },
+    txtInputContainer: {
+      flexDirection: 'row',
+      width: '90%',
+      alignSelf: 'center',
+      backgroundColor: darkMode ? colors.darkGrey : colors.white,
+      borderRadius: 24,
+      alignItems: 'center',
+      marginVertical: 30,
+    },
+    txtInput: {
+      width: '90%',
+      backgroundColor: darkMode ? colors.darkGrey : colors.white,
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: 'Poppins-Regular',
+      fontSize: 16,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 24,
+
+      // shadow
+      shadowColor: colors.black,
+      shadowOffset: {width: 0, height: 10},
+      shadowRadius: 10,
+      shadowOpacity: 0.2,
+      elevation: 8
     }
   })
 };

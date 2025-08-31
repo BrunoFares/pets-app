@@ -2,9 +2,11 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { AntDesign } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
-import { ScrollView, StyleSheet, TextInput, useColorScheme, View } from "react-native";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback } from "react";
+import { Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ChatScreen = () => {
@@ -12,13 +14,26 @@ const ChatScreen = () => {
   const styles = createStyles({ darkMode });
   const { payload } = useLocalSearchParams<{ payload?: string }>();
   const chat: any = payload ? JSON.parse(decodeURIComponent(payload)) : null;
+  const { showFooter, setShowFooter } = useGlobal();
+
+  useFocusEffect(
+    useCallback(() => {
+      // This code runs when the screen is focused.
+      console.log('Screen is focused!');
+
+      return () => {
+        // This code runs when the screen is unfocused (or unmounted).
+        setShowFooter?.(true);
+      };
+    }, []) // The empty dependency array ensures the effect runs only on focus/unfocus.
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <AdaptiveView style={{ height: "100%" }}>
         <PageHeader title={chat && chat.title ? chat.title : 'something else'} />
         <ScrollView style={styles.chatbotResponse}>
-          <AdaptiveText style={styles.chatbotText}>
+          <AdaptiveText style={[styles.chatbotText, (showFooter !== undefined && !showFooter) && { marginBottom: 70 }]}>
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Commodi
             omnis itaque recusandae explicabo ex reprehenderit. Ullam alias
             ducimus deleniti facere, ad aliquid dolores tempore. Impedit
@@ -80,9 +95,17 @@ const ChatScreen = () => {
             eum voluptatum explicabo accusantium atque illo unde?
           </AdaptiveText>
         </ScrollView>
-        <View style={styles.txtInputContainer}>
-          <TextInput style={styles.txtInput} />
-          <AntDesign name="arrowup" size={24} color={darkMode ? colors.white : colors.black} />
+        <View style={[styles.txtInputContainer, (showFooter !== undefined && !showFooter) && { bottom: 0 }]}>
+          <TextInput 
+            placeholder="Enter a new prompt..."
+            placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+            style={styles.txtInput}
+            onFocus={() => setShowFooter?.(false)} // when user is typing, make footer disappear
+            onBlur={() => setShowFooter?.(true)} // when no longer typing, make footer reappear
+          />
+          <TouchableOpacity>
+            <AntDesign name="arrowup" size={24} color={darkMode ? colors.white : colors.black} />
+          </TouchableOpacity>
         </View>
       </AdaptiveView>
     </SafeAreaView>
@@ -109,7 +132,10 @@ const createStyles = ({ darkMode }: any) => {
       flexDirection: 'row',
       width: '90%',
       position: 'absolute',
-      bottom: 85,
+      bottom: Platform.select({
+        ios: 85,
+        android: 100
+      }),
       alignSelf: 'center',
       backgroundColor: darkMode ? colors.darkGrey : colors.white,
       borderRadius: 24,
@@ -120,7 +146,7 @@ const createStyles = ({ darkMode }: any) => {
       backgroundColor: darkMode ? colors.darkGrey : colors.white,
       color: darkMode ? colors.white : colors.black,
       fontFamily: 'Poppins-Regular',
-      fontSize: 20,
+      fontSize: 16,
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: 24,

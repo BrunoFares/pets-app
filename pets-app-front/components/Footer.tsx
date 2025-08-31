@@ -1,4 +1,5 @@
 import { colors } from '@/constants/colors';
+import { useGlobal } from '@/contexts/GlobalProvider';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useLinkBuilder } from '@react-navigation/native';
 import React, { useState } from 'react';
@@ -10,6 +11,7 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
   const darkMode = useColorScheme() === 'dark';
   const style = createStyles({ darkMode });
   const { buildHref } = useLinkBuilder();
+  const { showFooter } = useGlobal();
 
   const [dimensions, setDimensions] = useState({height: 20, width: 100});
   const buttonWidth = dimensions.width / state.routes.length;
@@ -29,7 +31,7 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
   })
 
   return (
-    <View onLayout={onTabBarLayout} style={style.container}>
+    <View onLayout={onTabBarLayout} style={[style.container, (showFooter !== undefined && !showFooter) && {height: 0, width: 0}]}>
       <Animated.View style={[animatedStyle, {
         position: 'absolute',
         backgroundColor: colors.green,
