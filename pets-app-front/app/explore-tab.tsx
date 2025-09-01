@@ -90,7 +90,6 @@ const ExploreTab = ({ items }: any) => {
                         );
                     }}
                     
-                    ListHeaderComponent={<View style={{ height: 20 }} />} // top padding
                     ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
                     ListFooterComponent={<View style={{ height: Platform.select({ ios: 90, android: 100}) }} />} // bottom padding
                 />
@@ -121,7 +120,7 @@ const createStyles = ({ darkMode }: any) => {
     return StyleSheet.create({
         utilityBar: {
             flexDirection: 'row',
-            marginTop: 15,
+            marginVertical: 15,
             gap: 10,
             alignItems: 'center'
         },

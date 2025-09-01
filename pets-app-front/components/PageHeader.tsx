@@ -3,10 +3,10 @@ import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-    StyleSheet,
-    TouchableOpacity,
-    useColorScheme,
-    View,
+  StyleSheet,
+  TouchableOpacity,
+  useColorScheme,
+  View,
 } from "react-native";
 import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
@@ -50,13 +50,6 @@ const createStyles = ({ darkMode }: any) => {
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
       height: 50,
       width: "100%",
-
-      // shadow
-      shadowColor: colors.black,
-      shadowOffset: { width: 0, height: 10 },
-      shadowRadius: 10,
-      shadowOpacity: 0.2,
-      elevation: 8,
     },
     icon: {
       marginRight: 12,

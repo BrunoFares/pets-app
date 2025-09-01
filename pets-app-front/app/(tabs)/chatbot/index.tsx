@@ -132,6 +132,13 @@ const createStyles = ({ darkMode }: any) => {
       borderRadius: 24,
       alignItems: 'center',
       marginVertical: 30,
+
+      // shadow
+      shadowColor: colors.black,
+      shadowOffset: {width: 0, height: 10},
+      shadowRadius: 10,
+      shadowOpacity: 0.2,
+      elevation: 8
     },
     txtInput: {
       width: '90%',
@@ -142,13 +149,6 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: 24,
-
-      // shadow
-      shadowColor: colors.black,
-      shadowOffset: {width: 0, height: 10},
-      shadowRadius: 10,
-      shadowOpacity: 0.2,
-      elevation: 8
     }
   })
 };
