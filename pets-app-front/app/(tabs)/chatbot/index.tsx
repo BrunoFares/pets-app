@@ -6,7 +6,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Animated, FlatList, StyleSheet, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Animated, FlatList, Keyboard, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChatbotScreen() {
@@ -34,6 +34,8 @@ export default function ChatbotScreen() {
   
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View>
       <Animated.View style={{ transform: [{ translateY }] }}>
         <AdaptiveText style={styles.title}>Dr. Pet</AdaptiveText>
         <AdaptiveText style={styles.subtitle}>Your personal assistant's {'\n'} personal assistant.</AdaptiveText>
@@ -81,7 +83,8 @@ export default function ChatbotScreen() {
             marginTop: 250
         }}>No items found.</AdaptiveText>
       }
-      
+      </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }

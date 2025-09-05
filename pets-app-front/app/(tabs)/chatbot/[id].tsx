@@ -6,7 +6,7 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { AntDesign } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
-import { Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Keyboard, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ChatScreen = () => {
@@ -30,6 +30,8 @@ const ChatScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View>
       <AdaptiveView style={{ height: "100%" }}>
         <PageHeader title={chat && chat.title ? chat.title : 'something else'} />
         <ScrollView style={styles.chatbotResponse}>
@@ -108,6 +110,8 @@ const ChatScreen = () => {
           </TouchableOpacity>
         </View>
       </AdaptiveView>
+      </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
