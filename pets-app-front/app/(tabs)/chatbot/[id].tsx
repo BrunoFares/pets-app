@@ -1,5 +1,4 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -19,7 +18,6 @@ const ChatScreen = () => {
   useFocusEffect(
     useCallback(() => {
       // This code runs when the screen is focused.
-      console.log('Screen is focused!');
 
       return () => {
         // This code runs when the screen is unfocused (or unmounted).
@@ -30,10 +28,10 @@ const ChatScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View>
-      <AdaptiveView style={{ height: "100%" }}>
-        <PageHeader title={chat && chat.title ? chat.title : 'something else'} />
+      <View style={{ height: "100%" }}>
+        <PageHeader title={chat && chat.title ? chat.title : 'something else'} />\
+
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView style={styles.chatbotResponse}>
           <AdaptiveText style={[styles.chatbotText, (showFooter !== undefined && !showFooter) && { marginBottom: 70 }]}>
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Commodi
@@ -97,6 +95,7 @@ const ChatScreen = () => {
             eum voluptatum explicabo accusantium atque illo unde?
           </AdaptiveText>
         </ScrollView>
+        </TouchableWithoutFeedback>
         <View style={[styles.txtInputContainer, (showFooter !== undefined && !showFooter) && { bottom: 0 }]}>
           <TextInput 
             placeholder="Enter a new prompt..."
@@ -109,9 +108,7 @@ const ChatScreen = () => {
             <AntDesign name="arrowup" size={24} color={darkMode ? colors.white : colors.black} />
           </TouchableOpacity>
         </View>
-      </AdaptiveView>
       </View>
-      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
