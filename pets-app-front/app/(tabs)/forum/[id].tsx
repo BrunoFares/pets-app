@@ -1,22 +1,17 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
-import MinimisedForumPost from "@/components/MinimisedForumPost";
+import ForumPost from "@/components/ForumPost";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { AntDesign, EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
-  Image,
   Keyboard,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   useColorScheme,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -133,98 +128,10 @@ const PostScreen = () => {
               contentContainerStyle={{ alignSelf: "center", width: "100%" }}
               keyExtractor={(item) => String(item.key)}
               ListHeaderComponent={
-                <>
-                  <AdaptiveView style={{ marginHorizontal: 20 }}>
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginVertical: 16,
-                      }}
-                    >
-                      {item && item.photo ? (
-                        <Image source={item.photo} />
-                      ) : (
-                        <View style={styles.placeholder} />
-                      )}
-                      <AdaptiveText style={styles.postTitle}>
-                        {item.username}
-                      </AdaptiveText>
-                    </TouchableOpacity>
-                    <AdaptiveText style={styles.postBody}>
-                      {item.body}
-                    </AdaptiveText>
-                  </AdaptiveView>
-
-                  <AdaptiveView style={styles.additionalRow}>
-                    <TouchableOpacity>
-                      <EvilIcons
-                        name="comment"
-                        size={26}
-                        color={darkMode ? colors.white : colors.black}
-                      />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={likePost}>
-                      {liked ? (
-                        <AntDesign
-                          name="heart"
-                          size={18}
-                          color={colors.green}
-                        />
-                      ) : (
-                        <AntDesign
-                          name="hearto"
-                          size={18}
-                          color={darkMode ? colors.white : colors.black}
-                        />
-                      )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={bookmarkPost}>
-                      {bookmarked ? (
-                        <Ionicons
-                          name="bookmark"
-                          size={18}
-                          color={colors.green}
-                        />
-                      ) : (
-                        <Ionicons
-                          name="bookmark-outline"
-                          size={18}
-                          color={darkMode ? colors.white : colors.black}
-                        />
-                      )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity>
-                      <Feather
-                        name="share"
-                        size={18}
-                        color={darkMode ? colors.white : colors.black}
-                      />
-                    </TouchableOpacity>
-                  </AdaptiveView>
-
-                  <AdaptiveView style={styles.textInputContainer}>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Reply to user1..."
-                      placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
-                      onFocus={() => setShowFooter?.(false)}
-                      onBlur={() => setShowFooter?.(true)}
-                      multiline
-                    />
-                    <AntDesign
-                      name="arrowright"
-                      size={24}
-                      color={darkMode ? colors.white : colors.black}
-                    />
-                  </AdaptiveView>
-                </>
+                <ForumPost item={item} />
               }
               renderItem={({ item }) => {
-                return <MinimisedForumPost item={item} />;
+                return <ForumPost size='small' item={item} />;
               }}
               ListFooterComponent={
                 <View style={{ height: 140 }} />

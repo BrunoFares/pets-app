@@ -1,5 +1,5 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import MinimisedForumPost from "@/components/MinimisedForumPost";
+import ForumPost from "@/components/ForumPost";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
@@ -49,7 +49,7 @@ export default function ForumScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} style={{backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,}}>
         <View>
           <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
               <TouchableOpacity>
@@ -76,7 +76,7 @@ export default function ForumScreen() {
               keyExtractor={(item) => String(item.key)}
               renderItem={({ item }) => {
                 return (
-                  <MinimisedForumPost item={item} />
+                  <ForumPost size='small' item={item} />
                 );
               }}
               ListFooterComponent={
