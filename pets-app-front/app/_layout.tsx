@@ -1,7 +1,10 @@
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 export default function RootLayout() {
+  const [initialRoute, setInitialRoute] = useState('login-screen');
   const [fontsLoaded] = useFonts({
     'PlayfairDisplay-Regular': require('../assets/fonts/PlayfairDisplay-Regular.ttf'),
     'PlayfairDisplay-Bold': require('../assets/fonts/PlayfairDisplay-Bold.ttf'),
@@ -13,14 +16,28 @@ export default function RootLayout() {
     'Poppins-Thin': require('../assets/fonts/Poppins-Thin.ttf'),
   });
 
+  useEffect(() => {
+    setInitialRoute('login-screen');
+  })
+
+  if (!initialRoute) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   if (!fontsLoaded) {
     return null;
   }
 
   return (
-    <Stack>
+    <Stack initialRouteName={initialRoute}>
       <Stack.Screen name="(tabs)" options={{headerShown: false}}/>
       <Stack.Screen name="shop/[key]" options={{ headerShown: false }} />
+      <Stack.Screen name="login-screen" options={{ headerShown: false }} />
+      <Stack.Screen name="register-screen" options={{ headerShown: false }} />
     </Stack>
   );
 }
