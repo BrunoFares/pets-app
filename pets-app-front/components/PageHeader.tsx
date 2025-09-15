@@ -7,15 +7,18 @@ import {
   TouchableOpacity,
   useColorScheme,
   View,
+  ViewStyle,
 } from "react-native";
 import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
 
 export const PageHeader = ({
   title,
+  style,
   onBackBtnPressed,
 }: {
   title: string;
+  style?: ViewStyle;
   onBackBtnPressed?: () => void;
 }) => {
   const darkMode = useColorScheme() === "dark";

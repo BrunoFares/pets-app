@@ -16,7 +16,6 @@ const GlobalProvider: FC<ContextDataType | any> = (props: any) => {
   };
   
   useEffect(() => {
-    console.log('showFooter', showFooter)
     AsyncStorage.setItem('contextdata', JSON.stringify({showFooter}))
   }, [showFooter]);
 
