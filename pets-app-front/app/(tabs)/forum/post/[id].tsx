@@ -3,7 +3,7 @@ import ForumPost from "@/components/ForumPost";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const PostScreen = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
+  const router = useRouter();
   const { payload } = useLocalSearchParams<{ payload?: string }>();
   const chat: any = payload ? JSON.parse(decodeURIComponent(payload)) : null;
   const { showFooter, setShowFooter } = useGlobal();
@@ -104,6 +105,13 @@ const PostScreen = () => {
     setItem(displayItem);
   }, []);
 
+  const goTo = (item: any, location: any) => {
+    router.push({
+      pathname: location,
+      params: { id: String(item.key) },
+    })
+  }
+
   useFocusEffect(
     useCallback(() => {
       // This code runs when the screen is focused.
@@ -128,10 +136,22 @@ const PostScreen = () => {
               contentContainerStyle={{ alignSelf: "center", width: "100%" }}
               keyExtractor={(item) => String(item.key)}
               ListHeaderComponent={
-                <ForumPost item={item} />
+                <ForumPost 
+                  onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
+                  onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
+                  size='big' 
+                  item={item} 
+                />
               }
               renderItem={({ item }) => {
-                return <ForumPost size='small' item={item} />;
+                return (
+                  <ForumPost 
+                    onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
+                    onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
+                    size='small' 
+                    item={item} 
+                  />
+                )
               }}
               ListFooterComponent={
                 <View style={{ height: 140 }} />

@@ -14,15 +14,23 @@ import {
 import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
 
-const ForumPost = ({ item, size } : {item: any; size?: 'big' | 'small'}) => {
+const ForumPost = ({ 
+  item, 
+  size,
+  onClickPost,
+  onClickProfile
+} : {
+  item: any; 
+  size?: 'big' | 'small';
+  onClickPost: () => void;
+  onClickProfile: () => void;
+}) => {
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
   const styles = createStyles({ darkMode });
   const [liked, setLiked] = useState<boolean>();
   const [bookmarked, setBookmarked] = useState<boolean>();
   const { showFooter, setShowFooter } = useGlobal();
-
-  const goToUserProfile = () => {}
 
   const likePost = () => {
     setLiked(!liked);
@@ -35,16 +43,11 @@ const ForumPost = ({ item, size } : {item: any; size?: 'big' | 'small'}) => {
   if (size === "small") {
     return (
       <TouchableOpacity
-        onPress={() =>
-          router.push({
-            pathname: "/(tabs)/forum/[id]",
-            params: { id: String(item.key) },
-          })
-        }
+        onPress={() => onClickPost()}
         style={styles.post}
       >
         <AdaptiveView style={{ flexDirection: "row" }}>
-          <TouchableOpacity onPress={goToUserProfile}>
+          <TouchableOpacity onPress={() => onClickProfile()}>
             {item.photo ? (
               <Image source={item.photo} />
             ) : (
@@ -53,7 +56,7 @@ const ForumPost = ({ item, size } : {item: any; size?: 'big' | 'small'}) => {
           </TouchableOpacity>
 
           <AdaptiveView>
-            <TouchableOpacity onPress={goToUserProfile}>
+            <TouchableOpacity onPress={() => onClickProfile()}>
               <AdaptiveText style={styles.postTitle}>
                 {item.username}
               </AdaptiveText>
@@ -117,7 +120,7 @@ const ForumPost = ({ item, size } : {item: any; size?: 'big' | 'small'}) => {
               marginVertical: 16,
               alignSelf: "flex-start"
             }}
-            onPress={goToUserProfile}
+            onPress={() => onClickProfile()}
           >
             {item && item.photo ? (
               <Image source={item.photo} />

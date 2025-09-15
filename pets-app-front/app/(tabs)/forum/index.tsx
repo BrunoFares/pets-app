@@ -31,19 +31,26 @@ export default function ForumScreen() {
     useCallback(() => {
       // API all to get the Posts
       const forumPosts = [
-        { key: 1, photo: "", username: "Kalinka", body: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm" },
-        { key: 2, photo: "", username: "Bayyak", body: "secondPost" },
-        { key: 3, photo: "", username: "Al Imamu Ali Bel Assad Bashar", body: "thirdPost" },
-        { key: 4, photo: "", username: "Fadlallah Fares", body: "fourthPost" },
-        { key: 5, photo: "", username: "Dr. Zhivago", body: "fifthPost" },
-        { key: 6, photo: "", username: "Suce ma bite", body: "sixthPost" },
-        { key: 7, photo: "", username: "Adrien Rabiot", body: "Beklo" },
-        { key: 8, photo: "", username: "Hanane Baroud", body: "eighthPost" },
-        { key: 9, photo: "", username: "Jean Pierres", body: "ninthPost" },
+        { key: 1, photo: "", userKey: 1, username: "Kalinka", body: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm" },
+        { key: 2, photo: "", userKey: 2, username: "Bayyak", body: "secondPost" },
+        { key: 3, photo: "", userKey: 3, username: "Al Imamu Ali Bel Assad Bashar", body: "thirdPost" },
+        { key: 4, photo: "", userKey: 4, username: "Fadlallah Fares", body: "fourthPost" },
+        { key: 5, photo: "", userKey: 5, username: "Dr. Zhivago", body: "fifthPost" },
+        { key: 6, photo: "", userKey: 6, username: "Suce ma bite", body: "sixthPost" },
+        { key: 7, photo: "", userKey: 7, username: "Adrien Rabiot", body: "Beklo" },
+        { key: 8, photo: "", userKey: 8, username: "Hanane Baroud", body: "eighthPost" },
+        { key: 9, photo: "", userKey: 9, username: "Jean Pierres", body: "ninthPost" },
       ];
       setPosts(forumPosts);
     }, [])
   );
+
+  const goTo = (item: any, location: any) => {
+    router.push({
+      pathname: location,
+      params: { id: String(item.key) },
+    })
+  }
 
   const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
 
@@ -76,7 +83,12 @@ export default function ForumScreen() {
               keyExtractor={(item) => String(item.key)}
               renderItem={({ item }) => {
                 return (
-                  <ForumPost size='small' item={item} />
+                  <ForumPost 
+                    onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
+                    onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
+                    size='small' 
+                    item={item} 
+                  />
                 );
               }}
               ListFooterComponent={
