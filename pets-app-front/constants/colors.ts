@@ -11,6 +11,7 @@ export const colors = {
     lightGrey: '#e4e4e4ff',
     veryDarkGrey: '#1d1d1dff',
     darkGrey: '#393939ff',
+    mildDarkGrey: '#535353ff',
 
     lightViolet: '#ab90c0',
     lightLightViolet: '#ede4f6',
@@ -20,4 +21,6 @@ export const colors = {
 
     darkTurquoise: '#508b8f',
     lightTurquoise: '#dff5f8',
+
+    red: '#d13d3dff'
 }

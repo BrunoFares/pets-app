@@ -1,14 +1,17 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
+import LogOutModal from "@/components/LogOutModal";
 import { colors } from "@/constants/colors";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Animated,
   FlatList,
   Image,
   StyleSheet,
+  Text,
   TouchableOpacity,
   useColorScheme,
   View,
@@ -18,7 +21,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function Profile() {
   const { translateY } = useHeaderSlide({ height: 200, duration: 200 });
   const darkMode = useColorScheme() === "dark";
+  const router = useRouter();
   const styles = createStyles({ darkMode, translateY });
+  const [logOutModal, setLogOutModal] = useState(false);
   const [profileInfo, setProfileInfo] = useState<any>({
     pets: [
       {
@@ -90,7 +95,27 @@ export default function Profile() {
             </TouchableOpacity>
           );
         }}
+        ListFooterComponent={
+          <AdaptiveView style={{flexDirection: 'row', alignSelf: 'center', gap: 14}}>
+            <TouchableOpacity style={[styles.signOutBtn, {backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey}]}>
+              <MaterialIcons name="settings" size={24} color={darkMode ? colors.white : colors.black} />
+              <Text style={[styles.signOutBtnText, {color: darkMode ? colors.white : colors.black}]}>
+                Settings
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.signOutBtn} onPress={() => setLogOutModal(true)}>
+              <MaterialIcons name="logout" size={24} color={colors.white} />
+              <AdaptiveText style={styles.signOutBtnText}>Log Out</AdaptiveText>
+            </TouchableOpacity>
+          </AdaptiveView>
+        }
       />
+    <LogOutModal 
+      visible={logOutModal}
+      onClose={() => setLogOutModal(false)}
+      onDone={() => {router.replace('/login-screen')}}
+    />
     </SafeAreaView>
   );
 }
@@ -162,5 +187,20 @@ const createStyles = ({ darkMode, translateY }: any) => {
       paddingHorizontal: 40,
       marginTop: 10,
     },
+    signOutBtn: {
+      alignItems: "center",
+      alignSelf: "center",
+      paddingVertical: 15,
+      backgroundColor: colors.red,
+      borderRadius: 20,
+      paddingHorizontal: 40,
+      marginTop: 20,
+    },
+    signOutBtnText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 20,
+      textAlign: "center",
+      color: colors.white
+    }
   });
 };
