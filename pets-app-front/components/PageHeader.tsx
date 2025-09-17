@@ -26,7 +26,7 @@ export const PageHeader = ({
   const router = useRouter();
 
   return (
-    <AdaptiveView style={styles.header}>
+    <AdaptiveView style={[styles.header, style]}>
       <TouchableOpacity 
         onPress={onBackBtnPressed ? onBackBtnPressed : () => router.back()} // allows the dev to add custom functions to the back btn
       >

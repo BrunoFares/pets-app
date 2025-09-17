@@ -35,9 +35,11 @@ export default function RootLayout() {
   return (
     <Stack initialRouteName={initialRoute}>
       <Stack.Screen name="(tabs)" options={{headerShown: false}}/>
-      <Stack.Screen name="shop/[key]" options={{ headerShown: false }} />
       <Stack.Screen name="login-screen" options={{ headerShown: false }} />
       <Stack.Screen name="register-screen" options={{ headerShown: false }} />
+      <Stack.Screen name="settings-screen" options={{ headerShown: false }} />
+      <Stack.Screen name="account-settings-screen" options={{ headerShown: false }} />
+      <Stack.Screen name="location-settings-screen" options={{ headerShown: false }} />
     </Stack>
   );
 }
