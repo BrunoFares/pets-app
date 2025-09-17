@@ -6,6 +6,7 @@ export default function ItemsStack() {
       <Stack.Screen name="index" options={{ title: "Items" }} />
       <Stack.Screen name="post/[id]" options={{ title: "Details" }} />
       <Stack.Screen name="profile/[id]" options={{ title: "Profile" }} />
+      <Stack.Screen name="bookmarks" options={{ title: "Bookmarks" }} />
     </Stack>
   );
 }

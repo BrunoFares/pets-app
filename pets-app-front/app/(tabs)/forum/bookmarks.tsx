@@ -1,22 +1,19 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import ForumPost from "@/components/ForumPost";
+import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Animated,
-  FlatList,
-  Image,
-  Keyboard,
-  StyleSheet,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  useColorScheme,
-  View,
+    FlatList,
+    Keyboard,
+    StyleSheet,
+    TouchableWithoutFeedback,
+    useColorScheme,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -58,23 +55,7 @@ export default function ForumScreen() {
     <SafeAreaView style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} style={{backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,}}>
         <View>
-          <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/forum/bookmarks')}>
-                <Ionicons name="bookmark" size={24} color={darkMode ? colors.white : colors.black} />
-              </TouchableOpacity>
-
-              <Image
-                source={require("@/assets/images/petsapp-logo-light.png")}
-                style={{ height: 64, width: 64 }}
-              />
-              <TouchableOpacity>
-                <FontAwesome
-                  name="search"
-                  size={24}
-                  color={darkMode ? colors.white : colors.black}
-                />
-              </TouchableOpacity>
-          </Animated.View>
+          <PageHeader title="Bookmarks" />
 
           {posts ? (
             <FlatList
