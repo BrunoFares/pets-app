@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   useColorScheme,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -27,7 +28,7 @@ const RegisterScreen = () => {
       >
         <AdaptiveView style={styles.container}>
           <ScrollView
-            contentContainerStyle={{ width: 400, alignItems: "center" }}
+            contentContainerStyle={{ width: useWindowDimensions().width, alignItems: "center" }}
           >
             <AdaptiveText
               style={{
@@ -62,7 +63,7 @@ const createStyles = ({ darkMode }: any) => {
       flex: 1,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
       alignItems: "center",
-      width: "100%",
+      width: useWindowDimensions().width,
       justifyContent: "center",
     },
     btn: {

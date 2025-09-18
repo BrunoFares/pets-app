@@ -96,7 +96,7 @@ export default function Profile() {
           );
         }}
         ListFooterComponent={
-          <AdaptiveView style={{flexDirection: 'row', alignSelf: 'center', gap: 14}}>
+          <AdaptiveView style={{ width: '95%', flexDirection: 'row', alignSelf: 'center', gap: 14}}>
             <TouchableOpacity onPress={() => {router.push('/settings-screen')}} style={[styles.signOutBtn, {backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey}]}>
               <MaterialIcons name="settings" size={24} color={darkMode ? colors.white : colors.black} />
               <Text style={[styles.signOutBtnText, {color: darkMode ? colors.white : colors.black}]}>
@@ -188,6 +188,7 @@ const createStyles = ({ darkMode, translateY }: any) => {
       marginTop: 10,
     },
     signOutBtn: {
+      flex: 1,
       alignItems: "center",
       alignSelf: "center",
       paddingVertical: 15,

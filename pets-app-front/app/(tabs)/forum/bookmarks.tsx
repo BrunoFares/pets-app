@@ -8,16 +8,16 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    FlatList,
-    Keyboard,
-    StyleSheet,
-    TouchableWithoutFeedback,
-    useColorScheme,
-    View
+  FlatList,
+  Keyboard,
+  StyleSheet,
+  TouchableWithoutFeedback,
+  useColorScheme,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function ForumScreen() {
+export default function Bookmarks() {
   const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });

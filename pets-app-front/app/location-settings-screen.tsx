@@ -44,29 +44,14 @@ export default function LocationSettingsScreen() {
 
   const modifyLocationPermission = async () => {
     const current = await getLocationPermission();
-    if (!current) return;
-    if (current.status === "denied" && !current.canAskAgain) {
-      Alert.alert(
-        "Permission required",
-        "Location access is blocked. Open Settings to allow it.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Open Settings", onPress: () => Linking.openSettings() },
-        ]
-      );
-      return;
-    }
-    // Either undetermined, or denied but canAskAgain → ask the system prompt
-    const result = await Location.requestForegroundPermissionsAsync();
-    setLocationPermission(result);
-    if (result.status === "granted") {
-      Alert.alert("Thanks!", "Location permission granted.");
-    } else {
-      Alert.alert(
-        "Permission denied",
-        "You can enable it later from Settings if you change your mind."
-      );
-    }
+    Alert.alert(
+      "Modify Permission",
+      "Location access is currently " + current?.status + ". Open Settings to change it.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Open Settings", onPress: () => Linking.openSettings() },
+      ]
+    );
   };
 
   const settingsPage = (
