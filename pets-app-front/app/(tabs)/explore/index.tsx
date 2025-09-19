@@ -3,6 +3,7 @@ import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import React, { useRef, useState } from "react";
 import {
   Animated,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -151,6 +152,9 @@ const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
+      paddingTop: Platform.select({
+        android: 10,
+      }),
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
     body: {

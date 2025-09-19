@@ -3,7 +3,7 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import LogOutModal from "@/components/LogOutModal";
 import { colors } from "@/constants/colors";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { AntDesign, MaterialIcons } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -74,7 +74,7 @@ export default function Profile() {
             </AdaptiveText>
 
             <TouchableOpacity style={styles.addPet}>
-              <AntDesign
+              <Feather
                 name="plus"
                 size={30}
                 color={darkMode ? colors.white : colors.black}
@@ -87,8 +87,8 @@ export default function Profile() {
           return (
             <TouchableOpacity style={styles.petListItem}>
               <AdaptiveText style={styles.addPetText}>{item.name}</AdaptiveText>
-              <AntDesign
-                name="arrowright"
+              <Feather
+                name="arrow-right"
                 size={24}
                 color={darkMode ? colors.white : colors.black}
               />

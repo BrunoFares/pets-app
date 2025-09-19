@@ -2,7 +2,7 @@ import { colors } from '@/constants/colors';
 import { useGlobal } from '@/contexts/GlobalProvider';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useLinkBuilder } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import TabBarButton from './TabBarButton';
@@ -22,6 +22,15 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
       width: e.nativeEvent.layout.width
     })
   }
+
+  useEffect(() => {
+    // keep the indicator in sync whenever the selected tab changes or layout changes
+    tabPositionX.value = withSpring(buttonWidth * state.index, {
+      stiffness: 1000,
+      damping: 30,
+      mass: 1,
+    });
+  }, [state.index, buttonWidth]);
 
   const tabPositionX = useSharedValue(0);
   const animatedStyle = useAnimatedStyle(() => {
@@ -52,7 +61,6 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
         const isFocused = state.index === index;
 
         const onPress = () => {
-          tabPositionX.value = withSpring(buttonWidth * index, {duration: 1500});
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,

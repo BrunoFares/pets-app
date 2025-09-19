@@ -1,6 +1,6 @@
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { AntDesign, EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
+import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -77,12 +77,12 @@ const ForumPost = ({
 
           <TouchableOpacity onPress={likePost}>
             {liked ? (
-              <AntDesign name="heart" size={18} color={colors.green} />
+              <Ionicons name="heart-sharp" size={18} color={colors.green} />
             ) : (
-              <AntDesign
-                name="hearto"
-                size={18}
-                color={darkMode ? colors.white : colors.black}
+              <Ionicons 
+                name="heart-outline" 
+                size={18} 
+                color={darkMode ? colors.white : colors.black} 
               />
             )}
           </TouchableOpacity>
@@ -145,12 +145,12 @@ const ForumPost = ({
 
           <TouchableOpacity onPress={likePost}>
             {liked ? (
-              <AntDesign name="heart" size={18} color={colors.green} />
+              <Ionicons name="heart-sharp" size={18} color={colors.green} />
             ) : (
-              <AntDesign
-                name="hearto"
-                size={18}
-                color={darkMode ? colors.white : colors.black}
+              <Ionicons 
+                name="heart-outline" 
+                size={18} 
+                color={darkMode ? colors.white : colors.black} 
               />
             )}
           </TouchableOpacity>
@@ -185,8 +185,8 @@ const ForumPost = ({
             onBlur={() => setShowFooter?.(true)}
             multiline
           />
-          <AntDesign
-            name="arrowright"
+          <Feather
+            name="arrow-right"
             size={24}
             color={darkMode ? colors.white : colors.black}
           />

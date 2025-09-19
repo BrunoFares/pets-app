@@ -16,7 +16,7 @@ const LogOutModal = ({
 
     return (
         <CustomModal visible={visible} onClose={onClose}>
-            <Text style={styles.title}>Do you want to Log Out of your account?</Text>
+            <Text style={styles.title}>Do you want to log out of your account?</Text>
 
             <View style={styles.buttons}>
                 <TouchableOpacity style={styles.buttonYes} onPress={onDone}>

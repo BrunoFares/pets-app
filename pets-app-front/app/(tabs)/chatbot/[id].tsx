@@ -2,7 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { AntDesign } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
 import { Keyboard, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, useColorScheme, View } from "react-native";
@@ -105,7 +105,7 @@ const ChatScreen = () => {
             onBlur={() => setShowFooter?.(true)} // when no longer typing, make footer reappear
           />
           <TouchableOpacity>
-            <AntDesign name="arrowup" size={24} color={darkMode ? colors.white : colors.black} />
+            <Feather name="arrow-up" size={24} color={darkMode ? colors.white : colors.black} />
           </TouchableOpacity>
         </View>
       </View>

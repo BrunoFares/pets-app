@@ -2,7 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { AntDesign } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -50,7 +50,7 @@ export default function ChatbotScreen() {
           onBlur={() => setShowFooter?.(true)} // when no longer typing, make footer reappear
         />
         <TouchableOpacity>
-          <AntDesign name="arrowup" size={24} color={darkMode ? colors.white : colors.black} />
+          <Feather name="arrow-up" size={24} color={darkMode ? colors.white : colors.black} />
         </TouchableOpacity>
       </View>
 
@@ -68,7 +68,7 @@ export default function ChatbotScreen() {
                   <AdaptiveText style={styles.chatTitle}>{item.title}</AdaptiveText>
                   <AdaptiveText style={styles.chatContent}>{item.content}</AdaptiveText>
                 </View>
-                <AntDesign name="arrowright" size={24} color={darkMode ? colors.white : colors.black} />
+                <Feather name="arrow-right" size={24} color={darkMode ? colors.white : colors.black} />
               </TouchableOpacity>
             )
           }}
