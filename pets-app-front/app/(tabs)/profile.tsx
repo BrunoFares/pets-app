@@ -22,7 +22,8 @@ export default function Profile() {
   const { translateY } = useHeaderSlide({ height: 200, duration: 200 });
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
-  const styles = createStyles({ darkMode, translateY });
+  const [containerWidth, setContainerWidth] = useState(0);
+  const styles = createStyles({ darkMode, translateY, containerWidth });
   const [logOutModal, setLogOutModal] = useState(false);
   const [profileInfo, setProfileInfo] = useState<any>({
     pets: [
@@ -43,7 +44,7 @@ export default function Profile() {
         data={profileInfo && profileInfo.pets ? profileInfo.pets : {}}
         keyExtractor={(item) => String(item.key)}
         ListHeaderComponent={
-          <View style={{ width: 380}}>
+          <View>
             <Animated.View style={styles.head}>
               <View>
                 {profileInfo && profileInfo.picture ? (
@@ -85,7 +86,10 @@ export default function Profile() {
         }
         renderItem={({ item }) => {
           return (
-            <TouchableOpacity style={styles.petListItem}>
+            <TouchableOpacity style={styles.petListItem} onLayout={(event) => {
+              const { width } = event.nativeEvent.layout;
+              setContainerWidth(width);
+            }}>
               <AdaptiveText style={styles.addPetText}>{item.name}</AdaptiveText>
               <Feather
                 name="arrow-right"
@@ -120,7 +124,7 @@ export default function Profile() {
   );
 }
 
-const createStyles = ({ darkMode, translateY }: any) => {
+const createStyles = ({ darkMode, translateY, containerWidth }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -163,7 +167,7 @@ const createStyles = ({ darkMode, translateY }: any) => {
       gap: 20,
       alignItems: "center",
       justifyContent: "center",
-      width: "95%",
+      width: containerWidth,
       paddingVertical: 15,
       borderRadius: 20,
       alignSelf: "center",
@@ -177,14 +181,14 @@ const createStyles = ({ darkMode, translateY }: any) => {
       flexDirection: "row",
       gap: 20,
       alignItems: "center",
-      alignSelf: "center",
       justifyContent: "space-between",
       width: "95%",
       paddingVertical: 15,
+      borderRadius: 20,
+      alignSelf: "center",
       borderWidth: 1,
       borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
-      borderRadius: 20,
-      paddingHorizontal: 40,
+      paddingHorizontal: 20,
       marginTop: 10,
     },
     signOutBtn: {

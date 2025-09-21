@@ -50,7 +50,7 @@ const createStyles = ({ darkMode }: any) => {
         },
         name: {
             fontFamily: 'Poppins-Bold',
-            color: darkMode ? colors.white : colors.black,
+            color: darkMode ? colors.white : colors.green,
             fontSize: 16,
             marginTop: 10,
             marginLeft: 10,

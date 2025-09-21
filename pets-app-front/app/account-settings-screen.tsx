@@ -2,8 +2,9 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
-import { AntDesign, MaterialIcons } from "@expo/vector-icons";
-import { Platform, SafeAreaView, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { Platform, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AccountSettingsScreen() {
   const darkMode = useColorScheme() === "dark";
@@ -19,7 +20,7 @@ export default function AccountSettingsScreen() {
                 fontSize: 16
             }}>{title}</AdaptiveText>
         </View>
-        <AntDesign name="arrowright" size={24} color={darkMode ? colors.white : colors.black} />
+        <Feather name="arrow-right" size={24} color={darkMode ? colors.white : colors.black} />
       </TouchableOpacity>
     )
   }

@@ -166,7 +166,7 @@ const createStyles = ({ darkMode }: any) => {
     tabs: {
       flexDirection: "row",
       alignSelf: "center",
-      backgroundColor: darkMode ? colors.darkGrey : colors.lightLightGreen1,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
       gap: 14,
       paddingHorizontal: 16,
       height: 50,
@@ -198,7 +198,7 @@ const createStyles = ({ darkMode }: any) => {
       left: 0,
       height: 50,
       borderRadius: 24,
-      backgroundColor: darkMode ? colors.white : colors.green,
+      backgroundColor: darkMode ? colors.white : colors.black,
       opacity: 0.1
     },
     // --- pages ---

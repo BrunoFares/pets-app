@@ -2,9 +2,10 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
-import { AntDesign, MaterialIcons } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Platform, SafeAreaView, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function SettingsScreen() {
                 fontSize: 16
             }}>{title}</AdaptiveText>
         </View>
-        <AntDesign name="arrowright" size={24} color={darkMode ? colors.white : colors.black} />
+        <Feather name="arrow-right" size={24} color={darkMode ? colors.white : colors.black} />
       </TouchableOpacity>
     )
   }

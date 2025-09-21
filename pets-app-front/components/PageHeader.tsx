@@ -36,7 +36,9 @@ export const PageHeader = ({
           color={darkMode ? colors.white : colors.veryDarkGrey}
         />
       </TouchableOpacity>
-      <AdaptiveText>{title}</AdaptiveText>
+      <AdaptiveText style={{
+        fontFamily: 'Poppins-Regular'
+      }}>{title}</AdaptiveText>
       <View style={{ width: 24 }} />
     </AdaptiveView>
   );

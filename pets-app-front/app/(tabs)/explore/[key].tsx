@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import ReviewPost from "@/components/ReviewPost";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { AntDesign } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
@@ -143,8 +143,8 @@ export default function ShopDetails() {
                   onBlur={() => setShowFooter?.(true)}
                   multiline
                 />
-                <AntDesign
-                  name="arrowright"
+                <Feather
+                  name="arrow-right"
                   size={24}
                   color={darkMode ? colors.white : colors.black}
                 />

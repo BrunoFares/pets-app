@@ -45,11 +45,11 @@ const ExploreTab = ({ items }: any) => {
         <AdaptiveView style={{flex: 1, alignItems: "center", justifyContent: "center",}}>
             <View style={styles.utilityBar}>
                 <TouchableOpacity onPress={() => setFilterByModal(!filterByModal)}>
-                    <FontAwesome6 name="filter" size={24} color={darkMode ? colors.white : colors.black} />
+                    <FontAwesome6 name="filter" size={24} color={darkMode ? colors.white : colors.green} />
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setSortByModal(!sortByModal)}>
-                    <MaterialIcons name="sort" size={24} color={darkMode ? colors.white : colors.black} />
+                    <MaterialIcons name="sort" size={24} color={darkMode ? colors.white : colors.green} />
                 </TouchableOpacity>
                 
                 <TextInput
@@ -60,7 +60,7 @@ const ExploreTab = ({ items }: any) => {
                 />
 
                 <TouchableOpacity>
-                    <FontAwesome name="search" size={24} color={darkMode ? colors.white : colors.black} />
+                    <FontAwesome name="search" size={24} color={darkMode ? colors.white : colors.green} />
                 </TouchableOpacity>
             </View>
 
