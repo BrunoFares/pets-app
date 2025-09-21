@@ -1,0 +1,245 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\controllers\\petscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\controllers\\petscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\security\\jwtissuer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\security\\jwtissuer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\model\\petmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\model\\petmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\model\\appuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\model\\appuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\model\\breedmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\model\\breedmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\model\\speciesmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\model\\speciesmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\controllers\\metacontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\controllers\\metacontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\security\\passwordvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\security\\passwordvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\petcare.api\\petcare.api\\security\\passwordhasher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\security\\passwordhasher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 12,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "MetaController.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Controllers\\MetaController.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Controllers\\MetaController.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Controllers\\MetaController.cs",
+              "RelativeToolTip": "PetCare.Api\\Controllers\\MetaController.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAQwA8AAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-20T16:39:08.836Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "PetModel.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\PetModel.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Model\\PetModel.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\PetModel.cs",
+              "RelativeToolTip": "PetCare.Api\\Model\\PetModel.cs",
+              "ViewState": "AgIAAAoAAAAAAAAAAAAcwA8AAAAqAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-19T21:07:46.674Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "BreedModel.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\BreedModel.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Model\\BreedModel.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\BreedModel.cs",
+              "RelativeToolTip": "PetCare.Api\\Model\\BreedModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-19T21:06:33.698Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "SpeciesModel.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\SpeciesModel.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Model\\SpeciesModel.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\SpeciesModel.cs",
+              "RelativeToolTip": "PetCare.Api\\Model\\SpeciesModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-19T21:05:56.905Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "JwtIssuer.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Security\\JwtIssuer.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Security\\JwtIssuer.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Security\\JwtIssuer.cs",
+              "RelativeToolTip": "PetCare.Api\\Security\\JwtIssuer.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T17:52:29.942Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "PasswordValidator.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Security\\PasswordValidator.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Security\\PasswordValidator.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Security\\PasswordValidator.cs",
+              "RelativeToolTip": "PetCare.Api\\Security\\PasswordValidator.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T17:52:09.177Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "PasswordHasher.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Security\\PasswordHasher.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Security\\PasswordHasher.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Security\\PasswordHasher.cs",
+              "RelativeToolTip": "PetCare.Api\\Security\\PasswordHasher.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T17:51:45.328Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "AppDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Data\\AppDbContext.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Data\\AppDbContext.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Data\\AppDbContext.cs",
+              "RelativeToolTip": "PetCare.Api\\Data\\AppDbContext.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T17:49:30.683Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "AppUser.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\AppUser.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Model\\AppUser.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Model\\AppUser.cs",
+              "RelativeToolTip": "PetCare.Api\\Model\\AppUser.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T17:47:52.251Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "PetCare.Api\\appsettings.json",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\appsettings.json",
+              "RelativeToolTip": "PetCare.Api\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-09-14T17:46:03.122Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PetsController.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Controllers\\PetsController.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Controllers\\PetsController.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Controllers\\PetsController.cs",
+              "RelativeToolTip": "PetCare.Api\\Controllers\\PetsController.cs",
+              "ViewState": "AgIAACAAAAAAAAAAAAAwwKwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-20T16:40:29.139Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Program.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Program.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Program.cs",
+              "RelativeToolTip": "PetCare.Api\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-12T12:50:06.446Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "PetCare.Api\\Controllers\\AuthController.cs",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "PetCare.Api\\Controllers\\AuthController.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAtwCAAAABYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T17:55:40.748Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
