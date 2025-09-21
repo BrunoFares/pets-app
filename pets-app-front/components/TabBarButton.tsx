@@ -75,7 +75,7 @@ const createStyles = ({ darkMode, isFocused }: any) => {
         },
         text: {
             fontFamily: 'Poppins-Regular', 
-            fontSize: 14,
+            fontSize: 12,
             color: darkMode ? colors.white : colors.black,
         }
     });

@@ -47,7 +47,7 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
         borderRadius: 30,
         marginHorizontal: 8,
         width: buttonWidth - 15,
-        height: dimensions.width - 310
+        height: dimensions.width * 0.16
       }]} />
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
@@ -104,7 +104,7 @@ const createStyles = ({ darkMode }: any) => {
     return StyleSheet.create({
         container: {
             position: 'absolute',
-            bottom: 30, 
+            bottom: 50, 
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
