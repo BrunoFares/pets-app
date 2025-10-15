@@ -126,7 +126,7 @@ const CharitiesListScreen = ({ items }: any) => {
               <TouchableOpacity
                 onPress={() =>
                   router.push({
-                    pathname: "/(tabs)/explore/[key]",
+                    pathname: "/individual-charity-screen",
                     params: { key: String(item.key), payload },
                   })
                 }

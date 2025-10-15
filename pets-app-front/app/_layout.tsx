@@ -41,6 +41,7 @@ export default function RootLayout() {
       <Stack.Screen name="account-settings-screen" options={{ headerShown: false }} />
       <Stack.Screen name="location-settings-screen" options={{ headerShown: false }} />
       <Stack.Screen name="charities-list-screen" options={{ headerShown: false }} />
+      <Stack.Screen name="individual-charity-screen" options={{ headerShown: false }} />
     </Stack>
   );
 }
