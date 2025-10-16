@@ -58,11 +58,11 @@ const ForumPost = ({
           <AdaptiveView>
             <TouchableOpacity onPress={() => onClickProfile()}>
               <AdaptiveText style={styles.postTitle}>
-                {item.username}
+                {item.UserName}
               </AdaptiveText>
             </TouchableOpacity>
 
-            <AdaptiveText style={styles.postContent}>{item.body}</AdaptiveText>
+            <AdaptiveText style={styles.postContent}>{item.Content}</AdaptiveText>
           </AdaptiveView>
         </AdaptiveView>
 
@@ -128,10 +128,10 @@ const ForumPost = ({
               <View style={styles.placeholder} />
             )}
             <AdaptiveText style={styles.postTitle}>
-              {item.username}
+              {item.UserName}
             </AdaptiveText>
           </TouchableOpacity>
-          <AdaptiveText style={styles.postBody}>{item.body}</AdaptiveText>
+          <AdaptiveText style={styles.postBody}>{item.Content}</AdaptiveText>
         </AdaptiveView>
 
         <AdaptiveView style={styles.additionalRowBig}>

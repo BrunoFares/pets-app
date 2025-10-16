@@ -3,8 +3,10 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import ForumPost from "@/components/ForumPost";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { ForumPostsModel } from "@/data/models";
+import { ForumPosts } from "@/data/sample";
 import { Image } from "expo-image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
@@ -31,27 +33,15 @@ const ProfileScreen = () => {
   const scrollRef = useRef<any>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  const [posts, setPosts] = useState([
-    {
-      key: 1,
-      photo: "",
-      username: "Kalinka",
-      body: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm",
-    },
-    { key: 2, photo: "", username: "Bayyak", body: "secondPost" },
-    {
-      key: 3,
-      photo: "",
-      username: "Al Imamu Ali Bel Assad Bashar",
-      body: "thirdPost",
-    },
-    { key: 4, photo: "", username: "Fadlallah Fares", body: "fourthPost" },
-    { key: 5, photo: "", username: "Dr. Zhivago", body: "fifthPost" },
-    { key: 6, photo: "", username: "Suce ma bite", body: "sixthPost" },
-    { key: 7, photo: "", username: "Adrien Rabiot", body: "Beklo" },
-    { key: 8, photo: "", username: "Hanane Baroud", body: "eighthPost" },
-    { key: 9, photo: "", username: "Jean Pierres", body: "ninthPost" },
-  ]);
+  const [posts, setPosts] = useState<ForumPostsModel[]>();
+  const [replies, setReplies] = useState<ForumPostsModel[]>();
+
+  useEffect(() => {
+    const displayPosts = ForumPosts;
+    
+    setPosts(displayPosts);
+    setReplies(displayPosts);
+  }, [])
 
   const goTo = (i: number) => {
     setIndex(i);
@@ -140,10 +130,10 @@ const ProfileScreen = () => {
           )}
         >
           <View style={[styles.page, { width }]}>
-            <FlatList
+            {posts ? <FlatList
               data={posts}
               scrollEnabled={false}
-              keyExtractor={(item) => String(item.key)}
+              keyExtractor={(item) => String(item.Id)}
               renderItem={({ item }) => {
                 return (
                   <ForumPost
@@ -155,13 +145,16 @@ const ProfileScreen = () => {
                 );
               }}
             />
+              :
+              <AdaptiveText style={styles.noPosts}>No posts available.</AdaptiveText>
+            }
           </View>
 
           <View style={[styles.page, { width }]}>
-            <FlatList
-              data={posts}
+            {replies ? <FlatList
+              data={replies}
               scrollEnabled={false}
-              keyExtractor={(item) => String(item.key)}
+              keyExtractor={(item) => String(item.Id)}
               contentContainerStyle={{ width: 370 }}
               renderItem={({ item }) => {
                 return (
@@ -174,19 +167,9 @@ const ProfileScreen = () => {
                 );
               }}
             />
-
-            {/* {posts && 
-            posts.map(item => {
-              return (
-                <ForumPost
-                    size="small"
-                    onClickPost={() => {}}
-                    onClickProfile={() => {}}
-                    item={item}
-                  />
-              )
-            })
-            } */}
+            :
+              <AdaptiveText style={styles.noPosts}>No replies available.</AdaptiveText>
+            }
           </View>
         </Animated.ScrollView>
       </ScrollView>
@@ -252,5 +235,10 @@ const createStyles = ({ darkMode }: any) => {
       height: 2,
       backgroundColor: darkMode ? colors.white : colors.black,
     },
+    noPosts: {
+      marginTop: 20,
+      fontFamily: "Poppins-Regular",
+      alignSelf: 'center'
+    }
   });
 };

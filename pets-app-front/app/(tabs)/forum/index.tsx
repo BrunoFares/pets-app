@@ -2,6 +2,8 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import ForumPost from "@/components/ForumPost";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { ForumPostsModel } from "@/data/models";
+import { ForumPosts } from "@/data/sample";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -24,23 +26,13 @@ export default function ForumScreen() {
   const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<ForumPostsModel[]>([]);
   const { showFooter, setShowFooter } = useGlobal();
 
   useFocusEffect(
     useCallback(() => {
-      // API all to get the Posts
-      const forumPosts = [
-        { key: 1, photo: "", userKey: 1, username: "Kalinka", body: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm" },
-        { key: 2, photo: "", userKey: 2, username: "Bayyak", body: "secondPost" },
-        { key: 3, photo: "", userKey: 3, username: "Al Imamu Ali Bel Assad Bashar", body: "thirdPost" },
-        { key: 4, photo: "", userKey: 4, username: "Fadlallah Fares", body: "fourthPost" },
-        { key: 5, photo: "", userKey: 5, username: "Dr. Zhivago", body: "fifthPost" },
-        { key: 6, photo: "", userKey: 6, username: "Suce ma bite", body: "sixthPost" },
-        { key: 7, photo: "", userKey: 7, username: "Adrien Rabiot", body: "Beklo" },
-        { key: 8, photo: "", userKey: 8, username: "Hanane Baroud", body: "eighthPost" },
-        { key: 9, photo: "", userKey: 9, username: "Jean Pierres", body: "ninthPost" },
-      ];
+      // API call to get the Posts
+      const forumPosts = ForumPosts;
       setPosts(forumPosts);
     }, [])
   );
@@ -80,7 +72,7 @@ export default function ForumScreen() {
             <FlatList
               data={posts}
               contentContainerStyle={{ alignSelf: "center", width: "100%" }}
-              keyExtractor={(item) => String(item.key)}
+              keyExtractor={(item) => String(item.Id)}
               renderItem={({ item }) => {
                 return (
                   <ForumPost 

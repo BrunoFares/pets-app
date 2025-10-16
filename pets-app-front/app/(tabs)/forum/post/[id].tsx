@@ -3,6 +3,8 @@ import ForumPost from "@/components/ForumPost";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { ForumPostsModel } from "@/data/models";
+import { ForumPosts } from "@/data/sample";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -23,45 +25,22 @@ const PostScreen = () => {
   const chat: any = payload ? JSON.parse(decodeURIComponent(payload)) : null;
   const { showFooter, setShowFooter } = useGlobal();
   const [item, setItem] = useState<any>({
-    key: 0,
+    Id: 0,
     photo: "",
-    username: "Abdo",
-    body: "seen the state of her body (mad)",
+    UserName: "Abdo",
+    Content: "seen the state of her body (mad)",
   });
   const [liked, setLiked] = useState<boolean>();
-  const [replies, setReplies] = useState([
-    {
-      key: 1,
-      photo: "",
-      username: "Kalinka",
-      body: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm",
-    },
-    { key: 2, photo: "", username: "Bayyak", body: "secondPost" },
-    {
-      key: 3,
-      photo: "",
-      username: "Al Imamu Ali Bel Assad Bashar",
-      body: "thirdPost",
-    },
-    { key: 4, photo: "", username: "Fadlallah Fares", body: "fourthPost" },
-    { key: 5, photo: "", username: "Dr. Zhivago", body: "fifthPost" },
-    { key: 6, photo: "", username: "Suce ma bite", body: "sixthPost" },
-    { key: 7, photo: "", username: "Adrien Rabiot", body: "Beklo" },
-    { key: 8, photo: "", username: "Hanane Baroud", body: "eighthPost" },
-    { key: 9, photo: "", username: "Jean Pierres", body: "ninthPost" },
-  ]);
+  const [replies, setReplies] = useState<ForumPostsModel[]>();
   const [bookmarked, setBookmarked] = useState<boolean>();
 
   useFocusEffect(
     useCallback(() => {
-      // This code runs when the screen is focused.
-      console.log('Screen is focused!');
-
       return () => {
         // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, []) // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, [])
   );
 
   const likePost = () => {
@@ -74,32 +53,12 @@ const PostScreen = () => {
 
   useEffect(() => {
     const displayItem = {
-      key: 0,
+      Id: 0,
       photo: "",
-      username: "Abdo",
-      body: "seen the state of her body (mad)",
+      UserName: "Abdo",
+      Content: "seen the state of her body (mad)",
     };
-    const replies = [
-      {
-        key: 1,
-        photo: "",
-        username: "Kalinka",
-        body: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm",
-      },
-      { key: 2, photo: "", username: "Bayyak", body: "secondPost" },
-      {
-        key: 3,
-        photo: "",
-        username: "Al Imamu Ali Bel Assad Bashar",
-        body: "thirdPost",
-      },
-      { key: 4, photo: "", username: "Fadlallah Fares", body: "fourthPost" },
-      { key: 5, photo: "", username: "Dr. Zhivago", body: "fifthPost" },
-      { key: 6, photo: "", username: "Suce ma bite", body: "sixthPost" },
-      { key: 7, photo: "", username: "Adrien Rabiot", body: "Beklo" },
-      { key: 8, photo: "", username: "Hanane Baroud", body: "eighthPost" },
-      { key: 9, photo: "", username: "Jean Pierres", body: "ninthPost" },
-    ];
+    const replies = ForumPosts;
 
     setReplies(replies);
     setItem(displayItem);
@@ -134,7 +93,7 @@ const PostScreen = () => {
             <FlatList
               data={replies}
               contentContainerStyle={{ alignSelf: "center", width: "100%" }}
-              keyExtractor={(item) => String(item.key)}
+              keyExtractor={(item) => String(item.Id)}
               ListHeaderComponent={
                 <ForumPost 
                   onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 

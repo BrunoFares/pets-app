@@ -1,4 +1,6 @@
-export const AppUsers = [
+import { AppUsersModel, BreedModel, ChatModel, ForumPostsModel, PetModel, PetPlaceModel, PetShopModel, SpeciesModel, VetModel } from "./models";
+
+export const AppUsers: AppUsersModel[] = [
   {
     Id: "1",
     Name: "Bruno",
@@ -12,27 +14,54 @@ export const AppUsers = [
   },
 ];
 
-export const ForumPosts = [
+export const ForumPosts: ForumPostsModel[] = [
   {
     Id: "1",
     UserId: "1",
-    Title: "",
-    Body: "",
+    UserName: "Kalinka",
+    Content: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm",
+    Attachments: [],
+    CreatedAt: 1000,
+  },
+  {
+    Id: "2",
+    UserId: "2",
+    UserName: "Lightning McQueen",
+    Content: "kachow",
+    Attachments: [],
+    CreatedAt: 1000,
+  },
+  {
+    Id: "3",
+    UserId: "3",
+    UserName: "Minouche",
+    Content: "eh rawae hamdellah",
+    Attachments: [],
+    CreatedAt: 1000,
+  },
+  {
+    Id: "4",
+    UserId: "4",
+    UserName: "Sonic Al Qonfoz",
+    Content: "you're going my way",
     Attachments: [],
     CreatedAt: 1000,
   },
 ];
 
-export const Chat = [
+export const Chat: ChatModel[] = [
   {
     Id: "1",
     UserId: "1",
-    Discussion: {},
+    Discussion: {
+      User: [""],
+      Bot: [""]
+    },
     CreatedAt: 1000,
   },
 ];
 
-export const Pets = [
+export const Pets: PetModel[] = [
   {
     Id: "1",
     UserId: "1", // BIGINT (matches users.id)
@@ -40,7 +69,7 @@ export const Pets = [
     SpeciesId: 1,
     BreedId: 1,
     Sex: "Female",
-    BirthDate: "25/07/2011",
+    BirthDate: new Date(2011, 7, 25),
     ApproxAgeMonths: 169,
     WeightKg: 2.5,
     Color: "calico",
@@ -54,21 +83,21 @@ export const Pets = [
   },
 ];
 
-export const PetShops = [
+export const PetShops: PetShopModel[] = [
   {
     Id: "1",
     PetsId: "1",
   },
 ];
 
-export const Vets = [
+export const Vets: VetModel[] = [
   {
     Id: "1",
     PetsId: "1",
   },
 ];
 
-export const PetPlaces = [
+export const PetPlaces: PetPlaceModel[] = [
   {
     Id: "1",
     Name: "Kalinka",
@@ -87,7 +116,7 @@ export const PetPlaces = [
   },
 ];
 
-export const Species = [
+export const Species: SpeciesModel[] = [
   {
     Id: "1",
     Code: "",
@@ -96,11 +125,11 @@ export const Species = [
   },
 ];
 
-export const Breeds = [
+export const Breeds: BreedModel[] = [
   {
     Id: "1",
     SpeciesId: "",
     Name: "",
-    Species: [],
+    Species: "",
   },
 ];
