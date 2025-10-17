@@ -3,9 +3,10 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import ForumPost from "@/components/ForumPost";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
-import { ForumPostsModel } from "@/data/models";
-import { ForumPosts } from "@/data/sample";
+import { AppUsersModel, ForumPostsModel } from "@/data/models";
+import { AppUsers, ForumPosts } from "@/data/sample";
 import { Image } from "expo-image";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -21,9 +22,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ProfileScreen = () => {
+  const { payload } = useLocalSearchParams<{ payload?: any }>();
+  const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const [user, setUser] = useState({ photo: "" });
+  const [user, setUser] = useState<AppUsersModel>();
 
   const labels = ["Posts", "Posts & Replies"];
   const { width } = useWindowDimensions();
@@ -37,24 +40,36 @@ const ProfileScreen = () => {
   const [replies, setReplies] = useState<ForumPostsModel[]>();
 
   useEffect(() => {
-    const displayPosts = ForumPosts;
-    
+    const selectedUserID = JSON.parse(payload)['UserId'];
+    const selectedUser = AppUsers.find(item => item.Id === selectedUserID);
+    setUser(selectedUser);
+
+    const displayPosts = ForumPosts.filter(item => item.UserId === selectedUserID);
     setPosts(displayPosts);
     setReplies(displayPosts);
   }, [])
 
-  const goTo = (i: number) => {
+  const horizontalScroll = (i: number) => {
     setIndex(i);
     scrollRef.current?.scrollTo({ x: i * width, animated: true });
   };
 
+  const goTo = (item: any, location: any) => {
+    const payload = encodeURIComponent(JSON.stringify(item));
+    router.push({
+      pathname: location,
+      params: { id: String(item.key), payload },
+    })
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
+      {user ?
       <ScrollView>
         <AdaptiveView style={styles.header}>
-          {user && user.photo ? (
-            <Image source={user.photo} />
+          {user.Image ? (
+            <Image source={user.Image} />
           ) : (
             <View style={styles.placeholder} />
           )}
@@ -65,7 +80,7 @@ const ProfileScreen = () => {
               fontSize: 20,
             }}
           >
-            Kalinka
+            {user.Name}
           </AdaptiveText>
         </AdaptiveView>
 
@@ -77,8 +92,7 @@ const ProfileScreen = () => {
             marginVertical: 10,
           }}
         >
-          Description description description description description
-          description description description
+          {user.Description}
         </AdaptiveText>
 
         {/* Header area (sliding) */}
@@ -86,7 +100,7 @@ const ProfileScreen = () => {
           {labels.map((label, i) => (
             <Pressable
               key={label}
-              onPress={() => goTo(i)}
+              onPress={() => horizontalScroll(i)}
               accessibilityRole="tab"
               accessibilityState={{ selected: index === i }}
               style={styles.tabBtn}
@@ -138,8 +152,8 @@ const ProfileScreen = () => {
                 return (
                   <ForumPost
                     size="small"
-                    onClickPost={() => {}}
-                    onClickProfile={() => {}}
+                    onClickPost={() => goTo(item,'/(tabs)/forum/post/[id]')}
+                    onClickProfile={() => goTo(item, '/(tabs)/forum/profile/[id]')}
                     item={item}
                   />
                 );
@@ -160,8 +174,8 @@ const ProfileScreen = () => {
                 return (
                   <ForumPost
                     size="small"
-                    onClickPost={() => {}}
-                    onClickProfile={() => {}}
+                    onClickPost={() => goTo(item,'/(tabs)/forum/post/[id]')}
+                    onClickProfile={() => goTo(item,'/(tabs)/forum/profile/[id]')}
                     item={item}
                   />
                 );
@@ -172,7 +186,9 @@ const ProfileScreen = () => {
             }
           </View>
         </Animated.ScrollView>
-      </ScrollView>
+      </ScrollView> : 
+      <AdaptiveText>No profile found.</AdaptiveText>
+      }
     </SafeAreaView>
   );
 };

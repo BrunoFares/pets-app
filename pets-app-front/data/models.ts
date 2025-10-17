@@ -7,6 +7,8 @@ export interface AppUsersModel {
   LastLogin: number,
   FirstName: string,
   LastName: string,
+  Image: string,
+  Description: string,
   PasswordHash: string,
 }
 

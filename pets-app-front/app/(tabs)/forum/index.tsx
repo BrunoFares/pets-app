@@ -38,9 +38,10 @@ export default function ForumScreen() {
   );
 
   const goTo = (item: any, location: any) => {
+    const payload = encodeURIComponent(JSON.stringify(item));
     router.push({
       pathname: location,
-      params: { id: String(item.key) },
+      params: { id: String(item.key), payload },
     })
   }
 
