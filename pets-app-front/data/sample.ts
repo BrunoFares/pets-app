@@ -13,6 +13,7 @@ export const AppUsers: AppUsersModel[] = [
     Image: "",
     Description: "Description",
     PasswordHash: "brunofares1234",
+    BookmarkedPostID: ['1']
   },
   {
     Id: "2",
@@ -26,6 +27,7 @@ export const AppUsers: AppUsersModel[] = [
     Image: "",
     Description: "Paris SG tous ensemble on fera pipi",
     PasswordHash: "jasonmoussi1234",
+    BookmarkedPostID: ['1']
   },
   {
     Id: "3",
@@ -39,6 +41,7 @@ export const AppUsers: AppUsersModel[] = [
     Image: "",
     Description: "Hello! I'm using WhatsApp.",
     PasswordHash: "johngreen1234",
+    BookmarkedPostID: ['1']
   },
   {
     Id: "4",
@@ -52,6 +55,7 @@ export const AppUsers: AppUsersModel[] = [
     Image: "",
     Description: "welcome to the hotel california papapapapapapa such a lovely place",
     PasswordHash: "joewalsh1234",
+    BookmarkedPostID: ['1']
   },
 ];
 

@@ -1,15 +1,20 @@
 export interface AppUsersModel {
+  // account info
   Id: string,
   Name: string,
-  Email: string,
-  PhoneNumber: string,
-  CreatedAt: number,
-  LastLogin: number,
   FirstName: string,
   LastName: string,
-  Image: string,
-  Description: string,
+  Email: string,
+  PhoneNumber: string,
   PasswordHash: string,
+  Image: string,
+
+  CreatedAt: number,
+  LastLogin: number,
+  
+  // forum info
+  Description: string,
+  BookmarkedPostID: string[]
 }
 
 export interface ForumPostsModel {
