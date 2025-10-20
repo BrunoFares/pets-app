@@ -66,6 +66,8 @@ export const ForumPosts: ForumPostsModel[] = [
     UserName: "brunofares1234",
     Content: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm",
     Attachments: [],
+    IsAReply: true,
+    ReplyingToPost: "2",
     CreatedAt: 1000,
   },
   {
@@ -74,6 +76,7 @@ export const ForumPosts: ForumPostsModel[] = [
     UserName: "jasonmoussi1234",
     Content: "kachow",
     Attachments: [],
+    IsAReply: false,
     CreatedAt: 1000,
   },
   {
@@ -82,6 +85,8 @@ export const ForumPosts: ForumPostsModel[] = [
     UserName: "johngreen1234",
     Content: "eh rawae hamdellah",
     Attachments: [],
+    IsAReply: true,
+    ReplyingToPost: "1",
     CreatedAt: 1000,
   },
   {
@@ -90,6 +95,7 @@ export const ForumPosts: ForumPostsModel[] = [
     UserName: "joewalsh1234",
     Content: "you're going my way",
     Attachments: [],
+    IsAReply: false,
     CreatedAt: 1000,
   },
 ];

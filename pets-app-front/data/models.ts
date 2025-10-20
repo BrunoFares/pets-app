@@ -24,6 +24,8 @@ export interface ForumPostsModel {
   Content: string,
   Attachments: [],
   CreatedAt: number,
+  IsAReply: boolean,
+  ReplyingToPost?: string,
 }
 
 export interface ChatModel {

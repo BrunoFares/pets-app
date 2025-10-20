@@ -77,8 +77,8 @@ export default function ForumScreen() {
               renderItem={({ item }) => {
                 return (
                   <ForumPost 
-                    onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
-                    onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
+                    //onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
+                    // onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
                     size='small' 
                     item={item} 
                   />

@@ -21,15 +21,10 @@ const PostScreen = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const router = useRouter();
-  const { payload } = useLocalSearchParams<{ payload?: string }>();
+  const { payload } = useLocalSearchParams<{ payload: string }>();
   const chat: any = payload ? JSON.parse(decodeURIComponent(payload)) : null;
   const { showFooter, setShowFooter } = useGlobal();
-  const [item, setItem] = useState<any>({
-    Id: 0,
-    photo: "",
-    UserName: "Abdo",
-    Content: "seen the state of her body (mad)",
-  });
+  const [item, setItem] = useState<ForumPostsModel>();
   const [liked, setLiked] = useState<boolean>();
   const [replies, setReplies] = useState<ForumPostsModel[]>();
   const [bookmarked, setBookmarked] = useState<boolean>();
@@ -52,24 +47,12 @@ const PostScreen = () => {
   };
 
   useEffect(() => {
-    const displayItem = {
-      Id: 0,
-      photo: "",
-      UserName: "Abdo",
-      Content: "seen the state of her body (mad)",
-    };
-    const replies = ForumPosts;
+    const displayItem = JSON.parse(payload);
+    const replies = ForumPosts.filter(item => item.ReplyingToPost === displayItem.Id);
 
     setReplies(replies);
     setItem(displayItem);
   }, []);
-
-  const goTo = (item: any, location: any) => {
-    router.push({
-      pathname: location,
-      params: { id: String(item.key) },
-    })
-  }
 
   useFocusEffect(
     useCallback(() => {
@@ -89,28 +72,31 @@ const PostScreen = () => {
           <PageHeader
             title={chat && chat.title ? chat.title : "something else"}
           />
-          {replies ? (
+          {item ? (
             <FlatList
               data={replies}
               contentContainerStyle={{ alignSelf: "center", width: "100%" }}
               keyExtractor={(item) => String(item.Id)}
               ListHeaderComponent={
-                <ForumPost 
-                  onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
-                  onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
+                <ForumPost
                   size='big' 
                   item={item} 
                 />
               }
               renderItem={({ item }) => {
-                return (
-                  <ForumPost 
-                    onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
-                    onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
-                    size='small' 
-                    item={item} 
-                  />
-                )
+                if (replies && replies.length !== 0) {
+                  return (
+                    <ForumPost
+                      size='small' 
+                      item={item} 
+                    />
+                  )
+                }
+                else {
+                  return (
+                    <AdaptiveText>This post has no replies.</AdaptiveText>
+                  )
+                }
               }}
               ListFooterComponent={
                 <View style={{ height: 140 }} />

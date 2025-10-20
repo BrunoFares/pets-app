@@ -1,8 +1,10 @@
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { AppUsersModel, ForumPostsModel } from "@/data/models";
+import { AppUsers, ForumPosts } from "@/data/sample";
 import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   View,
   useColorScheme,
 } from "react-native";
+import { goTo } from '../utils';
 import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
 
@@ -18,12 +21,14 @@ const ForumPost = ({
   item, 
   size,
   onClickPost,
+  onClickReplyPost,
   onClickProfile
 } : {
-  item: any; 
+  item: ForumPostsModel; 
   size?: 'big' | 'small';
-  onClickPost: () => void;
-  onClickProfile: () => void;
+  onClickPost?: () => void;
+  onClickReplyPost?: () => void;
+  onClickProfile?: () => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
@@ -31,36 +36,56 @@ const ForumPost = ({
   const [liked, setLiked] = useState<boolean>();
   const [bookmarked, setBookmarked] = useState<boolean>();
   const { showFooter, setShowFooter } = useGlobal();
+  const [user, setUser] = useState<AppUsersModel>();
+  const [otherPost, setOtherPost] = useState<ForumPostsModel>();
 
   const likePost = () => {
     setLiked(!liked);
   };
 
+  useEffect(() => {
+    const selectedUserID = item['UserId'];
+    const selectedUser = AppUsers.find(item => item.Id === selectedUserID);
+    setUser(selectedUser);
+
+    if (item['IsAReply']) {
+      const selectedOtherPostID = item['ReplyingToPost'];
+      const selectedOtherPost = ForumPosts.find(item => item.Id === selectedOtherPostID);
+      setOtherPost(selectedOtherPost);
+    }
+  }, [])
+
   const bookmarkPost = () => {
     setBookmarked(!bookmarked);
   };
 
-  if (size === "small") {
+  if (user && size === "small") {
     return (
       <TouchableOpacity
-        onPress={() => onClickPost()}
+        onPress={() => goTo(item, '/(tabs)/forum/post/[id]', router)}
         style={styles.post}
       >
         <AdaptiveView style={{ flexDirection: "row" }}>
-          <TouchableOpacity onPress={() => onClickProfile()}>
-            {item.photo ? (
-              <Image source={item.photo} />
+          <TouchableOpacity onPress={() => goTo(item, '/(tabs)/forum/profile/[id]', router)}>
+            {user.Image ? (
+              <Image source={user.Image} />
             ) : (
               <View style={styles.placeholder} />
             )}
           </TouchableOpacity>
 
           <AdaptiveView>
-            <TouchableOpacity onPress={() => onClickProfile()}>
+            <TouchableOpacity onPress={() => goTo(item, '/(tabs)/forum/profile/[id]', router)}>
               <AdaptiveText style={styles.postTitle}>
                 {item.UserName}
               </AdaptiveText>
             </TouchableOpacity>
+
+            {otherPost &&
+              <TouchableOpacity style={styles.reply} onPress={() => goTo(otherPost, '/(tabs)/forum/post/[id]', router)}>
+                <AdaptiveText style={styles.replyTxt}>Replying to {otherPost.UserName}</AdaptiveText>
+              </TouchableOpacity>
+            }
 
             <AdaptiveText style={styles.postContent}>{item.Content}</AdaptiveText>
           </AdaptiveView>
@@ -109,9 +134,15 @@ const ForumPost = ({
         </AdaptiveView>
       </TouchableOpacity>
     );
-  } else {
+  } else if (user && size === "big") {
     return (
       <>
+        {item.IsAReply &&
+          <ForumPost 
+            item={ForumPosts.find(i => i.Id === item.ReplyingToPost)} 
+            size='small' 
+          />
+        }
         <AdaptiveView style={{ marginHorizontal: 20 }}>
           <TouchableOpacity
             style={{
@@ -120,10 +151,10 @@ const ForumPost = ({
               marginVertical: 16,
               alignSelf: "flex-start"
             }}
-            onPress={() => onClickProfile()}
+            onPress={() => goTo(item, '/(tabs)/forum/profile/[id]', router)}
           >
-            {item && item.photo ? (
-              <Image source={item.photo} />
+            {user.Image ? (
+              <Image source={user.Image} />
             ) : (
               <View style={styles.placeholder} />
             )}
@@ -194,6 +225,9 @@ const ForumPost = ({
       </>
     );
   }
+  else {
+    <AdaptiveText>Post unavailable.</AdaptiveText>
+  }
 };
 
 const createStyles = ({ darkMode }: any) => {
@@ -258,6 +292,14 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-Regular",
       fontSize: 20,
     },
+    reply: {
+      marginLeft: 10,
+    },
+    replyTxt: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 12,
+      color: colors.green
+    }
   });
 };
 
