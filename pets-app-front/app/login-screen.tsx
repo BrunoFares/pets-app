@@ -69,9 +69,9 @@ const createStyles = ({ darkMode }: any) => {
       justifyContent: "center",
     },
     img: {
-      height: 150, 
-      width: 150,
-      marginBottom: 120
+      height: 230, 
+      width: 230,
+      marginBottom: 80
     },
     btn: {
       backgroundColor: colors.green,
