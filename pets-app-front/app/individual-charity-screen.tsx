@@ -1,11 +1,11 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
+import CustomImage from "@/components/CustomImage";
 import { PageHeader } from "@/components/PageHeader";
 import ReviewPost from "@/components/ReviewPost";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -15,8 +15,7 @@ import {
   Text,
   TextInput,
   TouchableWithoutFeedback,
-  useColorScheme,
-  View,
+  useColorScheme
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -88,13 +87,7 @@ export default function IndividualCharityScreen() {
           }}
           ListHeaderComponent={
             <>
-              {shop.image ? (
-                <Image source={{ uri: shop.image }} style={{ height: 400 }} />
-              ) : (
-                <View
-                  style={{ height: 400, backgroundColor: colors.lightGrey }}
-                />
-              )}
+              <CustomImage image={shop.image} customStyles={{ height: 400, width: '100%', backgroundColor: colors.lightGrey }} />
               <AdaptiveText
                 style={{
                   fontSize: 22,

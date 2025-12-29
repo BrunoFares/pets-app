@@ -1,9 +1,9 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
+import CustomImage from "@/components/CustomImage";
 import { colors } from "@/constants/colors";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { Entypo, FontAwesome6, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -166,11 +166,7 @@ export default function HomeScreen() {
                 });
               }}
             >
-              {user && user.picture ? (
-                <Image source={user.picture} style={styles.pfp} />
-              ) : (
-                <View style={styles.pfp} />
-              )}
+              <CustomImage image={user.picture} customStyles={styles.pfp} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -187,11 +183,7 @@ export default function HomeScreen() {
                 });
               }}
             >
-              {user && user.picture ? (
-                <Image source={user.picture} style={styles.pfp} />
-              ) : (
-                <View style={styles.pfp} />
-              )}
+              <CustomImage image={user.picture} customStyles={styles.pfp} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -208,11 +200,7 @@ export default function HomeScreen() {
                 });
               }}
             >
-              {user && user.picture ? (
-                <Image source={user.picture} style={styles.pfp} />
-              ) : (
-                <View style={styles.pfp} />
-              )}
+              <CustomImage image={user.picture} customStyles={styles.pfp} />
             </TouchableOpacity>
           </AdaptiveView>
 

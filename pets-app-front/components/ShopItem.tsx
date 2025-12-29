@@ -1,6 +1,6 @@
 import { colors } from "@/constants/colors";
-import { Image } from "expo-image";
 import { StyleSheet, Text, useColorScheme, View, ViewStyle } from "react-native";
+import CustomImage from "./CustomImage";
 
 const ShopItem = ({
     name,
@@ -20,11 +20,7 @@ const ShopItem = ({
 
     return (
         <View style={[styles.container, style]}>
-            {image ? 
-                <Image source={image} style={styles.image}/>
-            :
-                <View style={styles.image} />
-            }
+            <CustomImage image={image} customStyles={styles.image} />
             <Text style={styles.name}>{name}</Text>
             <Text style={styles.location}>{location}</Text>
             <Text style={styles.rating}>★ {rating}</Text>
@@ -44,6 +40,7 @@ const createStyles = ({ darkMode }: any) => {
         },
         image: {
             height: 200,
+            width: '100%', 
             backgroundColor: colors.lightGrey,
             borderTopLeftRadius: 10,
             borderTopRightRadius: 10,
