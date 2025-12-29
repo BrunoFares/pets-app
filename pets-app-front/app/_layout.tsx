@@ -38,8 +38,6 @@ export default function RootLayout() {
       <Stack.Screen name="login-screen" options={{ headerShown: false }} />
       <Stack.Screen name="register-screen" options={{ headerShown: false }} />
       <Stack.Screen name="settings-screen" options={{ headerShown: false }} />
-      <Stack.Screen name="account-settings-screen" options={{ headerShown: false }} />
-      <Stack.Screen name="location-settings-screen" options={{ headerShown: false }} />
       <Stack.Screen name="charities-list-screen" options={{ headerShown: false }} />
       <Stack.Screen name="individual-charity-screen" options={{ headerShown: false }} />
     </Stack>

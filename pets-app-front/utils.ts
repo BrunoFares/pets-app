@@ -7,3 +7,15 @@ export function goTo(item: any, location: any, router: Router) {
     params: { id: String(item.key), payload },
   })
 }
+
+export function calculateAge(birthdate: Date): number {
+  const today = new Date();
+  let age = today.getFullYear() - birthdate.getFullYear();
+  const monthDiff = today.getMonth() - birthdate.getMonth();
+
+  // If the current month is before the birth month, subtract one year
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+    age--;
+  }
+  return age;
+}
