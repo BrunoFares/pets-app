@@ -7,6 +7,7 @@ export const AdaptiveText = ({ style, otherProps, children }: any) => {
   return <Text 
     style={[{ 
       color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-Regular",
     }, style]} {...otherProps}
   >
     {children}
