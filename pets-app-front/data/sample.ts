@@ -1,4 +1,4 @@
-import { AppUsersModel, BreedModel, ChatModel, ForumPostsModel, PetModel, PetPlaceModel, PetShopModel, SpeciesModel, VetModel } from "./models";
+import { AppUsersModel, BreedModel, ChatModel, ConsultationModel, ForumPostsModel, PetModel, PetPlaceModel, PetShopModel, SpeciesModel, VetModel } from "./models";
 
 export const AppUsers: AppUsersModel[] = [
   {
@@ -119,18 +119,17 @@ export const Pets: PetModel[] = [
     Name: "Kalinka",
     SpeciesId: 1,
     BreedId: 1,
-    Sex: "Female",
+    Sex: "female",
     BirthDate: new Date(2011, 7, 25),
-    ApproxAgeMonths: 169,
     WeightKg: 2.5,
-    Color: "calico",
+    Color: "Calico",
     Neutered: true,
     AvatarUrl: "", // user-uploaded URL (or CDN URL)
     Notes: "",
     CreatedAt: 1000,
     UpdatedAt: 1220,
-    Species: "",
-    Breed: "",
+    Species: "cat",
+    Breed: "House Cat",
   },
 ];
 
@@ -144,9 +143,30 @@ export const PetShops: PetShopModel[] = [
 export const Vets: VetModel[] = [
   {
     Id: "1",
-    PetsId: "1",
+    ConsultationId: "1",
   },
 ];
+
+export const Consultations: ConsultationModel[] = [
+  {
+    Id: '1',
+    PetId: '1',
+    VetId: '1',
+    Date: new Date(2021, 7, 25)
+  },
+  {
+    Id: '2',
+    PetId: '1',
+    VetId: '2',
+    Date: new Date(2022, 7, 25)
+  },
+  {
+    Id: '3',
+    PetId: '1',
+    VetId: '2',
+    Date: new Date(2025, 2, 1)
+  },
+]
 
 export const PetPlaces: PetPlaceModel[] = [
   {

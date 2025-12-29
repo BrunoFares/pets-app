@@ -44,12 +44,11 @@ export interface PetModel {
   Name: string,
   SpeciesId: 1,
   BreedId: 1,
-  Sex: string,
+  Sex: "male" | "female",
   BirthDate: Date,
-  ApproxAgeMonths: number,
   WeightKg: number,
   Color: string,
-  Neutered: true,
+  Neutered: boolean,
   AvatarUrl: string // user-uploaded URL (or CDN URL)
   Notes: string,
   CreatedAt: number,
@@ -65,7 +64,14 @@ export interface PetShopModel {
 
 export interface VetModel {
   Id: string,
-  PetsId: string,
+  ConsultationId: string,
+}
+
+export interface ConsultationModel {
+  Id: string,
+  PetId: string,
+  VetId: string,
+  Date: Date
 }
 
 export interface PetPlaceModel {
