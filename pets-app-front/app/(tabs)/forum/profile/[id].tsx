@@ -1,11 +1,11 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
+import CustomImage from "@/components/CustomImage";
 import ForumPost from "@/components/ForumPost";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { AppUsersModel, ForumPostsModel } from "@/data/models";
 import { AppUsers, ForumPosts } from "@/data/sample";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -68,11 +68,7 @@ const ProfileScreen = () => {
       {user ?
       <ScrollView>
         <AdaptiveView style={styles.header}>
-          {user.Image ? (
-            <Image source={user.Image} />
-          ) : (
-            <View style={styles.placeholder} />
-          )}
+          <CustomImage image={user.Image} customStyles={styles.placeholder} />
 
           <AdaptiveText
             style={{
@@ -152,8 +148,6 @@ const ProfileScreen = () => {
                 return (
                   <ForumPost
                     size="small"
-                    onClickPost={() => goTo(item,'/(tabs)/forum/post/[id]')}
-                    onClickProfile={() => goTo(item, '/(tabs)/forum/profile/[id]')}
                     item={item}
                   />
                 );
@@ -174,8 +168,6 @@ const ProfileScreen = () => {
                 return (
                   <ForumPost
                     size="small"
-                    onClickPost={() => goTo(item,'/(tabs)/forum/post/[id]')}
-                    onClickProfile={() => goTo(item,'/(tabs)/forum/profile/[id]')}
                     item={item}
                   />
                 );

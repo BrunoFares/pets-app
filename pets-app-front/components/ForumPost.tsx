@@ -6,29 +6,22 @@ import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Image,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  View,
-  useColorScheme,
+  useColorScheme
 } from "react-native";
 import { goTo } from '../utils';
 import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
+import CustomImage from "./CustomImage";
 
 const ForumPost = ({ 
   item, 
   size,
-  onClickPost,
-  onClickReplyPost,
-  onClickProfile
 } : {
   item: ForumPostsModel; 
   size?: 'big' | 'small';
-  onClickPost?: () => void;
-  onClickReplyPost?: () => void;
-  onClickProfile?: () => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
@@ -67,11 +60,12 @@ const ForumPost = ({
       >
         <AdaptiveView style={{ flexDirection: "row" }}>
           <TouchableOpacity onPress={() => goTo(item, '/(tabs)/forum/profile/[id]', router)}>
-            {user.Image ? (
+            {/* {user.Image ? (
               <Image source={user.Image} />
             ) : (
               <View style={styles.placeholder} />
-            )}
+            )} */}
+            <CustomImage image={user.Image} customStyles={styles.placeholder} />
           </TouchableOpacity>
 
           <AdaptiveView>
@@ -153,11 +147,12 @@ const ForumPost = ({
             }}
             onPress={() => goTo(item, '/(tabs)/forum/profile/[id]', router)}
           >
-            {user.Image ? (
+            {/* {user.Image ? (
               <Image source={user.Image} />
             ) : (
               <View style={styles.placeholder} />
-            )}
+            )} */}
+            <CustomImage image={user.Image} customStyles={styles.placeholder} />
             <AdaptiveText style={styles.postTitle}>
               {item.UserName}
             </AdaptiveText>
@@ -233,7 +228,6 @@ const ForumPost = ({
 const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
     placeholder: {
-      backgroundColor: colors.lightGrey,
       borderRadius: 52,
       width: 52,
       height: 52,
