@@ -37,7 +37,6 @@ export default function RootLayout() {
       <Stack.Screen name="(tabs)" options={{headerShown: false}}/>
       <Stack.Screen name="login-screen" options={{ headerShown: false }} />
       <Stack.Screen name="register-screen" options={{ headerShown: false }} />
-      <Stack.Screen name="settings-screen" options={{ headerShown: false }} />
       <Stack.Screen name="charities-list-screen" options={{ headerShown: false }} />
       <Stack.Screen name="individual-charity-screen" options={{ headerShown: false }} />
     </Stack>
