@@ -6,14 +6,20 @@ import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
 import { Consultations } from "@/data/sample";
-import { calculateAge } from "@/utils";
+import { calculateAge, goTo } from "@/utils";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, useColorScheme } from "react-native";
+import {
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  useColorScheme
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Pet = () => {
+  const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
@@ -38,7 +44,7 @@ const Pet = () => {
       }
     }
 
-    const cons = Consultations.filter(item => item.PetId === parsed.Id);
+    const cons = Consultations.filter((item) => item.PetId === parsed.Id);
     setConsultations(cons);
 
     setPet(parsed);
@@ -57,94 +63,107 @@ const Pet = () => {
   if (pet) {
     return (
       <SafeAreaView style={styles.container}>
-        <ScrollView>
-          <PageHeader title="" />
-          <AdaptiveView style={styles.header}>
-            <CustomImage />
-            <AdaptiveText style={styles.title}>{pet.Name}</AdaptiveText>
-          </AdaptiveView>
-
-          <AdaptiveView style={styles.table}>
-            <AdaptiveView style={styles.centralRow}>
-              <AdaptiveView
-                style={[
-                  styles.tableUnit,
-                  {
-                    borderRightWidth: 1,
-                    borderBottomWidth: 1,
-                  },
-                ]}
-              >
-                <AdaptiveText style={styles.tableUnitTxt}>
-                  {calculateAge(new Date(pet.BirthDate))}
-                </AdaptiveText>
-                <AdaptiveText style={styles.tableUnitInfo}>
-                  years old
-                </AdaptiveText>
+        <PageHeader title="" />
+        <FlatList
+          data={consultations}
+          keyExtractor={(item) => String(item.Id)}
+          ListHeaderComponent={
+            <>
+              <AdaptiveView style={styles.header}>
+                <CustomImage />
+                <AdaptiveText style={styles.title}>{pet.Name}</AdaptiveText>
+                <TouchableOpacity style={styles.editBtn} onPress={() => goTo({}, '/profile/edit-pet', router)}>
+                  <AdaptiveText style={styles.editBtnTxt}>Edit</AdaptiveText>
+                </TouchableOpacity>
               </AdaptiveView>
 
-              <AdaptiveView
-                style={[
-                  styles.tableUnit,
-                  {
-                    borderLeftWidth: 1,
-                    borderBottomWidth: 1,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name={pet.Sex}
-                  size={48}
-                  color={darkMode ? colors.white : colors.black}
-                  style={{ paddingVertical: 24 }}
-                />
-                <AdaptiveText style={styles.tableUnitInfo}>sex</AdaptiveText>
-              </AdaptiveView>
-            </AdaptiveView>
-            <AdaptiveView style={styles.centralRow}>
-              <AdaptiveView
-                style={[
-                  styles.tableUnit,
-                  {
-                    borderRightWidth: 1,
-                    borderTopWidth: 1,
-                  },
-                ]}
-              >
-                <AdaptiveText style={styles.tableUnitTxt}>
-                  {pet.Breed}
-                </AdaptiveText>
-                <AdaptiveText style={styles.tableUnitInfo}>breed</AdaptiveText>
+              <AdaptiveView style={styles.table}>
+                <AdaptiveView style={styles.centralRow}>
+                  <AdaptiveView
+                    style={[
+                      styles.tableUnit,
+                      {
+                        borderRightWidth: 1,
+                        borderBottomWidth: 1,
+                      },
+                    ]}
+                  >
+                    <AdaptiveText style={styles.tableUnitTxt}>
+                      {calculateAge(new Date(pet.BirthDate))}
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.tableUnitInfo}>
+                      years old
+                    </AdaptiveText>
+                  </AdaptiveView>
+
+                  <AdaptiveView
+                    style={[
+                      styles.tableUnit,
+                      {
+                        borderLeftWidth: 1,
+                        borderBottomWidth: 1,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={pet.Sex}
+                      size={48}
+                      color={darkMode ? colors.white : colors.black}
+                      style={{ paddingVertical: 24 }}
+                    />
+                    <AdaptiveText style={styles.tableUnitInfo}>
+                      sex
+                    </AdaptiveText>
+                  </AdaptiveView>
+                </AdaptiveView>
+                <AdaptiveView style={styles.centralRow}>
+                  <AdaptiveView
+                    style={[
+                      styles.tableUnit,
+                      {
+                        borderRightWidth: 1,
+                        borderTopWidth: 1,
+                      },
+                    ]}
+                  >
+                    <AdaptiveText style={styles.tableUnitTxt}>
+                      {pet.Breed}
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.tableUnitInfo}>
+                      breed
+                    </AdaptiveText>
+                  </AdaptiveView>
+
+                  <AdaptiveView
+                    style={[
+                      styles.tableUnit,
+                      {
+                        borderLeftWidth: 1,
+                        borderTopWidth: 1,
+                      },
+                    ]}
+                  >
+                    <AdaptiveText style={styles.tableUnitTxt}>
+                      {pet.Color}
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.tableUnitInfo}>
+                      colour
+                    </AdaptiveText>
+                  </AdaptiveView>
+                </AdaptiveView>
               </AdaptiveView>
 
-              <AdaptiveView
-                style={[
-                  styles.tableUnit,
-                  {
-                    borderLeftWidth: 1,
-                    borderTopWidth: 1,
-                  },
-                ]}
-              >
-                <AdaptiveText style={styles.tableUnitTxt}>
-                  {pet.Color}
-                </AdaptiveText>
-                <AdaptiveText style={styles.tableUnitInfo}>colour</AdaptiveText>
-              </AdaptiveView>
-            </AdaptiveView>
-          </AdaptiveView>
-
-          <AdaptiveText style={styles.consTitle}>Consultations</AdaptiveText>
-
-          {consultations &&
-            consultations.map(item =>
-              <TouchableOpacity style={styles.consultation}>
-                <AdaptiveText>{item.Date.toDateString()}</AdaptiveText>
-              </TouchableOpacity>
-            )
+              <AdaptiveText style={styles.consTitle}>
+                Consultations
+              </AdaptiveText>
+            </>
           }
-
-        </ScrollView>
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.consultation}>
+              <AdaptiveText>{item.Date.toDateString()}</AdaptiveText>
+            </TouchableOpacity>
+          )}
+        />
       </SafeAreaView>
     );
   } else {
@@ -209,18 +228,27 @@ const createStyles = ({ darkMode }: any) => {
       borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
     },
     consTitle: {
-      marginLeft: '5%',
+      marginLeft: "5%",
       fontSize: 16,
-      fontFamily: 'Poppins-Bold'
+      fontFamily: "Poppins-Bold",
     },
     consultation: {
-      marginHorizontal: '5%',
+      marginHorizontal: "5%",
       marginTop: 10,
       fontSize: 16,
       paddingHorizontal: 20,
       paddingVertical: 10,
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
-      borderRadius: 10
-    }
+      borderRadius: 10,
+    },
+    editBtn: {
+      backgroundColor: colors.darkGrey,
+      paddingHorizontal: 18,
+      paddingVertical: 6,
+      borderRadius: 8
+    },
+    editBtnTxt: {
+      fontSize: 16,
+    },
   });
 };
