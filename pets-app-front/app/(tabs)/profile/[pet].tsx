@@ -14,7 +14,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  useColorScheme
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -57,7 +57,7 @@ const Pet = () => {
       return () => {
         setShowFooter?.(true);
       };
-    }, [])
+    }, []),
   );
 
   if (pet) {
@@ -72,7 +72,10 @@ const Pet = () => {
               <AdaptiveView style={styles.header}>
                 <CustomImage />
                 <AdaptiveText style={styles.title}>{pet.Name}</AdaptiveText>
-                <TouchableOpacity style={styles.editBtn} onPress={() => goTo({}, '/profile/edit-pet', router)}>
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => goTo({}, "/profile/edit-pet", router)}
+                >
                   <AdaptiveText style={styles.editBtnTxt}>Edit</AdaptiveText>
                 </TouchableOpacity>
               </AdaptiveView>
@@ -159,7 +162,12 @@ const Pet = () => {
             </>
           }
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.consultation}>
+            <TouchableOpacity
+              style={styles.consultation}
+              onPress={() => {
+                goTo("", "/profile/consultation", router);
+              }}
+            >
               <AdaptiveText>{item.Date.toDateString()}</AdaptiveText>
             </TouchableOpacity>
           )}
@@ -242,10 +250,10 @@ const createStyles = ({ darkMode }: any) => {
       borderRadius: 10,
     },
     editBtn: {
-      backgroundColor: colors.darkGrey,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
       paddingHorizontal: 18,
       paddingVertical: 6,
-      borderRadius: 8
+      borderRadius: 8,
     },
     editBtnTxt: {
       fontSize: 16,

@@ -1,25 +1,32 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
+import CustomImage from "@/components/CustomImage";
 import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   useColorScheme,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const Pet = () => {
+const EditPet = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
+  const { setShowFooter } = useGlobal();
 
   const [date, setDate] = useState(new Date(1598051730000));
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedSex, setSelectedSex] = useState<string>();
   const [selectedBreed, setSelectedBreed] = useState<string>();
   const [selectedSpecies, setSelectedSpecies] = useState<string>();
@@ -31,9 +38,21 @@ const Pet = () => {
   const [colorModal, setColorModal] = useState(false);
 
   const onChange = (event: any, selectedDate: any) => {
-    const currentDate = selectedDate;
-    setDate(currentDate);
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+    setShowDatePicker(false);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      setShowFooter?.(false);
+
+      return () => {
+        setShowFooter?.(true);
+      };
+    }, []),
+  );
 
   const petSex = [
     {
@@ -92,22 +111,64 @@ const Pet = () => {
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      <ScrollView contentContainerStyle={{alignItems: 'center', gap: 10}}>
+      <ScrollView contentContainerStyle={{ alignItems: "center", gap: 10 }}>
         <AdaptiveText style={styles.title}>Edit pet details</AdaptiveText>
 
-        <AdaptiveText style={{width: '84%'}}>Name</AdaptiveText>
-        <CustomInput label={"Name"} />
+        <View
+          style={{
+            flexDirection: "row",
+            width: "85%",
+            gap: 20,
+            marginTop: 20,
+          }}
+        >
+          <View>
+            <CustomImage withEdits={true} />
+          </View>
+          <View
+            style={{
+              width: 200,
+              alignItems: "center",
+            }}
+          >
+            <AdaptiveText style={{ width: "100%", marginBottom: 5 }}>
+              Name
+            </AdaptiveText>
+            <CustomInput style={{ width: "100%" }} label={"Name"} />
 
-        <AdaptiveText style={{width: '84%'}}>Date of Birth</AdaptiveText>
-        <DateTimePicker
-          testID="dateTimePicker"
-          value={date}
-          mode={"date"}
-          onChange={onChange}
-          style={{ marginBottom: 10 }}
-        />
+            <AdaptiveText style={{ width: "100%", marginBottom: 5 }}>
+              Date of Birth
+            </AdaptiveText>
+            {Platform.OS === "android" && (
+              <TouchableOpacity
+                style={[styles.picker, { width: "auto" }]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <AdaptiveText style={styles.textPicker}>
+                  {date.toLocaleDateString()}
+                </AdaptiveText>
+              </TouchableOpacity>
+            )}
+            {showDatePicker && Platform.OS === "android" && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={date}
+                mode={"date"}
+                onChange={onChange}
+              />
+            )}
+            {Platform.OS === "ios" && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={date}
+                mode={"date"}
+                onChange={onChange}
+              />
+            )}
+          </View>
+        </View>
 
-        <AdaptiveText style={{width: '84%'}}>Species</AdaptiveText>
+        <AdaptiveText style={{ width: "84%" }}>Species</AdaptiveText>
         <TouchableOpacity
           style={styles.picker}
           onPress={() => {
@@ -125,7 +186,7 @@ const Pet = () => {
           />
         </TouchableOpacity>
 
-        <AdaptiveText style={{width: '84%'}}>Species</AdaptiveText>
+        <AdaptiveText style={{ width: "84%" }}>Sex</AdaptiveText>
         <TouchableOpacity
           style={styles.picker}
           onPress={() => {
@@ -143,7 +204,7 @@ const Pet = () => {
           />
         </TouchableOpacity>
 
-        <AdaptiveText style={{width: '84%'}}>Species</AdaptiveText>
+        <AdaptiveText style={{ width: "84%" }}>Breed</AdaptiveText>
         <TouchableOpacity
           style={styles.picker}
           onPress={() => {
@@ -161,7 +222,7 @@ const Pet = () => {
           />
         </TouchableOpacity>
 
-        <AdaptiveText style={{width: '84%'}}>Species</AdaptiveText>
+        <AdaptiveText style={{ width: "84%" }}>Color</AdaptiveText>
         <TouchableOpacity
           style={styles.picker}
           onPress={() => {
@@ -242,7 +303,7 @@ const Pet = () => {
   );
 };
 
-export default Pet;
+export default EditPet;
 
 const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
@@ -276,14 +337,14 @@ const createStyles = ({ darkMode }: any) => {
       paddingVertical: 20,
       paddingHorizontal: 80,
       borderRadius: 20,
-      marginBottom: '30%',
-      marginTop: 20
+      marginBottom: "10%",
+      marginTop: 20,
     },
     btnTextSave: {
       color: colors.white,
-      fontFamily: 'Poppins-Bold',
+      fontFamily: "Poppins-Bold",
       fontSize: 18,
-      textAlign: 'center',
-    }
+      textAlign: "center",
+    },
   });
 };

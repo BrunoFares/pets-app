@@ -6,10 +6,17 @@ import {
   StyleSheet,
   TextInput,
   useColorScheme,
-  View
+  View,
+  ViewStyle,
 } from "react-native";
 
-const CustomInput = ({ label }: { label: string }) => {
+const CustomInput = ({
+  label,
+  style,
+}: {
+  label: string;
+  style?: ViewStyle;
+}) => {
   const darkMode = useColorScheme() === "dark";
   const inputRef = useRef<TextInput>(null);
   const styles = createStyles({ darkMode });
@@ -69,12 +76,18 @@ const CustomInput = ({ label }: { label: string }) => {
         textInputFocus && {
           borderColor: darkMode ? colors.lightGrey : colors.darkGrey,
         },
+        style,
       ]}
     >
-      <Animated.Text onPress={() => {
-        inputRef.current?.focus();
-        handleFocus();
-      }} style={labelStyle}>{label}</Animated.Text>
+      <Animated.Text
+        onPress={() => {
+          inputRef.current?.focus();
+          handleFocus();
+        }}
+        style={labelStyle}
+      >
+        {label}
+      </Animated.Text>
       <TextInput
         ref={inputRef}
         value={value}
