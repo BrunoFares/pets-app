@@ -5,6 +5,7 @@ export default function ItemsStack() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" options={{ title: "Profile" }} />
       <Stack.Screen name="[pet]" options={{ title: "Pet" }} />
+      <Stack.Screen name="add-pet" options={{ title: "Add Pet" }} />
       <Stack.Screen name="edit-pet" options={{ title: "Edit Pet" }} />
       <Stack.Screen name="edit-profile" options={{ title: "Edit Profile" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />

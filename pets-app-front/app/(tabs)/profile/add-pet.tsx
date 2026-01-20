@@ -9,23 +9,24 @@ import { BreedModel, Color, Sex, SpeciesModel } from "@/data/models";
 import { Breeds, Species } from "@/data/sample";
 import { AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useColorScheme,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const EditPet = () => {
+const AddPet = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
+  const router = useRouter();
 
   const [date, setDate] = useState(new Date(1598051730000));
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -99,7 +100,7 @@ const EditPet = () => {
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
       <ScrollView contentContainerStyle={{ alignItems: "center", gap: 10 }}>
-        <AdaptiveText style={styles.title}>Edit pet details</AdaptiveText>
+        <AdaptiveText style={styles.title}>Add Pet</AdaptiveText>
 
         <View
           style={{
@@ -338,7 +339,7 @@ const EditPet = () => {
   );
 };
 
-export default EditPet;
+export default AddPet;
 
 const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({

@@ -74,7 +74,10 @@ export default function Profile() {
                 My Pets
               </AdaptiveText>
 
-              <TouchableOpacity style={styles.addPet}>
+              <TouchableOpacity
+                style={styles.addPet}
+                onPress={() => goTo({}, "/profile/add-pet", router)}
+              >
                 <Feather
                   name="plus"
                   size={30}

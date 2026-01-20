@@ -2,11 +2,13 @@ import {
   AppUsersModel,
   BreedModel,
   ChatModel,
+  Color,
   ConsultationModel,
   ForumPostsModel,
   PetModel,
   PetPlaceModel,
   PetShopModel,
+  Sex,
   SpeciesModel,
   VetModel,
 } from "./models";
@@ -132,10 +134,10 @@ export const Pets: PetModel[] = [
     Name: "Kalinka",
     SpeciesId: 1,
     BreedId: 1,
-    Sex: "female",
+    Sex: Sex.FEMALE,
     BirthDate: new Date(2011, 7, 25),
     WeightKg: 2.5,
-    Color: "Calico",
+    Color: Color.CALICO,
     Neutered: true,
     AvatarUrl: "", // user-uploaded URL (or CDN URL)
     Notes: "",
@@ -206,18 +208,60 @@ export const PetPlaces: PetPlaceModel[] = [
 
 export const Species: SpeciesModel[] = [
   {
-    Id: "1",
+    id: "1",
     Code: "",
-    Name: "",
+    Name: "Dog",
+    Breeds: [],
+  },
+  {
+    id: "2",
+    Code: "",
+    Name: "Cat",
     Breeds: [],
   },
 ];
 
 export const Breeds: BreedModel[] = [
   {
-    Id: "1",
-    SpeciesId: "",
-    Name: "",
+    id: "1",
+    SpeciesId: "1",
+    Name: "Labrador",
+    Species: "",
+  },
+  {
+    id: "2",
+    SpeciesId: "1",
+    Name: "Golden Retriever",
+    Species: "",
+  },
+  {
+    id: "3",
+    SpeciesId: "2",
+    Name: "Siamese",
+    Species: "",
+  },
+  {
+    id: "4",
+    SpeciesId: "2",
+    Name: "Maine Coon",
+    Species: "",
+  },
+  {
+    id: "5",
+    SpeciesId: "2",
+    Name: "British Shorthair",
+    Species: "",
+  },
+  {
+    id: "6",
+    SpeciesId: "2",
+    Name: "Persian",
+    Species: "",
+  },
+  {
+    id: "7",
+    SpeciesId: "2",
+    Name: "Ragdoll",
     Species: "",
   },
 ];

@@ -44,7 +44,7 @@ export interface PetModel {
   Name: string;
   SpeciesId: 1;
   BreedId: 1;
-  Sex: "male" | "female";
+  Sex: "Male" | "Female";
   BirthDate: Date;
   WeightKg: number;
   Color: string;
@@ -94,15 +94,27 @@ export interface PetPlaceModel {
 }
 
 export interface SpeciesModel {
-  Id: string;
+  id: string;
   Code: string;
   Name: string;
   Breeds: string[];
 }
 
 export interface BreedModel {
-  Id: string;
+  id: string;
   SpeciesId: string;
   Name: string;
   Species: string;
 }
+
+export const Color = Object.freeze({
+  CALICO: "Calico",
+  ORANGE: "Orange",
+  BLACK: "Black",
+  WHITE: "White",
+});
+
+export const Sex = Object.freeze({
+  MALE: "Male",
+  FEMALE: "Female",
+});
