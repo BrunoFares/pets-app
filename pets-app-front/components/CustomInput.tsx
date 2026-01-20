@@ -14,7 +14,7 @@ const CustomInput = ({
   label,
   style,
 }: {
-  label: string;
+  label?: string;
   style?: ViewStyle;
 }) => {
   const darkMode = useColorScheme() === "dark";
@@ -79,15 +79,17 @@ const CustomInput = ({
         style,
       ]}
     >
-      <Animated.Text
-        onPress={() => {
-          inputRef.current?.focus();
-          handleFocus();
-        }}
-        style={labelStyle}
-      >
-        {label}
-      </Animated.Text>
+      {label && (
+        <Animated.Text
+          onPress={() => {
+            inputRef.current?.focus();
+            handleFocus();
+          }}
+          style={labelStyle}
+        >
+          {label}
+        </Animated.Text>
+      )}
       <TextInput
         ref={inputRef}
         value={value}
