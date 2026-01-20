@@ -17,7 +17,7 @@ import {
   Text,
   TouchableOpacity,
   useColorScheme,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -33,7 +33,7 @@ export default function Profile() {
 
   useEffect(() => {
     const user = AppUsers[0];
-    const animals = Pets.filter(item => item.UserId === user.Id);
+    const animals = Pets.filter((item) => item.UserId === user.Id);
     setProfileInfo(user);
     setPets(animals);
   }, []);
@@ -50,7 +50,12 @@ export default function Profile() {
                 <CustomImage image={profileInfo.Image} />
                 <AdaptiveView>
                   <AdaptiveText style={styles.title}>Bruno</AdaptiveText>
-                  <TouchableOpacity style={styles.editProfile}>
+                  <TouchableOpacity
+                    style={styles.editProfile}
+                    onPress={() => {
+                      goTo("", "/profile/edit-profile", router);
+                    }}
+                  >
                     <AdaptiveText style={styles.editProfileText}>
                       Edit Profile
                     </AdaptiveText>
@@ -80,15 +85,26 @@ export default function Profile() {
             </View>
           }
           renderItem={({ item }) => {
-            
             return (
-              <TouchableOpacity style={styles.petListItem} onLayout={(event) => {
-                const { width } = event.nativeEvent.layout;
-                setContainerWidth(width);
-              }} onPress={() => {goTo(item, '/(tabs)/profile/[pet]', router)}}>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <FontAwesome5 name={item.Species} size={24} color={darkMode ? colors.white : colors.black} />
-                  <AdaptiveText style={styles.addPetText}>{item.Name}</AdaptiveText>
+              <TouchableOpacity
+                style={styles.petListItem}
+                onLayout={(event) => {
+                  const { width } = event.nativeEvent.layout;
+                  setContainerWidth(width);
+                }}
+                onPress={() => {
+                  goTo(item, "/(tabs)/profile/[pet]", router);
+                }}
+              >
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <FontAwesome5
+                    name={item.Species}
+                    size={24}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                  <AdaptiveText style={styles.addPetText}>
+                    {item.Name}
+                  </AdaptiveText>
                 </View>
                 <Feather
                   name="arrow-right"
@@ -99,30 +115,64 @@ export default function Profile() {
             );
           }}
           ListFooterComponent={
-            <AdaptiveView style={{ width: '95%', flexDirection: 'row', alignSelf: 'center', gap: 14}}>
-              <TouchableOpacity onPress={() => {goTo({}, '/(tabs)/profile/settings', router)}} style={[styles.signOutBtn, {backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey}]}>
-                <MaterialIcons name="settings" size={24} color={darkMode ? colors.white : colors.black} />
-                <Text style={[styles.signOutBtnText, {color: darkMode ? colors.white : colors.black}]}>
+            <AdaptiveView
+              style={{
+                width: "95%",
+                flexDirection: "row",
+                alignSelf: "center",
+                gap: 14,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  goTo({}, "/(tabs)/profile/settings", router);
+                }}
+                style={[
+                  styles.signOutBtn,
+                  {
+                    backgroundColor: darkMode
+                      ? colors.darkGrey
+                      : colors.lightGrey,
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name="settings"
+                  size={24}
+                  color={darkMode ? colors.white : colors.black}
+                />
+                <Text
+                  style={[
+                    styles.signOutBtnText,
+                    { color: darkMode ? colors.white : colors.black },
+                  ]}
+                >
                   Settings
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.signOutBtn} onPress={() => setLogOutModal(true)}>
+              <TouchableOpacity
+                style={styles.signOutBtn}
+                onPress={() => setLogOutModal(true)}
+              >
                 <MaterialIcons name="logout" size={24} color={colors.white} />
-                <AdaptiveText style={styles.signOutBtnText}>Log Out</AdaptiveText>
+                <AdaptiveText style={styles.signOutBtnText}>
+                  Log Out
+                </AdaptiveText>
               </TouchableOpacity>
             </AdaptiveView>
           }
         />
-      <LogOutModal 
-        visible={logOutModal}
-        onClose={() => setLogOutModal(false)}
-        onDone={() => {router.replace('/login-screen')}}
-      />
+        <LogOutModal
+          visible={logOutModal}
+          onClose={() => setLogOutModal(false)}
+          onDone={() => {
+            router.replace("/login-screen");
+          }}
+        />
       </SafeAreaView>
     );
-  }
-  else {
+  } else {
     return (
       <SafeAreaView style={styles.container}>
         <AdaptiveView>
@@ -159,6 +209,7 @@ const createStyles = ({ darkMode, translateY, containerWidth }: any) => {
       paddingHorizontal: 16,
       paddingVertical: 4,
       borderRadius: 10,
+      marginTop: 4,
     },
     editProfileText: {
       fontFamily: "Poppins-Regular",
@@ -214,7 +265,7 @@ const createStyles = ({ darkMode, translateY, containerWidth }: any) => {
       fontFamily: "Poppins-Medium",
       fontSize: 20,
       textAlign: "center",
-      color: colors.white
-    }
+      color: colors.white,
+    },
   });
 };
