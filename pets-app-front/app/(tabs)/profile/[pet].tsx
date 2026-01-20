@@ -7,7 +7,7 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
 import { Consultations } from "@/data/sample";
 import { calculateAge, goTo } from "@/utils";
-import { Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -15,6 +15,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -147,6 +148,42 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
+                      {pet.WeightKg} Kg
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.tableUnitInfo}>
+                      weight
+                    </AdaptiveText>
+                  </AdaptiveView>
+                </AdaptiveView>
+
+                <AdaptiveView style={styles.centralRow}>
+                  <AdaptiveView
+                    style={[
+                      styles.tableUnit,
+                      {
+                        borderRightWidth: 1,
+                        borderTopWidth: 1,
+                      },
+                    ]}
+                  >
+                    <AdaptiveText style={styles.tableUnitTxt}>
+                      {pet.Neutered ? "Yes" : "No"}
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.tableUnitInfo}>
+                      Kalinka is {!pet.Neutered && "Not"}neutered.
+                    </AdaptiveText>
+                  </AdaptiveView>
+
+                  <AdaptiveView
+                    style={[
+                      styles.tableUnit,
+                      {
+                        borderLeftWidth: 1,
+                        borderTopWidth: 1,
+                      },
+                    ]}
+                  >
+                    <AdaptiveText style={styles.tableUnitTxt}>
                       {pet.Color}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
@@ -156,16 +193,42 @@ const Pet = () => {
                 </AdaptiveView>
               </AdaptiveView>
 
-              <AdaptiveText style={styles.consTitle}>
-                Consultations
-              </AdaptiveText>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                  alignItems: "center",
+                }}
+              >
+                <AdaptiveText style={styles.consTitle}>
+                  Consultations
+                </AdaptiveText>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: darkMode
+                      ? colors.darkGrey
+                      : colors.lightGrey,
+                    marginRight: "5%",
+                    borderRadius: 20,
+                    padding: 5,
+                  }}
+                >
+                  <Feather
+                    name="plus"
+                    size={20}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                </TouchableOpacity>
+              </View>
             </>
           }
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.consultation}
               onPress={() => {
-                goTo("", "/profile/consultation", router);
+                const deliverable = { item, pet };
+                goTo(deliverable, "/profile/consultation", router);
               }}
             >
               <AdaptiveText>{item.Date.toDateString()}</AdaptiveText>
@@ -211,14 +274,15 @@ const createStyles = ({ darkMode }: any) => {
       height: 140,
     },
     table: {
-      height: 310,
+      height: 450,
       width: "100%",
     },
     tableUnitInfo: {
       flex: 1,
       textAlign: "center",
       fontSize: 14,
-      color: darkMode ? colors.lightGrey : colors.darkGrey,
+      // color: darkMode ? colors.lightGrey : colors.darkGrey,
+      color: darkMode ? colors.white : colors.green,
       fontFamily: "Poppins-Light",
       paddingBottom: 10,
     },

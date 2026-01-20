@@ -1,4 +1,15 @@
-import { AppUsersModel, BreedModel, ChatModel, ConsultationModel, ForumPostsModel, PetModel, PetPlaceModel, PetShopModel, SpeciesModel, VetModel } from "./models";
+import {
+  AppUsersModel,
+  BreedModel,
+  ChatModel,
+  ConsultationModel,
+  ForumPostsModel,
+  PetModel,
+  PetPlaceModel,
+  PetShopModel,
+  SpeciesModel,
+  VetModel,
+} from "./models";
 
 export const AppUsers: AppUsersModel[] = [
   {
@@ -13,7 +24,7 @@ export const AppUsers: AppUsersModel[] = [
     Image: "",
     Description: "Description",
     PasswordHash: "brunofares1234",
-    BookmarkedPostID: ['1']
+    BookmarkedPostID: ["1"],
   },
   {
     Id: "2",
@@ -27,7 +38,7 @@ export const AppUsers: AppUsersModel[] = [
     Image: "",
     Description: "Paris SG tous ensemble on fera pipi",
     PasswordHash: "jasonmoussi1234",
-    BookmarkedPostID: ['1']
+    BookmarkedPostID: ["1"],
   },
   {
     Id: "3",
@@ -41,7 +52,7 @@ export const AppUsers: AppUsersModel[] = [
     Image: "",
     Description: "Hello! I'm using WhatsApp.",
     PasswordHash: "johngreen1234",
-    BookmarkedPostID: ['1']
+    BookmarkedPostID: ["1"],
   },
   {
     Id: "4",
@@ -53,9 +64,10 @@ export const AppUsers: AppUsersModel[] = [
     FirstName: "Joe",
     LastName: "Walsh",
     Image: "",
-    Description: "welcome to the hotel california papapapapapapa such a lovely place",
+    Description:
+      "welcome to the hotel california papapapapapapa such a lovely place",
     PasswordHash: "joewalsh1234",
-    BookmarkedPostID: ['1']
+    BookmarkedPostID: ["1"],
   },
 ];
 
@@ -64,7 +76,8 @@ export const ForumPosts: ForumPostsModel[] = [
     Id: "1",
     UserId: "1",
     UserName: "brunofares1234",
-    Content: "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm",
+    Content:
+      "firstPost badde tawlo shwe fa aam bektob zyede 3reft kif marhaba rayis kifak shu akhbarak meshe l7al kello tmm",
     Attachments: [],
     IsAReply: true,
     ReplyingToPost: "2",
@@ -106,7 +119,7 @@ export const Chat: ChatModel[] = [
     UserId: "1",
     Discussion: {
       User: [""],
-      Bot: [""]
+      Bot: [""],
     },
     CreatedAt: 1000,
   },
@@ -130,6 +143,7 @@ export const Pets: PetModel[] = [
     UpdatedAt: 1220,
     Species: "cat",
     Breed: "House Cat",
+    ConsultationsId: [1, 2, 3],
   },
 ];
 
@@ -149,24 +163,27 @@ export const Vets: VetModel[] = [
 
 export const Consultations: ConsultationModel[] = [
   {
-    Id: '1',
-    PetId: '1',
-    VetId: '1',
-    Date: new Date(2021, 7, 25)
+    Id: "1",
+    PetId: "1",
+    VetId: "1",
+    Date: new Date(2021, 7, 25),
+    Details: "Waja3 baten w hek fa 3tiya kes 3ara2 men baad el 3asha.",
   },
   {
-    Id: '2',
-    PetId: '1',
-    VetId: '2',
-    Date: new Date(2022, 7, 25)
+    Id: "2",
+    PetId: "1",
+    VetId: "2",
+    Date: new Date(2022, 7, 25),
+    Details: "Mashi aam bt jarib tetmanyak aa ayrak bro shu bdak fiya.",
   },
   {
-    Id: '3',
-    PetId: '1',
-    VetId: '2',
-    Date: new Date(2025, 2, 1)
+    Id: "3",
+    PetId: "1",
+    VetId: "2",
+    Date: new Date(2025, 2, 1),
+    Details: "Mb3rf saraha bs bsayntak ktir beshaa broooo hhhhhh.",
   },
-]
+];
 
 export const PetPlaces: PetPlaceModel[] = [
   {
