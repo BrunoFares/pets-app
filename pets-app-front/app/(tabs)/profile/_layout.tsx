@@ -10,6 +10,12 @@ export default function ItemsStack() {
       <Stack.Screen name="edit-profile" options={{ title: "Edit Profile" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
       <Stack.Screen name="consultation" options={{ title: "Consultation" }} />
+      <Stack.Screen
+        name="add-consultation"
+        options={{ title: "Add Consultation" }}
+      />
+      <Stack.Screen name="vaccines" options={{ title: "Vaccines" }} />
+      <Stack.Screen name="illnesses" options={{ title: "Illnesses" }} />
     </Stack>
   );
 }

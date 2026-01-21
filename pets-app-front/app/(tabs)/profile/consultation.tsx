@@ -4,8 +4,8 @@ import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel, VetModel } from "@/data/models";
 import { Vets } from "@/data/sample";
-import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -41,6 +41,16 @@ const Consultation = () => {
     setPet(parsed.pet);
     setConsultation(parsed.item);
   }, [payload]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setShowFooter?.(false);
+
+      return () => {
+        setShowFooter?.(true);
+      };
+    }, []),
+  );
 
   if (consultation) {
     return (

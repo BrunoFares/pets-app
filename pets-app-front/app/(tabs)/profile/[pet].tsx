@@ -7,12 +7,13 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
 import { Consultations } from "@/data/sample";
 import { calculateAge, goTo } from "@/utils";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Entypo, Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   StyleSheet,
+  Text,
   TouchableOpacity,
   useColorScheme,
   View,
@@ -213,6 +214,7 @@ const Pet = () => {
                     borderRadius: 20,
                     padding: 5,
                   }}
+                  onPress={() => goTo("", "/profile/add-consultation", router)}
                 >
                   <Feather
                     name="plus"
@@ -234,6 +236,57 @@ const Pet = () => {
               <AdaptiveText>{item.Date.toDateString()}</AdaptiveText>
             </TouchableOpacity>
           )}
+          ListFooterComponent={
+            <>
+              <AdaptiveText style={[styles.consTitle, { marginTop: 20 }]}>
+                Medical Information
+              </AdaptiveText>
+              <AdaptiveView
+                style={{
+                  width: "90%",
+                  flexDirection: "row",
+                  alignSelf: "center",
+                  gap: 14,
+                  marginBottom: 20,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    goTo({}, "/profile/illnesses", router);
+                  }}
+                  style={styles.vaccinesBtn}
+                >
+                  <Entypo
+                    name="squared-cross"
+                    size={32}
+                    style={{
+                      transform: [{ rotate: "45deg" }],
+                      marginBottom: 4,
+                    }}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                  <Text style={styles.vaccinesBtnText}>Illnesses</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.vaccinesBtn}
+                  onPress={() => {
+                    goTo({}, "/profile/vaccines", router);
+                  }}
+                >
+                  <FontAwesome5
+                    name="syringe"
+                    size={32}
+                    style={{ marginBottom: 4 }}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                  <AdaptiveText style={styles.vaccinesBtnText}>
+                    Vaccines
+                  </AdaptiveText>
+                </TouchableOpacity>
+              </AdaptiveView>
+            </>
+          }
         />
       </SafeAreaView>
     );
@@ -321,6 +374,22 @@ const createStyles = ({ darkMode }: any) => {
     },
     editBtnTxt: {
       fontSize: 16,
+    },
+    vaccinesBtn: {
+      flex: 1,
+      alignItems: "center",
+      alignSelf: "center",
+      paddingVertical: 15,
+      borderRadius: 20,
+      paddingHorizontal: 40,
+      marginTop: 20,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    vaccinesBtnText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 12,
+      textAlign: "center",
+      color: darkMode ? colors.white : colors.black,
     },
   });
 };

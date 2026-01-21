@@ -323,8 +323,8 @@ const AddPet = () => {
       <ListWithoutConfirmationModal
         title={"Is your pet neutered?"}
         listElements={[
-          { id: 1, name: "Yes" },
-          { id: 2, name: "No" },
+          { id: 1, Name: "Yes" },
+          { id: 2, Name: "No" },
         ]}
         visible={neuteredModal}
         onClose={() => {
