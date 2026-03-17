@@ -107,6 +107,32 @@ export interface BreedModel {
   Species: string;
 }
 
+export interface VaccineRecordModel {
+  Id: string;
+  petId: string;
+  vaccineName: string;
+  status: "Done" | "Not Done" | "Due";
+  dateAdministered?: Date;
+  nextDueDate?: Date;
+  notes?: string;
+  veterinarian?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IllnessRecordModel {
+  Id: string;
+  petId: string;
+  illnessName: string;
+  diagnosisDate: Date;
+  status: "Ongoing" | "Resolved";
+  description?: string;
+  notes?: string;
+  curedDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export const Color = Object.freeze({
   CALICO: "Calico",
   ORANGE: "Orange",

@@ -3,9 +3,14 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
 import { colors } from "@/constants/colors";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { Entypo, FontAwesome6, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { getRandomIntegerInclusive } from "@/utils";
+import {
+  Entypo,
+  FontAwesome6,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Animated,
   Platform,
@@ -18,12 +23,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import tipsOfTheDay from "../../data/tips-of-the-day.json";
 
 export default function HomeScreen() {
   const [componentWidth, setComponentWidth] = useState(0);
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
   const styles = createStyles({ darkMode, componentWidth });
+  const [tipOfTheDay, setTipOfTheDay] = useState<string>();
   const [user, setUser] = useState({
     name: "Bruno",
     picture: "",
@@ -63,6 +70,18 @@ export default function HomeScreen() {
     },
   ];
 
+  useFocusEffect(
+    useCallback(() => {
+      const tipIndex = getRandomIntegerInclusive(1, 50);
+
+      // will have to check whether or not to separate cat tips and dog tips
+      // if the decision is to separate them, we will have to implement a mechanism for checking
+      // the species of the user's pet(s)
+      const tip = tipsOfTheDay.catTips[tipIndex].tip;
+      setTipOfTheDay(tip);
+    }, []),
+  );
+
   const { translateY } = useHeaderSlide({ height: 200 });
 
   return (
@@ -100,7 +119,7 @@ export default function HomeScreen() {
               fontSize: 16,
             }}
           >
-            Ella sabaho la bsayntak men 3aboukra la tfarrehla alba.
+            {tipOfTheDay}
           </AdaptiveText>
         </AdaptiveView>
 
@@ -222,12 +241,15 @@ export default function HomeScreen() {
 
         <AdaptiveView style={styles.tips}>
           <AdaptiveView style={styles.divisionTitleSection}>
-            <Entypo name="modern-mic" size={14} color={darkMode ? colors.white : colors.green} />
+            <Entypo
+              name="modern-mic"
+              size={14}
+              color={darkMode ? colors.white : colors.green}
+            />
             <AdaptiveText style={styles.divisionTitle}>
               Pet Translator
             </AdaptiveText>
           </AdaptiveView>
-
         </AdaptiveView>
       </ScrollView>
     </SafeAreaView>

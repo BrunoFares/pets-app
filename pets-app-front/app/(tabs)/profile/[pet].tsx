@@ -252,7 +252,7 @@ const Pet = () => {
               >
                 <TouchableOpacity
                   onPress={() => {
-                    goTo({}, "/profile/illnesses", router);
+                    goTo({ pet }, "/profile/illnesses", router);
                   }}
                   style={styles.vaccinesBtn}
                 >
@@ -265,13 +265,13 @@ const Pet = () => {
                     }}
                     color={darkMode ? colors.white : colors.black}
                   />
-                  <Text style={styles.vaccinesBtnText}>Illnesses</Text>
+                  <Text style={styles.vaccinesBtnText}>Illness History</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.vaccinesBtn}
                   onPress={() => {
-                    goTo({}, "/profile/vaccines", router);
+                    goTo({ pet }, "/profile/vaccines", router);
                   }}
                 >
                   <FontAwesome5
@@ -281,7 +281,7 @@ const Pet = () => {
                     color={darkMode ? colors.white : colors.black}
                   />
                   <AdaptiveText style={styles.vaccinesBtnText}>
-                    Vaccines
+                    Vaccination Record
                   </AdaptiveText>
                 </TouchableOpacity>
               </AdaptiveView>

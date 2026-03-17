@@ -21,6 +21,9 @@ export default function LocationSettingsScreen() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
 
+  // this code is a copy paste from the location settings screen, so if we need to implement notifications,
+  // we need to change this.
+
   const [locationPermission, setLocationPermission] =
     useState<Location.LocationPermissionResponse | null>(null);
 
@@ -59,7 +62,7 @@ export default function LocationSettingsScreen() {
 
   const settingsPage = (
     title: string,
-    imageTitle: "location-pin",
+    imageTitle: "notifications",
     fn: () => void,
   ) => {
     return (
@@ -118,7 +121,7 @@ export default function LocationSettingsScreen() {
         <AdaptiveView style={styles.container}>
           {settingsPage(
             "Modify Location Permissions",
-            "location-pin",
+            "notifications",
             modifyLocationPermission,
           )}
         </AdaptiveView>

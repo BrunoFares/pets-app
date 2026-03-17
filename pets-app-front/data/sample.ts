@@ -5,11 +5,13 @@ import {
   Color,
   ConsultationModel,
   ForumPostsModel,
+  IllnessRecordModel,
   PetModel,
   PetPlaceModel,
   PetShopModel,
   Sex,
   SpeciesModel,
+  VaccineRecordModel,
   VetModel,
 } from "./models";
 
@@ -263,5 +265,35 @@ export const Breeds: BreedModel[] = [
     SpeciesId: "2",
     Name: "Ragdoll",
     Species: "",
+  },
+];
+
+export const VaccineRecords: VaccineRecordModel[] = [
+  {
+    Id: "1",
+    petId: "1",
+    vaccineName: "Rabies",
+    status: "Done",
+    dateAdministered: new Date(2012, 7, 25),
+    nextDueDate: new Date(2013, 7, 25),
+    notes: "nothing to note",
+    veterinarian: "1",
+    createdAt: new Date(2012, 7, 25),
+    updatedAt: new Date(2013, 7, 25),
+  },
+];
+
+export const IllnessRecords: IllnessRecordModel[] = [
+  {
+    Id: "1",
+    petId: "1",
+    illnessName: "Diabetes",
+    status: "Resolved",
+    diagnosisDate: new Date(2012, 7, 25),
+    curedDate: new Date(2013, 2, 20),
+    notes: "nothing to note",
+    description: "something",
+    createdAt: new Date(2012, 7, 25),
+    updatedAt: new Date(2013, 2, 20),
   },
 ];

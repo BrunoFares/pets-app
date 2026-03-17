@@ -14,6 +14,14 @@ export default function ItemsStack() {
         name="add-consultation"
         options={{ title: "Add Consultation" }}
       />
+      <Stack.Screen
+        name="modify-add-illness"
+        options={{ title: "Modify and Add Illness" }}
+      />
+      <Stack.Screen
+        name="modify-add-vaccine"
+        options={{ title: "Modify and Add Illness" }}
+      />
       <Stack.Screen name="vaccines" options={{ title: "Vaccines" }} />
       <Stack.Screen name="illnesses" options={{ title: "Illnesses" }} />
     </Stack>
