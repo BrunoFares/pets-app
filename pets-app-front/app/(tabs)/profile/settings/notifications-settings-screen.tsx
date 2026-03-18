@@ -3,7 +3,7 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -17,47 +17,90 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function LocationSettingsScreen() {
+export default function NotificationSettingsScreen() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
 
-  // this code is a copy paste from the location settings screen, so if we need to implement notifications,
-  // we need to change this.
+  const [notificationPermission, setNotificationPermission] =
+    useState<Notifications.NotificationPermissionsStatus | null>(null);
 
-  const [locationPermission, setLocationPermission] =
-    useState<Location.LocationPermissionResponse | null>(null);
-
-  const getLocationPermission = async () => {
+  const getNotificationPermission = async () => {
     try {
-      // Is location service (GPS) on? (optional but nice UX)
-      const servicesOn = await Location.hasServicesEnabledAsync();
-      if (!servicesOn) {
+      const current = await Notifications.getPermissionsAsync();
+      setNotificationPermission(current);
+      return current;
+    } catch (e: any) {
+      Alert.alert("Error", e?.message ?? "Unexpected error.");
+      return null;
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    try {
+      const current = await Notifications.getPermissionsAsync();
+
+      if (current.granted) {
         Alert.alert(
-          "Location is off",
-          "Please enable Location Services (GPS) to continue.",
+          "Already Enabled",
+          "Notifications are already allowed for this app.",
+        );
+        setNotificationPermission(current);
+        return;
+      }
+
+      const requested = await Notifications.requestPermissionsAsync();
+      setNotificationPermission(requested);
+
+      if (requested.granted) {
+        Alert.alert("Success", "Notification permission granted.");
+      } else {
+        Alert.alert(
+          "Permission Not Granted",
+          "Notification access was not granted. You can enable it from Settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ],
         );
       }
-      // Check existing permission FIRST
-      const current = await Location.getForegroundPermissionsAsync();
-      setLocationPermission(current);
-      return current;
     } catch (e: any) {
       Alert.alert("Error", e?.message ?? "Unexpected error.");
     }
   };
 
-  const modifyLocationPermission = async () => {
-    const current = await getLocationPermission();
+  const modifyNotificationPermission = async () => {
+    const current = await getNotificationPermission();
+
+    if (!current) return;
+
+    if (current.granted) {
+      Alert.alert(
+        "Modify Permission",
+        "Notifications are currently allowed. Open Settings to change them.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+        ],
+      );
+      return;
+    }
+
     Alert.alert(
-      "Modify Permission",
-      "Location access is currently " +
-        current?.status +
-        ". Open Settings to change it.",
+      "Notification Permission",
+      "Notifications are currently not allowed. Would you like to request permission now?",
       [
         { text: "Cancel", style: "cancel" },
+        { text: "Allow", onPress: requestNotificationPermission },
         { text: "Open Settings", onPress: () => Linking.openSettings() },
       ],
     );
+  };
+
+  const getPermissionLabel = () => {
+    if (!notificationPermission) return "unknown";
+    return notificationPermission.granted
+      ? "granted"
+      : notificationPermission.status;
   };
 
   const settingsPage = (
@@ -82,23 +125,23 @@ export default function LocationSettingsScreen() {
             {title}
           </AdaptiveText>
         </View>
+
         <AdaptiveText
           style={{
             textAlign: "right",
             fontFamily: "Poppins-Regular",
             fontSize: 12,
+            marginTop: 8,
           }}
         >
-          Location permission is{" "}
-          {locationPermission && locationPermission.status}.
+          Notification permission is {getPermissionLabel()}.
         </AdaptiveText>
       </TouchableOpacity>
     );
   };
 
-  // On mount, get current permission
   useEffect(() => {
-    getLocationPermission();
+    getNotificationPermission();
   }, []);
 
   return (
@@ -116,13 +159,14 @@ export default function LocationSettingsScreen() {
             alignSelf: "center",
           }}
         >
-          Location Settings
+          Notification Settings
         </AdaptiveText>
+
         <AdaptiveView style={styles.container}>
           {settingsPage(
-            "Modify Location Permissions",
+            "Modify Notification Permissions",
             "notifications",
-            modifyLocationPermission,
+            modifyNotificationPermission,
           )}
         </AdaptiveView>
       </ScrollView>
