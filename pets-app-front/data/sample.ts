@@ -6,6 +6,7 @@ import {
   ConsultationModel,
   ForumPostsModel,
   IllnessRecordModel,
+  MedicationRecordModel,
   PetModel,
   PetPlaceModel,
   PetShopModel,
@@ -295,5 +296,21 @@ export const IllnessRecords: IllnessRecordModel[] = [
     description: "something",
     createdAt: new Date(2012, 7, 25),
     updatedAt: new Date(2013, 2, 20),
+  },
+];
+
+export const MedicationRecords: MedicationRecordModel[] = [
+  {
+    Id: "1",
+    illnessId: "1",
+    medicationName: "Insulin",
+    dosage: "0.25-0.5 U/kg q12h 0.11-0.23 U/lb q12h",
+    instructions:
+      "Recheck examination in clinic 5-10 days after starting insulin",
+    startDate: new Date(2016, 7, 2),
+    endDate: new Date(2018, 7, 2),
+    isActive: true,
+    createdAt: new Date(2016, 7, 2),
+    updatedAt: new Date(2018, 7, 2),
   },
 ];

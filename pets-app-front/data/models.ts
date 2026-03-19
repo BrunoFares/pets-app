@@ -133,6 +133,19 @@ export interface IllnessRecordModel {
   updatedAt: Date;
 }
 
+export interface MedicationRecordModel {
+  Id: string;
+  illnessId: string;
+  medicationName: string;
+  dosage?: string;
+  instructions?: string;
+  startDate?: Date;
+  endDate?: Date;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export const Color = Object.freeze({
   CALICO: "Calico",
   ORANGE: "Orange",
