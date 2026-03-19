@@ -163,7 +163,7 @@ const IllnessesScreen = () => {
                   item.medicationsId &&
                   item.medicationsId.length > 0 ? (
                     medications[item.Id].map((med: any, index: number) => (
-                      <View key={index} style={styles.medicationItem}>
+                      <View key={index}>
                         <AdaptiveText style={styles.medicationName}>
                           {med.medicationName}
                         </AdaptiveText>
@@ -243,7 +243,7 @@ const createStyles = ({ darkMode }: any) => {
       flexDirection: "row",
       justifyContent: "space-between",
       paddingHorizontal: 20,
-      paddingBottom: 5,
+      paddingBottom: 12,
     },
     datesLabel: {
       fontFamily: "Poppins-Light",
@@ -267,11 +267,8 @@ const createStyles = ({ darkMode }: any) => {
     },
     medicationsContent: {
       paddingHorizontal: 20,
-      paddingVertical: 12,
+      paddingVertical: 8,
       backgroundColor: darkMode ? colors.darkGrey : "#f7f7f7",
-    },
-    medicationItem: {
-      marginBottom: 10,
     },
     medicationName: {
       fontFamily: "Poppins-Medium",
