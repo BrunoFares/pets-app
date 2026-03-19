@@ -290,6 +290,7 @@ export const IllnessRecords: IllnessRecordModel[] = [
     petId: "1",
     illnessName: "Diabetes",
     status: "Resolved",
+    medicationsId: ["1"],
     diagnosisDate: new Date(2012, 7, 25),
     curedDate: new Date(2013, 2, 20),
     notes: "nothing to note",

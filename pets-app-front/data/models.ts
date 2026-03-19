@@ -125,6 +125,7 @@ export interface IllnessRecordModel {
   petId: string;
   illnessName: string;
   diagnosisDate: Date;
+  medicationsId: string[];
   status: "Ongoing" | "Resolved";
   description?: string;
   notes?: string;
