@@ -308,6 +308,9 @@ export const MedicationRecords: MedicationRecordModel[] = [
     dosage: "0.25-0.5 U/kg q12h 0.11-0.23 U/lb q12h",
     instructions:
       "Recheck examination in clinic 5-10 days after starting insulin",
+    times: ["12:00"],
+    reminderEnabled: true,
+    frequencyInDays: 1,
     startDate: new Date(2016, 7, 2),
     endDate: new Date(2018, 7, 2),
     isActive: true,

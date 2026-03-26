@@ -28,3 +28,7 @@ export function getRandomIntegerInclusive(min: number, max: number) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+export function datediff(first: number, second: number) {
+  return Math.round((second - first) / (1000 * 60 * 60 * 24));
+}

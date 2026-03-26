@@ -140,8 +140,11 @@ export interface MedicationRecordModel {
   medicationName: string;
   dosage?: string;
   instructions?: string;
-  startDate?: Date;
-  endDate?: Date;
+  startDate: Date;
+  endDate?: Date | null;
+  frequencyInDays: number;
+  times: string[];
+  reminderEnabled: boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
