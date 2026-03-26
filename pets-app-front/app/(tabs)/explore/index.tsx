@@ -1,6 +1,8 @@
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import React, { useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Animated,
   Platform,
@@ -17,54 +19,55 @@ import ExploreTab from "./explore-tab";
 export default function Explore() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
+  const { setShowFooter } = useGlobal();
 
   const vetItems = [
     {
-        key: 1,
-        name: 'Dr. Abou Breiss',
-        location: 'Hamra, Beirut',
-        rating: 3.8,
-        image: 'Users/brunofares/Desktop/mourinho.jpeg'
+      key: 1,
+      name: "Dr. Abou Breiss",
+      location: "Hamra, Beirut",
+      rating: 3.8,
+      image: "Users/brunofares/Desktop/mourinho.jpeg",
     },
     {
-        key: 3,
-        name: 'Diddy Kong',
-        location: 'New Sehaileh, Mount Lebanon',
-        rating: 5.0,
-        image: ''
+      key: 3,
+      name: "Diddy Kong",
+      location: "New Sehaileh, Mount Lebanon",
+      rating: 5.0,
+      image: "",
     },
     {
-        key: 4,
-        name: 'Dr. Amara ya amara la totla3i aal shajara',
-        location: 'Ajaltoun, Mount Lebanon',
-        rating: 0.3,
-        image: ''
+      key: 4,
+      name: "Dr. Amara ya amara la totla3i aal shajara",
+      location: "Ajaltoun, Mount Lebanon",
+      rating: 0.3,
+      image: "",
     },
-  ]
+  ];
 
   const shopItems = [
     {
-        key: 1,
-        name: 'Kalinka & Minouche Ta3awouniye',
-        location: 'Mansourieh, Mount Lebanon',
-        rating: 4.8,
-        image: ''
+      key: 1,
+      name: "Kalinka & Minouche Ta3awouniye",
+      location: "Mansourieh, Mount Lebanon",
+      rating: 4.8,
+      image: "",
     },
     {
-        key: 3,
-        name: 'Emmak Shop',
-        location: 'Borj el Brajneh, Mount Lebanon',
-        rating: 5.0,
-        image: ''
+      key: 3,
+      name: "Emmak Shop",
+      location: "Borj el Brajneh, Mount Lebanon",
+      rating: 5.0,
+      image: "",
     },
     {
-        key: 4,
-        name: 'Victor Gyökeres wa shoraka2ihi',
-        location: 'Andaket, Akkar',
-        rating: 0.3,
-        image: ''
+      key: 4,
+      name: "Victor Gyökeres wa shoraka2ihi",
+      location: "Andaket, Akkar",
+      rating: 0.3,
+      image: "",
     },
-  ]
+  ];
 
   // Hide header on this screen
   const { translateY } = useHeaderSlide({ showOnFocus: false, height: 200 });
@@ -82,6 +85,15 @@ export default function Explore() {
     setIndex(i);
     scrollRef.current?.scrollTo({ x: i * width, animated: true });
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // This code runs when the screen is unfocused (or unmounted).
+        setShowFooter?.(true);
+      };
+    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -133,7 +145,7 @@ export default function Explore() {
         }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
+          { useNativeDriver: true },
         )}
       >
         <View style={[styles.page, { width }]}>
@@ -170,7 +182,7 @@ const createStyles = ({ darkMode }: any) => {
       gap: 14,
       paddingHorizontal: 16,
       height: 50,
-      width: '80%',
+      width: "80%",
       paddingVertical: 10,
       borderRadius: 24,
       overflow: "hidden", // keeps indicator rounded
@@ -187,7 +199,7 @@ const createStyles = ({ darkMode }: any) => {
       color: darkMode ? colors.white : colors.black,
       fontSize: 14,
       fontWeight: "600",
-      fontFamily: 'Poppins-Medium',
+      fontFamily: "Poppins-Medium",
     },
     textActive: {
       opacity: 1,
@@ -199,7 +211,7 @@ const createStyles = ({ darkMode }: any) => {
       height: 50,
       borderRadius: 24,
       backgroundColor: darkMode ? colors.white : colors.black,
-      opacity: 0.1
+      opacity: 0.1,
     },
     // --- pages ---
     page: {

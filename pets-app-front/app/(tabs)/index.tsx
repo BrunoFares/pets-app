@@ -2,6 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { getRandomIntegerInclusive } from "@/utils";
 import {
@@ -31,6 +32,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const styles = createStyles({ darkMode, componentWidth });
   const [tipOfTheDay, setTipOfTheDay] = useState<string>();
+  const { setShowFooter } = useGlobal();
   const [user, setUser] = useState({
     name: "Bruno",
     picture: "",
@@ -80,6 +82,15 @@ export default function HomeScreen() {
       const tip = tipsOfTheDay.catTips[tipIndex].tip;
       setTipOfTheDay(tip);
     }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // This code runs when the screen is unfocused (or unmounted).
+        setShowFooter?.(true);
+      };
+    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
   );
 
   const { translateY } = useHeaderSlide({ height: 200 });
