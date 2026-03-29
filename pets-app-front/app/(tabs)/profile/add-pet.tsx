@@ -12,13 +12,14 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useColorScheme,
-    View,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -99,7 +100,12 @@ const AddPet = () => {
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      <ScrollView contentContainerStyle={{ alignItems: "center", gap: 10 }}>
+      <ScrollView
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
+        contentContainerStyle={{ alignItems: "center", gap: 10 }}
+      >
         <AdaptiveText style={styles.title}>Add Pet</AdaptiveText>
 
         <View
@@ -126,7 +132,6 @@ const AddPet = () => {
               value={selectedName}
               onChangeText={setSelectedName}
               style={{ width: "100%" }}
-              label={"Name"}
             />
 
             <AdaptiveText style={{ width: "100%", marginBottom: 5 }}>
@@ -161,179 +166,178 @@ const AddPet = () => {
           </View>
         </View>
 
-        <AdaptiveText style={{ width: "84%" }}>Species</AdaptiveText>
-        <TouchableOpacity
-          style={styles.picker}
-          onPress={() => {
-            setSpeciesModal(true);
-          }}
-        >
-          <AdaptiveText style={styles.textPicker}>
-            {selectedSpecies?.Name || "Select species..."}
-          </AdaptiveText>
-          <AntDesign
-            name="down"
-            size={10}
-            style={{ paddingRight: 16 }}
-            color={darkMode ? colors.white : colors.veryDarkGrey}
+          <AdaptiveText style={{ width: "84%" }}>Species</AdaptiveText>
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => {
+              setSpeciesModal(true);
+            }}
+          >
+            <AdaptiveText style={styles.textPicker}>
+              {selectedSpecies?.Name || "Select species..."}
+            </AdaptiveText>
+            <AntDesign
+              name="down"
+              size={10}
+              style={{ paddingRight: 16 }}
+              color={darkMode ? colors.white : colors.veryDarkGrey}
+            />
+          </TouchableOpacity>
+
+          {selectedSpecies && (
+            <>
+              <AdaptiveText style={{ width: "84%" }}>Breed</AdaptiveText>
+              <TouchableOpacity
+                style={styles.picker}
+                onPress={() => {
+                  setBreedModal(true);
+                }}
+              >
+                <AdaptiveText style={styles.textPicker}>
+                  {selectedBreed?.Name || "Select breed..."}
+                </AdaptiveText>
+                <AntDesign
+                  name="down"
+                  size={10}
+                  style={{ paddingRight: 16 }}
+                  color={darkMode ? colors.white : colors.veryDarkGrey}
+                />
+              </TouchableOpacity>
+            </>
+          )}
+
+          <AdaptiveText style={{ width: "84%" }}>Sex</AdaptiveText>
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => {
+              setSexModal(true);
+            }}
+          >
+            <AdaptiveText style={styles.textPicker}>
+              {selectedSex || "Select sex..."}
+            </AdaptiveText>
+            <AntDesign
+              name="down"
+              size={10}
+              style={{ paddingRight: 16 }}
+              color={darkMode ? colors.white : colors.veryDarkGrey}
+            />
+          </TouchableOpacity>
+
+          <AdaptiveText style={{ width: "84%" }}>Neutered</AdaptiveText>
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => {
+              setNeuteredModal(true);
+            }}
+          >
+            <AdaptiveText style={styles.textPicker}>
+              {selectedNeutered || "Select neutered..."}
+            </AdaptiveText>
+            <AntDesign
+              name="down"
+              size={10}
+              style={{ paddingRight: 16 }}
+              color={darkMode ? colors.white : colors.veryDarkGrey}
+            />
+          </TouchableOpacity>
+
+          <AdaptiveText style={{ width: "84%" }}>Weight</AdaptiveText>
+          <CustomInput
+            value={selectedWeight}
+            onChangeText={setSelectedWeight}
+            style={{ width: "84%" }}
           />
-        </TouchableOpacity>
 
-        {selectedSpecies && (
-          <>
-            <AdaptiveText style={{ width: "84%" }}>Breed</AdaptiveText>
-            <TouchableOpacity
-              style={styles.picker}
-              onPress={() => {
-                setBreedModal(true);
-              }}
-            >
-              <AdaptiveText style={styles.textPicker}>
-                {selectedBreed?.Name || "Select breed..."}
-              </AdaptiveText>
-              <AntDesign
-                name="down"
-                size={10}
-                style={{ paddingRight: 16 }}
-                color={darkMode ? colors.white : colors.veryDarkGrey}
-              />
-            </TouchableOpacity>
-          </>
-        )}
+          <AdaptiveText style={{ width: "84%" }}>Color</AdaptiveText>
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => {
+              setColorModal(true);
+            }}
+          >
+            <AdaptiveText style={styles.textPicker}>
+              {selectedColor || "Select color..."}
+            </AdaptiveText>
+            <AntDesign
+              name="down"
+              size={10}
+              style={{ paddingRight: 16 }}
+              color={darkMode ? colors.white : colors.veryDarkGrey}
+            />
+          </TouchableOpacity>
 
-        <AdaptiveText style={{ width: "84%" }}>Sex</AdaptiveText>
-        <TouchableOpacity
-          style={styles.picker}
-          onPress={() => {
-            setSexModal(true);
-          }}
-        >
-          <AdaptiveText style={styles.textPicker}>
-            {selectedSex || "Select sex..."}
-          </AdaptiveText>
-          <AntDesign
-            name="down"
-            size={10}
-            style={{ paddingRight: 16 }}
-            color={darkMode ? colors.white : colors.veryDarkGrey}
-          />
-        </TouchableOpacity>
-
-        <AdaptiveText style={{ width: "84%" }}>Neutered</AdaptiveText>
-        <TouchableOpacity
-          style={styles.picker}
-          onPress={() => {
-            setNeuteredModal(true);
-          }}
-        >
-          <AdaptiveText style={styles.textPicker}>
-            {selectedNeutered || "Select neutered..."}
-          </AdaptiveText>
-          <AntDesign
-            name="down"
-            size={10}
-            style={{ paddingRight: 16 }}
-            color={darkMode ? colors.white : colors.veryDarkGrey}
-          />
-        </TouchableOpacity>
-
-        <AdaptiveText style={{ width: "84%" }}>Weight</AdaptiveText>
-        <CustomInput
-          value={selectedWeight}
-          onChangeText={setSelectedWeight}
-          style={{ width: "84%" }}
-          label={"Weight"}
-        />
-
-        <AdaptiveText style={{ width: "84%" }}>Color</AdaptiveText>
-        <TouchableOpacity
-          style={styles.picker}
-          onPress={() => {
-            setColorModal(true);
-          }}
-        >
-          <AdaptiveText style={styles.textPicker}>
-            {selectedColor || "Select color..."}
-          </AdaptiveText>
-          <AntDesign
-            name="down"
-            size={10}
-            style={{ paddingRight: 16 }}
-            color={darkMode ? colors.white : colors.veryDarkGrey}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.buttonSave}>
-          <Text style={styles.btnTextSave}>Save changes</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.buttonSave}>
+            <Text style={styles.btnTextSave}>Save changes</Text>
+          </TouchableOpacity>
       </ScrollView>
 
       <ListWithoutConfirmationModal
-        title={"Select the species of the pet"}
-        listElements={speciesToChoose}
-        visible={speciesModal}
-        onClose={() => {
-          setSpeciesModal(false);
-        }}
-        onDone={(val: any) => {
-          setSpeciesModal(false);
-          setSelectedSpecies(val);
-        }}
-      />
+          title={"Select the species of the pet"}
+          listElements={speciesToChoose}
+          visible={speciesModal}
+          onClose={() => {
+            setSpeciesModal(false);
+          }}
+          onDone={(val: any) => {
+            setSpeciesModal(false);
+            setSelectedSpecies(val);
+          }}
+        />
 
       <ListWithoutConfirmationModal
-        title={"Select the sex of the pet"}
-        listElements={sexToChoose}
-        visible={sexModal}
-        onClose={() => {
-          setSexModal(false);
-        }}
-        onDone={(val: string) => {
-          setSexModal(false);
-          setSelectedSex(val);
-        }}
-      />
+          title={"Select the sex of the pet"}
+          listElements={sexToChoose}
+          visible={sexModal}
+          onClose={() => {
+            setSexModal(false);
+          }}
+          onDone={(val: string) => {
+            setSexModal(false);
+            setSelectedSex(val);
+          }}
+        />
 
       <ListWithoutConfirmationModal
-        title={"Select the breed of the pet"}
-        listElements={breedsToChoose}
-        visible={breedModal}
-        onClose={() => {
-          setBreedModal(false);
-        }}
-        onDone={(val: any) => {
-          setBreedModal(false);
-          setSelectedBreed(val);
-        }}
-      />
+          title={"Select the breed of the pet"}
+          listElements={breedsToChoose}
+          visible={breedModal}
+          onClose={() => {
+            setBreedModal(false);
+          }}
+          onDone={(val: any) => {
+            setBreedModal(false);
+            setSelectedBreed(val);
+          }}
+        />
 
       <ListWithoutConfirmationModal
-        title={"Select the color of the pet"}
-        listElements={colorsToChoose}
-        visible={colorModal}
-        onClose={() => {
-          setColorModal(false);
-        }}
-        onDone={(val: any) => {
-          setColorModal(false);
-          setSelectedColor(val);
-        }}
-      />
+          title={"Select the color of the pet"}
+          listElements={colorsToChoose}
+          visible={colorModal}
+          onClose={() => {
+            setColorModal(false);
+          }}
+          onDone={(val: any) => {
+            setColorModal(false);
+            setSelectedColor(val);
+          }}
+        />
 
       <ListWithoutConfirmationModal
-        title={"Is your pet neutered?"}
-        listElements={[
-          { id: 1, Name: "Yes" },
-          { id: 2, Name: "No" },
-        ]}
-        visible={neuteredModal}
-        onClose={() => {
-          setNeuteredModal(false);
-        }}
-        onDone={(val: any) => {
-          setNeuteredModal(false);
-          setSelectedNeutered(val);
-        }}
+          title={"Is your pet neutered?"}
+          listElements={[
+            { id: 1, Name: "Yes" },
+            { id: 2, Name: "No" },
+          ]}
+          visible={neuteredModal}
+          onClose={() => {
+            setNeuteredModal(false);
+          }}
+          onDone={(val: any) => {
+            setNeuteredModal(false);
+            setSelectedNeutered(val);
+          }}
       />
     </SafeAreaView>
   );

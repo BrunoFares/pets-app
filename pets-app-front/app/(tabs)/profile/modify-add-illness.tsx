@@ -9,6 +9,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Keyboard,
   Platform,
   ScrollView,
   StyleSheet,
@@ -150,7 +151,12 @@ const ModifyAddIllness = () => {
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
+        contentContainerStyle={styles.scrollContainer}
+      >
         <AdaptiveText style={styles.title}>
           {illnessAvailable ? "Modify" : "Add"} Illness
         </AdaptiveText>

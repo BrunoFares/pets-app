@@ -16,7 +16,6 @@ import {
   Keyboard,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   useColorScheme,
   View,
 } from "react-native";
@@ -58,69 +57,59 @@ export default function ForumScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback
-        onPress={Keyboard.dismiss}
-        style={{
-          backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-        }}
-      >
-        <View>
-          <Animated.View
-            style={[styles.header, { transform: [{ translateY }] }]}
+      <View>
+        <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/forum/bookmarks")}>
+            <Ionicons
+              name="bookmark"
+              size={24}
+              color={darkMode ? colors.white : colors.black}
+            />
+          </TouchableOpacity>
+
+          <Image
+            source={require("@/assets/images/petsapp-logo-light.png")}
+            style={{ height: 64, width: 64 }}
+          />
+          <TouchableOpacity>
+            <FontAwesome
+              name="search"
+              size={24}
+              color={darkMode ? colors.white : colors.black}
+            />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {posts ? (
+          <FlatList
+            data={posts}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={Keyboard.dismiss}
+            contentContainerStyle={{ alignSelf: "center", width: "100%" }}
+            keyExtractor={(item) => String(item.Id)}
+            renderItem={({ item }) => {
+              return (
+                <ForumPost
+                  size="small"
+                  item={item}
+                />
+              );
+            }}
+            ListFooterComponent={<View style={{ height: 180 }} />}
+          />
+        ) : (
+          <AdaptiveText
+            style={{
+              alignSelf: "center",
+              fontFamily: "Poppins-SemiBold",
+              marginTop: 250,
+            }}
           >
-            <TouchableOpacity
-              onPress={() => router.push("/(tabs)/forum/bookmarks")}
-            >
-              <Ionicons
-                name="bookmark"
-                size={24}
-                color={darkMode ? colors.white : colors.black}
-              />
-            </TouchableOpacity>
-
-            <Image
-              source={require("@/assets/images/petsapp-logo-light.png")}
-              style={{ height: 64, width: 64 }}
-            />
-            <TouchableOpacity>
-              <FontAwesome
-                name="search"
-                size={24}
-                color={darkMode ? colors.white : colors.black}
-              />
-            </TouchableOpacity>
-          </Animated.View>
-
-          {posts ? (
-            <FlatList
-              data={posts}
-              contentContainerStyle={{ alignSelf: "center", width: "100%" }}
-              keyExtractor={(item) => String(item.Id)}
-              renderItem={({ item }) => {
-                return (
-                  <ForumPost
-                    //onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")}
-                    // onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
-                    size="small"
-                    item={item}
-                  />
-                );
-              }}
-              ListFooterComponent={<View style={{ height: 180 }} />}
-            />
-          ) : (
-            <AdaptiveText
-              style={{
-                alignSelf: "center",
-                fontFamily: "Poppins-SemiBold",
-                marginTop: 250,
-              }}
-            >
-              No items found.
-            </AdaptiveText>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
+            No items found.
+          </AdaptiveText>
+        )}
+      </View>
     </SafeAreaView>
   );
 }

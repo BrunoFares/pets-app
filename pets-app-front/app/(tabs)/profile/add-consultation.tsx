@@ -9,12 +9,13 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useColorScheme,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -94,10 +95,15 @@ const AddConsultation = () => {
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      <ScrollView contentContainerStyle={{ alignItems: "center", gap: 10 }}>
+      <ScrollView
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
+        contentContainerStyle={{ alignItems: "center", gap: 10 }}
+      >
         <AdaptiveText style={styles.title}>Add Consultation</AdaptiveText>
 
-        {/* <AdaptiveText style={{ width: "84%", marginBottom: 5 }}>
+          {/* <AdaptiveText style={{ width: "84%", marginBottom: 5 }}>
           Name
         </AdaptiveText>
         <CustomInput

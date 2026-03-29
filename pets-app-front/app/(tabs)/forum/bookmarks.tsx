@@ -13,9 +13,8 @@ import {
   FlatList,
   Keyboard,
   StyleSheet,
-  TouchableWithoutFeedback,
   useColorScheme,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -45,42 +44,41 @@ export default function Bookmarks() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} style={{backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,}}>
-        <View>
-          <PageHeader title="Bookmarks" />
+      <View>
+        <PageHeader title="Bookmarks" />
 
-          {posts ? (
-            <FlatList
-              data={posts}
-              contentContainerStyle={{ alignSelf: "center", width: "100%" }}
-              keyExtractor={(item) => String(item.Id)}
-              renderItem={({ item }) => {
-                return (
-                  <ForumPost 
-                    onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
-                    onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
-                    size='small' 
-                    item={item} 
-                  />
-                );
-              }}
-              ListFooterComponent={
-                <View style={{ height: 180 }} />
-              }
-            />
-          ) : (
-            <AdaptiveText
-              style={{
-                alignSelf: "center",
-                fontFamily: "Poppins-SemiBold",
-                marginTop: 250,
-              }}
-            >
-              No items found.
-            </AdaptiveText>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
+        {posts ? (
+          <FlatList
+            data={posts}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={Keyboard.dismiss}
+            contentContainerStyle={{ alignSelf: "center", width: "100%" }}
+            keyExtractor={(item) => String(item.Id)}
+            renderItem={({ item }) => {
+              return (
+                <ForumPost
+                  onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")}
+                  onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
+                  size='small'
+                  item={item}
+                />
+              );
+            }}
+            ListFooterComponent={<View style={{ height: 180 }} />}
+          />
+        ) : (
+          <AdaptiveText
+            style={{
+              alignSelf: "center",
+              fontFamily: "Poppins-SemiBold",
+              marginTop: 250,
+            }}
+          >
+            No items found.
+          </AdaptiveText>
+        )}
+      </View>
     </SafeAreaView>
   );
 }

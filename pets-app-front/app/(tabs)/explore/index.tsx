@@ -149,11 +149,11 @@ export default function Explore() {
         )}
       >
         <View style={[styles.page, { width }]}>
-          <ExploreTab items={vetItems} />
+          <ExploreTab items={vetItems} title="Vets" />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <ExploreTab items={shopItems} />
+          <ExploreTab items={shopItems} title="Pet Shops" />
         </View>
       </Animated.ScrollView>
     </SafeAreaView>

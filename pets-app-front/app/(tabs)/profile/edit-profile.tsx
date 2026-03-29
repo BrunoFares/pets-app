@@ -7,12 +7,13 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useColorScheme,
-    View,
+  Keyboard,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -34,7 +35,12 @@ const EditProfile = () => {
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      <ScrollView contentContainerStyle={{ alignItems: "center", gap: 10 }}>
+      <ScrollView
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
+        contentContainerStyle={{ alignItems: "center", gap: 10 }}
+      >
         <AdaptiveText style={styles.title}>Edit Profile</AdaptiveText>
 
         <View
@@ -57,7 +63,7 @@ const EditProfile = () => {
             <AdaptiveText style={{ width: "100%", marginBottom: 5 }}>
               Name
             </AdaptiveText>
-            <CustomInput style={{ width: "100%" }} label={"Name"} />
+            <CustomInput style={{ width: "100%" }} />
           </View>
         </View>
 

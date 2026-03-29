@@ -14,7 +14,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableWithoutFeedback,
   useColorScheme,
   View,
 } from "react-native";
@@ -79,83 +78,78 @@ export default function ShopDetails() {
     >
       <PageHeader title="" />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <FlatList
-          data={reviews}
-          keyExtractor={(item) => String(item.key)}
-          contentContainerStyle={{
-            backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-          }}
-          ListHeaderComponent={
-            <>
-              {shop.image ? (
-                <Image source={{ uri: shop.image }} style={{ height: 400 }} />
-              ) : (
-                <View
-                  style={{ height: 400, backgroundColor: colors.lightGrey }}
-                />
-              )}
-              <AdaptiveText
-                style={{
-                  fontSize: 22,
-                  fontWeight: "700",
-                  marginLeft: 10,
-                  marginTop: 10,
-                  fontFamily: "Poppins-Medium",
-                }}
-              >
-                {shop.name}
+      <FlatList
+        data={reviews}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
+        keyExtractor={(item) => String(item.key)}
+        contentContainerStyle={{
+          backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+        }}
+        ListHeaderComponent={
+          <>
+            {shop.image ? (
+              <Image source={{ uri: shop.image }} style={{ height: 400 }} />
+            ) : (
+              <View style={{ height: 400, backgroundColor: colors.lightGrey }} />
+            )}
+            <AdaptiveText
+              style={{
+                fontSize: 22,
+                fontWeight: "700",
+                marginLeft: 10,
+                marginTop: 10,
+                fontFamily: "Poppins-Medium",
+              }}
+            >
+              {shop.name}
+            </AdaptiveText>
+            <AdaptiveText
+              style={{
+                marginTop: 4,
+                marginLeft: 10,
+                fontFamily: "Poppins-Regular",
+              }}
+            >
+              {shop.location}
+            </AdaptiveText>
+            <AdaptiveText
+              style={{
+                marginTop: 4,
+                marginLeft: 10,
+                fontFamily: "Poppins-Bold",
+              }}
+            >
+              ★ {shop.rating}
+            </AdaptiveText>
+            {shop.description ? (
+              <AdaptiveText style={{ marginTop: 12, fontFamily: "Poppins-Regular" }}>
+                {shop.description}
               </AdaptiveText>
-              <AdaptiveText
-                style={{
-                  marginTop: 4,
-                  marginLeft: 10,
-                  fontFamily: "Poppins-Regular",
-                }}
-              >
-                {shop.location}
-              </AdaptiveText>
-              <AdaptiveText
-                style={{
-                  marginTop: 4,
-                  marginLeft: 10,
-                  fontFamily: "Poppins-Bold",
-                }}
-              >
-                ★ {shop.rating}
-              </AdaptiveText>
-              {shop.description ? (
-                <AdaptiveText
-                  style={{ marginTop: 12, fontFamily: "Poppins-Regular" }}
-                >
-                  {shop.description}
-                </AdaptiveText>
-              ) : null}
+            ) : null}
 
-              <AdaptiveView style={styles.textInputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Reply to user1..."
-                  placeholderTextColor={
-                    darkMode ? colors.lightGrey : colors.darkGrey
-                  }
-                  onFocus={() => setShowFooter?.(false)}
-                  onBlur={() => setShowFooter?.(true)}
-                  multiline
-                />
-                <Feather
-                  name="arrow-right"
-                  size={24}
-                  color={darkMode ? colors.white : colors.black}
-                />
-              </AdaptiveView>
-            </>
-          }
-          renderItem={({ item }) => {
-            return <ReviewPost item={item} />;
-          }}
-        />
-      </TouchableWithoutFeedback>
+            <AdaptiveView style={styles.textInputContainer}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Reply to user1..."
+                placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+                onFocus={() => setShowFooter?.(false)}
+                onBlur={() => setShowFooter?.(true)}
+                multiline
+              />
+              <Feather
+                name="arrow-right"
+                size={24}
+                color={darkMode ? colors.white : colors.black}
+              />
+            </AdaptiveView>
+          </>
+        }
+        renderItem={({ item }) => {
+          return <ReviewPost item={item} />;
+        }}
+      />
     </SafeAreaView>
   );
 }

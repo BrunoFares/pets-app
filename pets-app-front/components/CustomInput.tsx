@@ -13,17 +13,14 @@ import {
 const CustomInput = ({
   label,
   style,
-  value = "",
-  onChangeText,
 }: {
   label?: string;
   style?: ViewStyle;
-  value?: string;
-  onChangeText?: (text: string) => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const inputRef = useRef<TextInput>(null);
   const styles = createStyles({ darkMode });
+  const [value, setValue] = useState("");
   const [textInputFocus, setTextInputFocus] = useState(false);
   const labelAnim = useRef(new Animated.Value(0)).current; // 0: inside, 1: floated
 
@@ -45,7 +42,8 @@ const CustomInput = ({
     if (!value) animateLabel(0);
   };
   const handleChangeText = (text: string) => {
-    onChangeText?.(text);
+    // onChangeText?.(text);
+    setValue(text);
     if (text && !textInputFocus) animateLabel(1);
     if (!text && !textInputFocus) animateLabel(0);
   };

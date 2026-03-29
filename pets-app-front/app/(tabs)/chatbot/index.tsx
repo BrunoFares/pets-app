@@ -13,7 +13,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   useColorScheme,
   View,
 } from "react-native";
@@ -53,87 +52,85 @@ export default function ChatbotScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View>
-          <Animated.View style={{ transform: [{ translateY }] }}>
-            <AdaptiveText style={styles.title}>Dr. Pet</AdaptiveText>
-            <AdaptiveText style={styles.subtitle}>
-              Your personal assistant's {"\n"} personal assistant.
-            </AdaptiveText>
-          </Animated.View>
+      <View>
+        <Animated.View style={{ transform: [{ translateY }] }}>
+          <AdaptiveText style={styles.title}>Dr. Pet</AdaptiveText>
+          <AdaptiveText style={styles.subtitle}>
+            Your personal assistant's {"\n"} personal assistant.
+          </AdaptiveText>
+        </Animated.View>
 
-          <View
-            style={[
-              styles.txtInputContainer,
-              showFooter !== undefined && !showFooter && { bottom: 0 },
-            ]}
-          >
-            <TextInput
-              placeholder="Enter a new prompt..."
-              placeholderTextColor={
-                darkMode ? colors.lightGrey : colors.darkGrey
-              }
-              style={styles.txtInput}
-              onFocus={() => setShowFooter?.(false)} // when user is typing, make footer disappear
-              onBlur={() => setShowFooter?.(true)} // when no longer typing, make footer reappear
+        <View
+          style={[
+            styles.txtInputContainer,
+            showFooter !== undefined && !showFooter && { bottom: 0 },
+          ]}
+        >
+          <TextInput
+            placeholder="Enter a new prompt..."
+            placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+            style={styles.txtInput}
+            onFocus={() => setShowFooter?.(false)}
+            onBlur={() => setShowFooter?.(true)}
+          />
+          <TouchableOpacity>
+            <Feather
+              name="arrow-up"
+              size={24}
+              color={darkMode ? colors.white : colors.black}
             />
-            <TouchableOpacity>
-              <Feather
-                name="arrow-up"
-                size={24}
-                color={darkMode ? colors.white : colors.black}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {chats ? (
-            <FlatList
-              data={chats}
-              contentContainerStyle={{ alignSelf: "center", width: "90%" }}
-              keyExtractor={(item) => String(item.key)}
-              renderItem={({ item }) => {
-                return (
-                  <TouchableOpacity
-                    style={styles.chat}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(tabs)/chatbot/[id]",
-                        params: { id: String(item.key) },
-                      })
-                    }
-                  >
-                    <View>
-                      <AdaptiveText style={styles.chatTitle}>
-                        {item.title}
-                      </AdaptiveText>
-                      <AdaptiveText style={styles.chatContent}>
-                        {item.content}
-                      </AdaptiveText>
-                    </View>
-                    <Feather
-                      name="arrow-right"
-                      size={24}
-                      color={darkMode ? colors.white : colors.black}
-                    />
-                  </TouchableOpacity>
-                );
-              }}
-              // ListHeaderComponent={<View style={{ height: 30 }} />} // top padding
-              ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
-            />
-          ) : (
-            <AdaptiveText
-              style={{
-                alignSelf: "center",
-                fontFamily: "Poppins-SemiBold",
-                marginTop: 250,
-              }}
-            >
-              No items found.
-            </AdaptiveText>
-          )}
+          </TouchableOpacity>
         </View>
-      </TouchableWithoutFeedback>
+
+        {chats ? (
+          <FlatList
+            data={chats}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={Keyboard.dismiss}
+            contentContainerStyle={{ alignSelf: "center", width: "90%" }}
+            keyExtractor={(item) => String(item.key)}
+            renderItem={({ item }) => {
+              return (
+                <TouchableOpacity
+                  style={styles.chat}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/chatbot/[id]",
+                      params: { id: String(item.key) },
+                    })
+                  }
+                >
+                  <View>
+                    <AdaptiveText style={styles.chatTitle}>
+                      {item.title}
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.chatContent}>
+                      {item.content}
+                    </AdaptiveText>
+                  </View>
+                  <Feather
+                    name="arrow-right"
+                    size={24}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                </TouchableOpacity>
+              );
+            }}
+            ItemSeparatorComponent={() => <View style={{ height: 15 }} />}
+          />
+        ) : (
+          <AdaptiveText
+            style={{
+              alignSelf: "center",
+              fontFamily: "Poppins-SemiBold",
+              marginTop: 250,
+            }}
+          >
+            No items found.
+          </AdaptiveText>
+        )}
+      </View>
     </SafeAreaView>
   );
 }

@@ -11,9 +11,8 @@ import {
   FlatList,
   Keyboard,
   StyleSheet,
-  TouchableWithoutFeedback,
   useColorScheme,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -67,54 +66,38 @@ const PostScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View>
-          <PageHeader
-            title={chat && chat.title ? chat.title : "something else"}
+      <View>
+        <PageHeader title={chat && chat.title ? chat.title : "something else"} />
+        {item ? (
+          <FlatList
+            data={replies}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={Keyboard.dismiss}
+            contentContainerStyle={{ alignSelf: "center", width: "100%" }}
+            keyExtractor={(item) => String(item.Id)}
+            ListHeaderComponent={<ForumPost size="big" item={item} />}
+            renderItem={({ item }) => {
+              if (replies && replies.length !== 0) {
+                return <ForumPost size="small" item={item} />;
+              } else {
+                return <AdaptiveText>This post has no replies.</AdaptiveText>;
+              }
+            }}
+            ListFooterComponent={<View style={{ height: 140 }} />}
           />
-          {item ? (
-            <FlatList
-              data={replies}
-              contentContainerStyle={{ alignSelf: "center", width: "100%" }}
-              keyExtractor={(item) => String(item.Id)}
-              ListHeaderComponent={
-                <ForumPost
-                  size='big' 
-                  item={item} 
-                />
-              }
-              renderItem={({ item }) => {
-                if (replies && replies.length !== 0) {
-                  return (
-                    <ForumPost
-                      size='small' 
-                      item={item} 
-                    />
-                  )
-                }
-                else {
-                  return (
-                    <AdaptiveText>This post has no replies.</AdaptiveText>
-                  )
-                }
-              }}
-              ListFooterComponent={
-                <View style={{ height: 140 }} />
-              }
-            />
-          ) : (
-            <AdaptiveText
-              style={{
-                alignSelf: "center",
-                fontFamily: "Poppins-SemiBold",
-                marginTop: 250,
-              }}
-            >
-              No items found.
-            </AdaptiveText>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
+        ) : (
+          <AdaptiveText
+            style={{
+              alignSelf: "center",
+              fontFamily: "Poppins-SemiBold",
+              marginTop: 250,
+            }}
+          >
+            No items found.
+          </AdaptiveText>
+        )}
+      </View>
     </SafeAreaView>
   );
 };
