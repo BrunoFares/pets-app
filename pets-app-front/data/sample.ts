@@ -290,6 +290,7 @@ export const IllnessRecords: IllnessRecordModel[] = [
     petId: "1",
     illnessName: "Diabetes",
     status: "Resolved",
+    medicationsId: ["1"],
     diagnosisDate: new Date(2012, 7, 25),
     curedDate: new Date(2013, 2, 20),
     notes: "nothing to note",
@@ -307,6 +308,9 @@ export const MedicationRecords: MedicationRecordModel[] = [
     dosage: "0.25-0.5 U/kg q12h 0.11-0.23 U/lb q12h",
     instructions:
       "Recheck examination in clinic 5-10 days after starting insulin",
+    times: ["12:00"],
+    reminderEnabled: true,
+    frequencyInDays: 1,
     startDate: new Date(2016, 7, 2),
     endDate: new Date(2018, 7, 2),
     isActive: true,

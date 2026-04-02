@@ -6,12 +6,22 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Animated, FlatList, Keyboard, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, useColorScheme, View } from "react-native";
+import {
+  Animated,
+  FlatList,
+  Keyboard,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useColorScheme,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChatbotScreen() {
   const router = useRouter();
-  const darkMode = useColorScheme() === 'dark';
+  const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [chats, setChats] = useState<any[]>([]);
   const { showFooter, setShowFooter } = useGlobal();
@@ -20,70 +30,109 @@ export default function ChatbotScreen() {
     useCallback(() => {
       // API all to get the chats
       const userChats = [
-        {key: 1, title: 'firstChat', content: 'content1'},
-        {key: 2, title: 'secondChat', content: 'content2'},
-        {key: 3, title: 'thirdChat', content: 'content3'},
-        {key: 4, title: 'fourthChat', content: 'content4'},
-        {key: 5, title: 'fifthChat', content: 'content5'},
-      ]
+        { key: 1, title: "firstChat", content: "content1" },
+        { key: 2, title: "secondChat", content: "content2" },
+        { key: 3, title: "thirdChat", content: "content3" },
+        { key: 4, title: "fourthChat", content: "content4" },
+        { key: 5, title: "fifthChat", content: "content5" },
+      ];
       setChats(userChats);
-    }, [])
-  )
+    }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // This code runs when the screen is unfocused (or unmounted).
+        setShowFooter?.(true);
+      };
+    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+  );
 
   const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View>
-      <Animated.View style={{ transform: [{ translateY }] }}>
-        <AdaptiveText style={styles.title}>Dr. Pet</AdaptiveText>
-        <AdaptiveText style={styles.subtitle}>Your personal assistant's {'\n'} personal assistant.</AdaptiveText>
-      </Animated.View>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <AdaptiveText style={styles.title}>Dr. Pet</AdaptiveText>
+            <AdaptiveText style={styles.subtitle}>
+              Your personal assistant's {"\n"} personal assistant.
+            </AdaptiveText>
+          </Animated.View>
 
-      <View style={[styles.txtInputContainer, (showFooter !== undefined && !showFooter) && { bottom: 0 }]}>
-        <TextInput 
-          placeholder="Enter a new prompt..."
-          placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
-          style={styles.txtInput}
-          onFocus={() => setShowFooter?.(false)} // when user is typing, make footer disappear
-          onBlur={() => setShowFooter?.(true)} // when no longer typing, make footer reappear
-        />
-        <TouchableOpacity>
-          <Feather name="arrow-up" size={24} color={darkMode ? colors.white : colors.black} />
-        </TouchableOpacity>
-      </View>
+          <View
+            style={[
+              styles.txtInputContainer,
+              showFooter !== undefined && !showFooter && { bottom: 0 },
+            ]}
+          >
+            <TextInput
+              placeholder="Enter a new prompt..."
+              placeholderTextColor={
+                darkMode ? colors.lightGrey : colors.darkGrey
+              }
+              style={styles.txtInput}
+              onFocus={() => setShowFooter?.(false)} // when user is typing, make footer disappear
+              onBlur={() => setShowFooter?.(true)} // when no longer typing, make footer reappear
+            />
+            <TouchableOpacity>
+              <Feather
+                name="arrow-up"
+                size={24}
+                color={darkMode ? colors.white : colors.black}
+              />
+            </TouchableOpacity>
+          </View>
 
-      {chats ?
-        <FlatList 
-          data={chats}
-          contentContainerStyle={{ alignSelf: 'center', width: '90%'}}
-          keyExtractor={(item) => String(item.key)}
-          renderItem={({item}) => {
-            return (
-              <TouchableOpacity style={styles.chat}
-                onPress={() => router.push({ pathname: "/(tabs)/chatbot/[id]", params: { id: String(item.key) } })}
-              >
-                <View>
-                  <AdaptiveText style={styles.chatTitle}>{item.title}</AdaptiveText>
-                  <AdaptiveText style={styles.chatContent}>{item.content}</AdaptiveText>
-                </View>
-                <Feather name="arrow-right" size={24} color={darkMode ? colors.white : colors.black} />
-              </TouchableOpacity>
-            )
-          }}
-
-          // ListHeaderComponent={<View style={{ height: 30 }} />} // top padding
-          ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
-        />
-      :
-        <AdaptiveText style={{
-            alignSelf: 'center',
-            fontFamily: 'Poppins-SemiBold',
-            marginTop: 250
-        }}>No items found.</AdaptiveText>
-      }
-      </View>
+          {chats ? (
+            <FlatList
+              data={chats}
+              contentContainerStyle={{ alignSelf: "center", width: "90%" }}
+              keyExtractor={(item) => String(item.key)}
+              renderItem={({ item }) => {
+                return (
+                  <TouchableOpacity
+                    style={styles.chat}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/chatbot/[id]",
+                        params: { id: String(item.key) },
+                      })
+                    }
+                  >
+                    <View>
+                      <AdaptiveText style={styles.chatTitle}>
+                        {item.title}
+                      </AdaptiveText>
+                      <AdaptiveText style={styles.chatContent}>
+                        {item.content}
+                      </AdaptiveText>
+                    </View>
+                    <Feather
+                      name="arrow-right"
+                      size={24}
+                      color={darkMode ? colors.white : colors.black}
+                    />
+                  </TouchableOpacity>
+                );
+              }}
+              // ListHeaderComponent={<View style={{ height: 30 }} />} // top padding
+              ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
+            />
+          ) : (
+            <AdaptiveText
+              style={{
+                alignSelf: "center",
+                fontFamily: "Poppins-SemiBold",
+                marginTop: 250,
+              }}
+            >
+              No items found.
+            </AdaptiveText>
+          )}
+        </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
@@ -97,61 +146,61 @@ const createStyles = ({ darkMode }: any) => {
     },
     title: {
       fontSize: 26,
-      fontFamily: 'Poppins-Bold',
+      fontFamily: "Poppins-Bold",
       marginTop: 40,
-      textAlign: 'center'
+      textAlign: "center",
     },
     subtitle: {
       fontSize: 16,
-      fontFamily: 'Poppins-Regular',
+      fontFamily: "Poppins-Regular",
       marginTop: 5,
-      textAlign: 'center'
+      textAlign: "center",
     },
     body: {
       flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     chat: {
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
       paddingHorizontal: 20,
       paddingVertical: 15,
       borderRadius: 20,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center'
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
     },
     chatTitle: {
-      fontFamily: 'Poppins-SemiBold'
+      fontFamily: "Poppins-SemiBold",
     },
     chatContent: {
-      fontFamily: 'Poppins-Light'
+      fontFamily: "Poppins-Light",
     },
     txtInputContainer: {
-      flexDirection: 'row',
-      width: '90%',
-      alignSelf: 'center',
+      flexDirection: "row",
+      width: "90%",
+      alignSelf: "center",
       backgroundColor: darkMode ? colors.darkGrey : colors.white,
       borderRadius: 24,
-      alignItems: 'center',
+      alignItems: "center",
       marginVertical: 30,
 
       // shadow
       shadowColor: colors.black,
-      shadowOffset: {width: 0, height: 10},
+      shadowOffset: { width: 0, height: 10 },
       shadowRadius: 10,
       shadowOpacity: 0.2,
-      elevation: 8
+      elevation: 8,
     },
     txtInput: {
-      width: '90%',
+      width: "90%",
       backgroundColor: darkMode ? colors.darkGrey : colors.white,
       color: darkMode ? colors.white : colors.black,
-      fontFamily: 'Poppins-Regular',
+      fontFamily: "Poppins-Regular",
       fontSize: 16,
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: 24,
-    }
-  })
+    },
+  });
 };

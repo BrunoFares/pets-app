@@ -55,10 +55,6 @@ const Pet = () => {
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
-
-      return () => {
-        setShowFooter?.(true);
-      };
     }, []),
   );
 

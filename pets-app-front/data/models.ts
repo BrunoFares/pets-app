@@ -125,6 +125,7 @@ export interface IllnessRecordModel {
   petId: string;
   illnessName: string;
   diagnosisDate: Date;
+  medicationsId: string[];
   status: "Ongoing" | "Resolved";
   description?: string;
   notes?: string;
@@ -139,8 +140,11 @@ export interface MedicationRecordModel {
   medicationName: string;
   dosage?: string;
   instructions?: string;
-  startDate?: Date;
-  endDate?: Date;
+  startDate: Date;
+  endDate?: Date | null;
+  frequencyInDays: number;
+  times: string[];
+  reminderEnabled: boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

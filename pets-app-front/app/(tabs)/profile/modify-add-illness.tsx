@@ -4,7 +4,7 @@ import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationMo
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -14,9 +14,17 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  View,
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+type MedicationForm = {
+  id: number;
+  name: string;
+  dosage: string;
+  frequency: string;
+};
 
 const ModifyAddIllness = () => {
   const darkMode = useColorScheme() === "dark";
@@ -24,7 +32,8 @@ const ModifyAddIllness = () => {
   const { setShowFooter } = useGlobal();
   const { payload } = useLocalSearchParams<{ payload?: any }>();
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDiagnosisDatePicker, setShowDiagnosisDatePicker] = useState(false);
+  const [showCuredDatePicker, setShowCuredDatePicker] = useState(false);
 
   const [illnessAvailable, setIllnessAvailable] = useState<boolean>();
   const [selectedName, setSelectedName] = useState<string>();
@@ -37,6 +46,10 @@ const ModifyAddIllness = () => {
   const [selectedDescription, setSelectedDescription] = useState<string>();
 
   const [statusModal, setStatusModal] = useState(false);
+
+  const [medications, setMedications] = useState<MedicationForm[]>([
+    { id: Date.now(), name: "", dosage: "", frequency: "" },
+  ]);
 
   const statusToChoose = [
     { id: 1, Name: "Ongoing" },
@@ -54,7 +67,6 @@ const ModifyAddIllness = () => {
         try {
           parsed = JSON.parse(payload);
         } catch (e2) {
-          // keep as string if parsing fails
           parsed = payload;
         }
       }
@@ -72,44 +84,85 @@ const ModifyAddIllness = () => {
     setCuredDate(new Date(parsed.item.curedDate));
     setSelectedDescription(parsed.item.description);
     setSelectedNotes(parsed.item.notes);
+
+    if (parsed.item.medications && Array.isArray(parsed.item.medications)) {
+      setMedications(
+        parsed.item.medications.map((med: any, index: number) => ({
+          id: med.id ?? Date.now() + index,
+          name: med.name ?? "",
+          dosage: med.dosage ?? "",
+          frequency: med.frequency ?? "",
+        })),
+      );
+    }
   }, [payload]);
 
   const onChangeDiagnosis = (event: any, selectedDate: any) => {
     if (selectedDate) {
       setDiagnosisDate(selectedDate);
     }
-    setShowDatePicker(false);
+    setShowDiagnosisDatePicker(false);
   };
 
   const onChangeCure = (event: any, selectedDate: any) => {
     if (selectedDate) {
       setCuredDate(selectedDate);
     }
-    setShowDatePicker(false);
+    setShowCuredDatePicker(false);
+  };
+
+  const addMedication = () => {
+    setMedications((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        name: "",
+        dosage: "",
+        frequency: "",
+      },
+    ]);
+  };
+
+  const removeMedication = (id: number) => {
+    setMedications((prev) => prev.filter((med) => med.id !== id));
+  };
+
+  const updateMedication = (
+    id: number,
+    field: keyof MedicationForm,
+    value: string,
+  ) => {
+    setMedications((prev) =>
+      prev.map((med) => (med.id === id ? { ...med, [field]: value } : med)),
+    );
   };
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
+
+      return () => {
+        setShowFooter?.(true);
+      };
     }, []),
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      <ScrollView contentContainerStyle={{ alignItems: "center", gap: 10 }}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <AdaptiveText style={styles.title}>
           {illnessAvailable ? "Modify" : "Add"} Illness
         </AdaptiveText>
 
-        <AdaptiveText style={{ width: "84%" }}>Name</AdaptiveText>
+        <AdaptiveText style={styles.label}>Name</AdaptiveText>
         <CustomInput
           value={selectedName}
           onChangeText={setSelectedName}
-          style={{ width: "84%" }}
+          style={styles.fullWidthInput}
         />
 
-        <AdaptiveText style={{ width: "84%" }}>Status</AdaptiveText>
+        <AdaptiveText style={styles.label}>Status</AdaptiveText>
         <TouchableOpacity
           style={styles.picker}
           onPress={() => {
@@ -127,48 +180,46 @@ const ModifyAddIllness = () => {
           />
         </TouchableOpacity>
 
-        <AdaptiveText style={{ width: "84%", marginBottom: 5, marginTop: 10 }}>
+        <AdaptiveText style={[styles.label, { marginTop: 10 }]}>
           Diagnosis Date
         </AdaptiveText>
         {Platform.OS === "android" && (
           <TouchableOpacity
             style={[styles.picker, { width: "auto" }]}
-            onPress={() => setShowDatePicker(true)}
+            onPress={() => setShowDiagnosisDatePicker(true)}
           >
             <AdaptiveText style={styles.textPicker}>
               {diagnosisDate.toLocaleDateString()}
             </AdaptiveText>
           </TouchableOpacity>
         )}
-        {showDatePicker && Platform.OS === "android" && (
+        {showDiagnosisDatePicker && Platform.OS === "android" && (
           <DateTimePicker
-            testID="dateTimePicker"
+            testID="diagnosisDatePicker"
             value={diagnosisDate}
-            mode={"date"}
+            mode="date"
             onChange={onChangeDiagnosis}
           />
         )}
         {Platform.OS === "ios" && (
           <DateTimePicker
-            testID="dateTimePicker"
+            testID="diagnosisDatePicker"
             value={diagnosisDate}
-            mode={"date"}
+            mode="date"
             onChange={onChangeDiagnosis}
           />
         )}
 
         {selectedStatus === "Resolved" && (
           <>
-            <AdaptiveText
-              style={{ width: "84%", marginBottom: 5, marginTop: 10 }}
-            >
+            <AdaptiveText style={[styles.label, { marginTop: 10 }]}>
               Cured Date
             </AdaptiveText>
 
             {Platform.OS === "android" && (
               <TouchableOpacity
                 style={[styles.picker, { width: "auto" }]}
-                onPress={() => setShowDatePicker(true)}
+                onPress={() => setShowCuredDatePicker(true)}
               >
                 <AdaptiveText style={styles.textPicker}>
                   {curedDate.toLocaleDateString()}
@@ -176,33 +227,120 @@ const ModifyAddIllness = () => {
               </TouchableOpacity>
             )}
 
-            {showDatePicker && Platform.OS === "android" && (
+            {showCuredDatePicker && Platform.OS === "android" && (
               <DateTimePicker
-                testID="dateTimePicker"
+                testID="curedDatePicker"
                 value={curedDate}
-                mode={"date"}
+                mode="date"
                 onChange={onChangeCure}
               />
             )}
 
             {Platform.OS === "ios" && (
               <DateTimePicker
-                testID="dateTimePicker"
+                testID="curedDatePicker"
                 value={curedDate}
-                mode={"date"}
+                mode="date"
                 onChange={onChangeCure}
               />
             )}
           </>
         )}
 
-        <AdaptiveText style={{ width: "84%" }}>Description</AdaptiveText>
-        <CustomInput style={{ height: 200 }} value={selectedDescription} />
+        <AdaptiveText style={styles.label}>Description</AdaptiveText>
+        <CustomInput
+          style={styles.bigInput}
+          value={selectedDescription}
+          onChangeText={setSelectedDescription}
+        />
 
-        <AdaptiveText style={{ width: "84%" }}>Notes</AdaptiveText>
-        <CustomInput style={{ height: 200 }} value={selectedNotes} />
+        <AdaptiveText style={styles.label}>Notes</AdaptiveText>
+        <CustomInput
+          style={styles.bigInput}
+          value={selectedNotes}
+          onChangeText={setSelectedNotes}
+        />
 
-        <TouchableOpacity style={styles.buttonSave}>
+        <View style={styles.medicationsHeaderRow}>
+          <AdaptiveText
+            style={{ fontFamily: "Poppins-SemiBold", fontSize: 20 }}
+          >
+            Medications
+          </AdaptiveText>
+          <TouchableOpacity
+            style={styles.addMedicationBtn}
+            onPress={addMedication}
+          >
+            <Feather
+              name="plus"
+              size={16}
+              color={darkMode ? colors.white : colors.black}
+            />
+            <AdaptiveText style={styles.addMedicationText}>Add</AdaptiveText>
+          </TouchableOpacity>
+        </View>
+
+        {medications.map((med, index) => (
+          <View key={med.id} style={styles.medicationCard}>
+            <View style={styles.medicationTopRow}>
+              <AdaptiveText style={styles.medicationTitle}>
+                Medication {index + 1}
+              </AdaptiveText>
+
+              {medications.length > 1 && (
+                <TouchableOpacity onPress={() => removeMedication(med.id)}>
+                  <Feather name="trash-2" size={18} color={colors.red} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <AdaptiveText style={styles.labelInner}>
+              Medication Name
+            </AdaptiveText>
+            <CustomInput
+              value={med.name}
+              onChangeText={(text: string) =>
+                updateMedication(med.id, "name", text)
+              }
+              style={styles.medInput}
+            />
+
+            <AdaptiveText style={styles.labelInner}>Dosage</AdaptiveText>
+            <CustomInput
+              value={med.dosage}
+              onChangeText={(text: string) =>
+                updateMedication(med.id, "dosage", text)
+              }
+              style={styles.medInput}
+            />
+
+            <AdaptiveText style={styles.labelInner}>Frequency</AdaptiveText>
+            <CustomInput
+              value={med.frequency}
+              onChangeText={(text: string) =>
+                updateMedication(med.id, "frequency", text)
+              }
+              style={styles.medInput}
+            />
+          </View>
+        ))}
+
+        <TouchableOpacity
+          style={styles.buttonSave}
+          onPress={() => {
+            const illnessData = {
+              illnessName: selectedName,
+              status: selectedStatus,
+              diagnosisDate,
+              curedDate: selectedStatus === "Resolved" ? curedDate : null,
+              description: selectedDescription,
+              notes: selectedNotes,
+              medications,
+            };
+
+            console.log("Saving illness:", illnessData);
+          }}
+        >
           <Text style={styles.btnTextSave}>Save changes</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -231,9 +369,22 @@ const createStyles = ({ darkMode }: any) => {
       flex: 1,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
+    scrollContainer: {
+      alignItems: "center",
+      gap: 10,
+      paddingBottom: 30,
+    },
     title: {
       fontSize: 24,
       fontFamily: "Poppins-SemiBold",
+    },
+    label: {
+      width: "84%",
+    },
+    labelInner: {
+      width: "100%",
+      marginBottom: 4,
+      marginTop: 4,
     },
     picker: {
       borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
@@ -252,12 +403,56 @@ const createStyles = ({ darkMode }: any) => {
       paddingVertical: 12,
       paddingHorizontal: 16,
     },
+    fullWidthInput: {
+      width: "84%",
+    },
+    bigInput: {
+      height: 200,
+      width: "84%",
+    },
+    medicationsHeaderRow: {
+      width: "84%",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: 10,
+    },
+    addMedicationBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    addMedicationText: {
+      fontFamily: "Poppins-Medium",
+    },
+    medicationCard: {
+      width: "84%",
+      borderWidth: 1,
+      borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      borderRadius: 16,
+      padding: 20,
+      gap: 6,
+    },
+    medicationTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    medicationTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
     buttonSave: {
       backgroundColor: colors.green,
       paddingVertical: 20,
       paddingHorizontal: 80,
       borderRadius: 20,
-      marginBottom: "10%",
+      marginBottom: "3%",
       marginTop: 20,
     },
     btnTextSave: {
@@ -265,6 +460,9 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-Bold",
       fontSize: 18,
       textAlign: "center",
+    },
+    medInput: {
+      width: "100%",
     },
   });
 };
