@@ -34,7 +34,7 @@ export default function ForumScreen() {
       // API call to get the Posts
       const forumPosts = ForumPosts;
       setPosts(forumPosts);
-    }, [])
+    }, []),
   );
 
   const goTo = (item: any, location: any) => {
@@ -42,31 +42,53 @@ export default function ForumScreen() {
     router.push({
       pathname: location,
       params: { id: String(item.key), payload },
-    })
-  }
+    });
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // This code runs when the screen is unfocused (or unmounted).
+        setShowFooter?.(true);
+      };
+    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+  );
 
   const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} style={{backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,}}>
+      <TouchableWithoutFeedback
+        onPress={Keyboard.dismiss}
+        style={{
+          backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+        }}
+      >
         <View>
-          <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/forum/bookmarks')}>
-                <Ionicons name="bookmark" size={24} color={darkMode ? colors.white : colors.black} />
-              </TouchableOpacity>
-
-              <Image
-                source={require("@/assets/images/petsapp-logo-light.png")}
-                style={{ height: 64, width: 64 }}
+          <Animated.View
+            style={[styles.header, { transform: [{ translateY }] }]}
+          >
+            <TouchableOpacity
+              onPress={() => router.push("/(tabs)/forum/bookmarks")}
+            >
+              <Ionicons
+                name="bookmark"
+                size={24}
+                color={darkMode ? colors.white : colors.black}
               />
-              <TouchableOpacity>
-                <FontAwesome
-                  name="search"
-                  size={24}
-                  color={darkMode ? colors.white : colors.black}
-                />
-              </TouchableOpacity>
+            </TouchableOpacity>
+
+            <Image
+              source={require("@/assets/images/petsapp-logo-light.png")}
+              style={{ height: 64, width: 64 }}
+            />
+            <TouchableOpacity>
+              <FontAwesome
+                name="search"
+                size={24}
+                color={darkMode ? colors.white : colors.black}
+              />
+            </TouchableOpacity>
           </Animated.View>
 
           {posts ? (
@@ -76,17 +98,15 @@ export default function ForumScreen() {
               keyExtractor={(item) => String(item.Id)}
               renderItem={({ item }) => {
                 return (
-                  <ForumPost 
-                    //onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")} 
+                  <ForumPost
+                    //onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")}
                     // onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
-                    size='small' 
-                    item={item} 
+                    size="small"
+                    item={item}
                   />
                 );
               }}
-              ListFooterComponent={
-                <View style={{ height: 180 }} />
-              }
+              ListFooterComponent={<View style={{ height: 180 }} />}
             />
           ) : (
             <AdaptiveText

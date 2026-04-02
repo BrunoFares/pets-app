@@ -3,13 +3,14 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
 import LogOutModal from "@/components/LogOutModal";
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { AppUsersModel, PetModel } from "@/data/models";
 import { AppUsers, Pets } from "@/data/sample";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { goTo } from "@/utils";
 import { Feather, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   Animated,
   FlatList,
@@ -30,6 +31,7 @@ export default function Profile() {
   const [logOutModal, setLogOutModal] = useState(false);
   const [profileInfo, setProfileInfo] = useState<AppUsersModel>();
   const [pets, setPets] = useState<PetModel[]>();
+  const { setShowFooter } = useGlobal();
 
   useEffect(() => {
     const user = AppUsers[0];
@@ -37,6 +39,17 @@ export default function Profile() {
     setProfileInfo(user);
     setPets(animals);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setShowFooter?.(true);
+
+      return () => {
+        // This code runs when the screen is unfocused (or unmounted).
+        setShowFooter?.(true);
+      };
+    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+  );
 
   if (profileInfo) {
     return (
