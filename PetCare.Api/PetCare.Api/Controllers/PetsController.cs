@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.Model;
-using PetCare.Api.Models;
 
 namespace PetCare.Api.Controllers;
 

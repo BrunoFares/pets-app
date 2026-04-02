@@ -1,4 +1,4 @@
-﻿namespace PetCare.Api.Models;
+﻿namespace PetCare.Api.Model;
 
 public class AppUser
 {
@@ -11,4 +11,5 @@ public class AppUser
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string PasswordHash { get; set; } = default!;
+    public string? AvatarUrl { get; set; }
 }

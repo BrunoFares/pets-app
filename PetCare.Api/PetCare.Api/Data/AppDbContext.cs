@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Npgsql.EntityFrameworkCore.PostgreSQL; // HasPostgresEnum (optional)
 using PetCare.Api.Model;
-using PetCare.Api.Models;
 
 namespace PetCare.Api.Data;
 
@@ -13,6 +12,8 @@ public class AppDbContext : DbContext
     public DbSet<SpeciesModel> Species => Set<SpeciesModel>();
     public DbSet<BreedModel> Breeds => Set<BreedModel>();
     public DbSet<PetModel> Pets => Set<PetModel>();
+    public DbSet<ConsultationModel> Consultations => Set<ConsultationModel>();
+
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -33,6 +34,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.FirstName).HasColumnName("first_name").IsRequired();
             e.Property(x => x.LastName).HasColumnName("last_name").IsRequired();
             e.Property(x => x.PasswordHash).HasColumnName("password_hash").IsRequired();
+            e.Property(x => x.AvatarUrl).HasColumnName("avatar_url");
 
             e.HasIndex(x => x.Email).IsUnique();
         });
@@ -98,6 +100,30 @@ public class AppDbContext : DbContext
 
             e.HasOne(x => x.Species).WithMany().HasForeignKey(x => x.SpeciesId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Breed).WithMany().HasForeignKey(x => x.BreedId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ----- CONSULTATION -----
+        b.Entity<ConsultationModel>(e =>
+        {
+            e.ToTable("consultations", "public");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.PetId).HasColumnName("pet_id");
+            e.Property(x => x.VetId).HasColumnName("vet_id").IsRequired();
+            e.Property(x => x.Date).HasColumnName("date").IsRequired();
+            e.Property(x => x.Details).HasColumnName("details").IsRequired();
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
+            e.HasOne(x => x.Pet)
+             .WithMany()
+             .HasForeignKey(x => x.PetId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.PetId);
         });
     }
 }

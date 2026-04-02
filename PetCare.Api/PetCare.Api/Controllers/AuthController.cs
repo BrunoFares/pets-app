@@ -1,10 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
-using PetCare.Api.Models;
+using PetCare.Api.DTOs;
+using PetCare.Api.Model;
 using PetCare.Api.Security;
+using System.ComponentModel.DataAnnotations;
 
 namespace PetCare.Api.Controllers;
 
@@ -12,10 +13,10 @@ namespace PetCare.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext _context;
     private readonly IConfiguration _cfg;
 
-    public AuthController(AppDbContext db, IConfiguration cfg) { _db = db; _cfg = cfg; }
+    public AuthController(AppDbContext context, IConfiguration cfg) { _context = context; _cfg = cfg; }
 
     public record RegisterRequest([Required] string Username, [Required, EmailAddress] string Email,
         [Required] string PhoneNumber, [Required] string FirstName, [Required] string LastName,
@@ -37,7 +38,7 @@ public class AuthController : ControllerBase
         ));
         if (!ok) return BadRequest(new { message = "Invalid password.", errors });
 
-        if (await _db.Users.AnyAsync(u => u.Email == email))
+        if (await _context.Users.AnyAsync(u => u.Email == email))
             return Conflict(new { message = "Email already exists." });
 
         var user = new AppUser
@@ -50,8 +51,8 @@ public class AuthController : ControllerBase
             PasswordHash = PasswordHasher.Hash(req.Password)
         };
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
 
         var token = JwtIssuer.Create(user.Id.ToString(), user.Username, user.Email,
             _cfg["Jwt:Secret"]!, _cfg["Jwt:Issuer"]!, _cfg["Jwt:Audience"]!,
@@ -65,13 +66,13 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
         var email = req.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user is null) return Unauthorized();
 
         if (!PasswordHasher.Verify(req.Password, user.PasswordHash)) return Unauthorized();
 
         user.LastLogin = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
         var token = JwtIssuer.Create(user.Id.ToString(), user.Username, user.Email,
             _cfg["Jwt:Secret"]!, _cfg["Jwt:Issuer"]!, _cfg["Jwt:Audience"]!,
@@ -79,4 +80,13 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthResponse(user.Id, token));
     }
+
+    // User logout controller(it has no actual use just a confirmation)
+    [Authorize]
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        return Ok(new { message = "Logged out" });
+    }
+
 }
