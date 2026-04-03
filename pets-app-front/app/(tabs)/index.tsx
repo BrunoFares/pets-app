@@ -3,8 +3,24 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import {
+  AppUsers,
+  Consultations,
+  IllnessRecords,
+  MedicationRecords,
+  Pets,
+  VaccineRecords,
+} from "@/data/sample";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { getRandomIntegerInclusive } from "@/utils";
+import {
+  buildReminderBoardItems,
+  formatReminderDate,
+  getRandomIntegerInclusive,
+  getRelativeDueLabel,
+  getReminderTypeLabel,
+  goTo,
+  ReminderUrgency,
+} from "@/utils";
 import {
   Entypo,
   FontAwesome6,
@@ -26,27 +42,44 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import tipsOfTheDay from "../../data/tips-of-the-day.json";
 
+function getReminderAccent(
+  urgency: ReminderUrgency,
+  darkMode: boolean,
+): string {
+  if (urgency === "overdue") return colors.red;
+  if (urgency === "today") return colors.lightOrange;
+  return darkMode ? colors.lightGreen : colors.green;
+}
+
 export default function HomeScreen() {
   const [componentWidth, setComponentWidth] = useState(0);
   const darkMode = useColorScheme() === "dark";
+  const { width } = useWindowDimensions();
   const router = useRouter();
-  const styles = createStyles({ darkMode, componentWidth });
+  const styles = createStyles({ darkMode, componentWidth, width });
   const [tipOfTheDay, setTipOfTheDay] = useState<string>();
   const { setShowFooter } = useGlobal();
-  const [user, setUser] = useState({
-    name: "Bruno",
-    picture: "",
-    pets: [
-      {
-        key: 1,
-        name: "Kalinka",
-      },
-      {
-        key: 2,
-        name: "Minouche",
-      },
-    ],
+  const user = AppUsers[0];
+  const userPets = Pets.filter((pet) => pet.UserId === user.Id);
+  const reminderBoardItems = buildReminderBoardItems({
+    consultations: Consultations,
+    illnessRecords: IllnessRecords,
+    medicationRecords: MedicationRecords,
+    pets: userPets,
+    vaccineRecords: VaccineRecords,
   });
+
+  const visibleReminders = reminderBoardItems.slice(0, 6);
+  const reminderCounts = {
+    medication: reminderBoardItems.filter((item) => item.type === "medication")
+      .length,
+    vaccination: reminderBoardItems.filter(
+      (item) => item.type === "vaccination",
+    ).length,
+    consultation: reminderBoardItems.filter(
+      (item) => item.type === "consultation",
+    ).length,
+  };
 
   const items = [
     {
@@ -87,10 +120,9 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       return () => {
-        // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, [setShowFooter]),
   );
 
   const { translateY } = useHeaderSlide({ height: 200 });
@@ -107,7 +139,7 @@ export default function HomeScreen() {
           >
             Welcome back,{" "}
             <Text style={{ color: darkMode ? colors.white : colors.green }}>
-              {user.name}
+              {user.Name}
             </Text>
             !
           </AdaptiveText>
@@ -134,34 +166,132 @@ export default function HomeScreen() {
           </AdaptiveText>
         </AdaptiveView>
 
-        <AdaptiveView
-          style={{
-            width: "90%",
-            height: 200,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 30,
+        <AdaptiveView style={styles.reminderBoard}>
+          <View style={styles.divisionTitleSection}>
+            <MaterialCommunityIcons
+              name="clipboard-text-clock-outline"
+              size={16}
+              color={darkMode ? colors.white : colors.green}
+            />
+            <AdaptiveText style={styles.divisionTitle}>
+              Reminder board
+            </AdaptiveText>
+          </View>
 
-            // shadow
-            shadowColor: colors.black,
-            shadowOffset: {
-              width: darkMode ? 5 : 0,
-              height: 10,
-            },
-            shadowRadius: 10,
-            shadowOpacity: darkMode ? 0.5 : 0.1,
-
-            elevation: 10,
-          }}
-        >
-          <AdaptiveText
-            style={{
-              fontFamily: "Poppins-Regular",
-              fontSize: 16,
-            }}
-          >
-            To be done.
+          <AdaptiveText style={styles.reminderHeadline}>
+            Keep track of medications, vaccines, and routine vet follow-ups for
+            your pets.
           </AdaptiveText>
+
+          <View style={styles.reminderSummaryRow}>
+            <View style={styles.summaryPill}>
+              <AdaptiveText style={styles.summaryPillValue}>
+                {reminderCounts.medication}
+              </AdaptiveText>
+              <AdaptiveText style={styles.summaryPillLabel}>
+                Medications
+              </AdaptiveText>
+            </View>
+            <View style={styles.summaryPill}>
+              <AdaptiveText style={styles.summaryPillValue}>
+                {reminderCounts.vaccination}
+              </AdaptiveText>
+              <AdaptiveText style={styles.summaryPillLabel}>
+                Vaccines
+              </AdaptiveText>
+            </View>
+            <View style={styles.summaryPill}>
+              <AdaptiveText style={styles.summaryPillValue}>
+                {reminderCounts.consultation}
+              </AdaptiveText>
+              <AdaptiveText style={styles.summaryPillLabel}>
+                Check-ins
+              </AdaptiveText>
+            </View>
+          </View>
+
+          {visibleReminders.length ? (
+            <View style={styles.reminderList}>
+              {visibleReminders.map((item) => (
+                <TouchableOpacity
+                  key={item.key}
+                  activeOpacity={0.85}
+                  style={styles.reminderCard}
+                  onPress={() => {
+                    if (item.type === "vaccination") {
+                      const payload = encodeURIComponent(
+                        JSON.stringify({ pet: item.pet }),
+                      );
+                      router.push({
+                        pathname: "/profile/vaccines",
+                        params: { payload },
+                      });
+                      return;
+                    }
+
+                    if (item.type === "medication") {
+                      const payload = encodeURIComponent(
+                        JSON.stringify({ pet: item.pet }),
+                      );
+                      router.push({
+                        pathname: "/profile/illnesses",
+                        params: { payload },
+                      });
+                      return;
+                    }
+
+                    goTo(
+                      { ...item.pet, key: item.pet.Id },
+                      "/profile/[pet]",
+                      router,
+                    );
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.reminderAccent,
+                      {
+                        backgroundColor: getReminderAccent(
+                          item.urgency,
+                          darkMode,
+                        ),
+                      },
+                    ]}
+                  />
+                  <View style={styles.reminderBody}>
+                    <View style={styles.reminderTopRow}>
+                      <AdaptiveText style={styles.reminderType}>
+                        {getReminderTypeLabel(item.type)}
+                      </AdaptiveText>
+                      <AdaptiveText style={styles.reminderDueState}>
+                        {getRelativeDueLabel(item.dueDate)}
+                      </AdaptiveText>
+                    </View>
+
+                    <AdaptiveText style={styles.reminderTitle}>
+                      {item.title}
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.reminderSubtitle}>
+                      {item.pet.Name} • {item.subtitle}
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.reminderDate}>
+                      {formatReminderDate(item.dueDate)}
+                    </AdaptiveText>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <AdaptiveView style={styles.emptyReminderState}>
+              <AdaptiveText style={styles.emptyReminderTitle}>
+                No active reminders right now.
+              </AdaptiveText>
+              <AdaptiveText style={styles.emptyReminderText}>
+                As you add medications, vaccine due dates, or consultations,
+                they&apos;ll show up here for quick follow-up.
+              </AdaptiveText>
+            </AdaptiveView>
+          )}
         </AdaptiveView>
 
         <AdaptiveView style={styles.tips}>
@@ -196,7 +326,7 @@ export default function HomeScreen() {
                 });
               }}
             >
-              <CustomImage image={user.picture} customStyles={styles.pfp} />
+              <CustomImage image={user.Image} customStyles={styles.pfp} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -213,7 +343,7 @@ export default function HomeScreen() {
                 });
               }}
             >
-              <CustomImage image={user.picture} customStyles={styles.pfp} />
+              <CustomImage image={user.Image} customStyles={styles.pfp} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -230,7 +360,7 @@ export default function HomeScreen() {
                 });
               }}
             >
-              <CustomImage image={user.picture} customStyles={styles.pfp} />
+              <CustomImage image={user.Image} customStyles={styles.pfp} />
             </TouchableOpacity>
           </AdaptiveView>
 
@@ -267,11 +397,11 @@ export default function HomeScreen() {
   );
 }
 
-const createStyles = ({ darkMode, componentWidth }: any) => {
+const createStyles = ({ darkMode, componentWidth, width }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      width: useWindowDimensions().width,
+      width,
       alignItems: "center",
       gap: 12,
       paddingTop: Platform.select({
@@ -307,6 +437,22 @@ const createStyles = ({ darkMode, componentWidth }: any) => {
 
       elevation: 10,
     },
+    reminderBoard: {
+      paddingHorizontal: 20,
+      paddingVertical: 18,
+      borderRadius: 30,
+      width: "90%",
+      alignSelf: "center",
+      gap: 14,
+      shadowColor: colors.black,
+      shadowOffset: {
+        width: darkMode ? 5 : 0,
+        height: 10,
+      },
+      shadowRadius: 10,
+      shadowOpacity: darkMode ? 0.5 : 0.1,
+      elevation: 10,
+    },
     divisionTitleSection: {
       flexDirection: "row",
       alignItems: "center",
@@ -316,6 +462,100 @@ const createStyles = ({ darkMode, componentWidth }: any) => {
       fontFamily: "Poppins-Regular",
       fontSize: 12,
       color: darkMode ? colors.white : colors.green,
+    },
+    reminderHeadline: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 16,
+      lineHeight: 23,
+    },
+    reminderSummaryRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    summaryPill: {
+      flex: 1,
+      borderRadius: 18,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightLightGreen1,
+      alignItems: "center",
+      gap: 2,
+    },
+    summaryPillValue: {
+      fontFamily: "Poppins-Bold",
+      fontSize: 20,
+      color: darkMode ? colors.white : colors.green,
+    },
+    summaryPillLabel: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 11,
+      color: darkMode ? colors.lightGrey : colors.black,
+    },
+    reminderList: {
+      gap: 10,
+    },
+    reminderCard: {
+      flexDirection: "row",
+      alignItems: "stretch",
+      borderRadius: 22,
+      overflow: "hidden",
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    reminderAccent: {
+      width: 8,
+    },
+    reminderBody: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      gap: 2,
+    },
+    reminderTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 10,
+    },
+    reminderType: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 12,
+      color: darkMode ? colors.white : colors.green,
+    },
+    reminderDueState: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 11,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    reminderTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 17,
+    },
+    reminderSubtitle: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      color: darkMode ? colors.lightGrey : colors.mildDarkGrey,
+    },
+    reminderDate: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 12,
+      color: darkMode ? colors.white : colors.black,
+      marginTop: 4,
+    },
+    emptyReminderState: {
+      borderRadius: 22,
+      padding: 18,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      gap: 4,
+    },
+    emptyReminderTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    emptyReminderText: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      lineHeight: 20,
+      color: darkMode ? colors.lightGrey : colors.mildDarkGrey,
     },
     pfp: {
       height: componentWidth,
