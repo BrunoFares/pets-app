@@ -169,7 +169,7 @@ export default function HomeScreen() {
           </AdaptiveText>
         </AdaptiveView>
 
-        <AdaptiveView style={styles.reminderBoard}>
+        <AdaptiveView style={styles.tips}>
           <View style={styles.divisionTitleSection}>
             <MaterialCommunityIcons
               name="clipboard-text-clock-outline"
@@ -383,7 +383,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </AdaptiveView>
 
-        <AdaptiveView style={styles.tips}>
+        <AdaptiveView style={[styles.tips, { gap: 20 }]}>
           <AdaptiveView style={styles.divisionTitleSection}>
             <Entypo
               name="modern-mic"
@@ -394,6 +394,50 @@ export default function HomeScreen() {
               Pet Translator
             </AdaptiveText>
           </AdaptiveView>
+
+          <View style={styles.translatorPreviewRow}>
+            <View style={styles.translatorIconBubble}>
+              <FontAwesome6 name="dog" size={16} color={colors.white} />
+            </View>
+            <View style={styles.translatorWaveGroup}>
+              <View
+                style={[styles.translatorWaveBar, styles.translatorWaveShort]}
+              />
+              <View
+                style={[styles.translatorWaveBar, styles.translatorWaveTall]}
+              />
+              <View
+                style={[styles.translatorWaveBar, styles.translatorWaveMid]}
+              />
+              <View
+                style={[styles.translatorWaveBar, styles.translatorWaveTall]}
+              />
+              <View
+                style={[styles.translatorWaveBar, styles.translatorWaveShort]}
+              />
+            </View>
+            <View style={styles.translatorIconBubble}>
+              <FontAwesome6 name="cat" size={16} color={colors.white} />
+            </View>
+          </View>
+
+          <View style={styles.translatorCopyBlock}>
+            <AdaptiveText style={styles.translatorTitle}>
+              Bark in. Meow out.
+            </AdaptiveText>
+            <AdaptiveText style={styles.translatorSubtitle}>
+              Funny fake translations for your pet&apos;s latest speech.
+            </AdaptiveText>
+          </View>
+
+          <TouchableOpacity
+            style={styles.translatorFooterRow}
+            onPress={() => router.push("/pet-translator-screen")}
+          >
+            <AdaptiveText style={styles.translatorCta}>
+              Open translator
+            </AdaptiveText>
+          </TouchableOpacity>
         </AdaptiveView>
       </ScrollView>
     </SafeAreaView>
@@ -447,22 +491,6 @@ const createStyles = ({ darkMode, componentWidth, width }: any) => {
 
       elevation: 10,
     },
-    reminderBoard: {
-      paddingHorizontal: 20,
-      paddingVertical: 18,
-      borderRadius: 30,
-      width: "90%",
-      alignSelf: "center",
-      gap: 14,
-      shadowColor: colors.black,
-      shadowOffset: {
-        width: darkMode ? 5 : 0,
-        height: 10,
-      },
-      shadowRadius: 10,
-      shadowOpacity: darkMode ? 0.5 : 0.1,
-      elevation: 10,
-    },
     divisionTitleSection: {
       flexDirection: "row",
       alignItems: "center",
@@ -474,7 +502,7 @@ const createStyles = ({ darkMode, componentWidth, width }: any) => {
       color: darkMode ? colors.white : colors.green,
     },
     reminderHeadline: {
-      fontFamily: "Poppins-Medium",
+      fontFamily: "Poppins-Regular",
       fontSize: 16,
       lineHeight: 23,
     },
@@ -572,6 +600,72 @@ const createStyles = ({ darkMode, componentWidth, width }: any) => {
       width: "100%",
       borderRadius: 30,
       backgroundColor: colors.lightGrey,
+    },
+    translatorPreviewRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      marginTop: 2,
+    },
+    translatorIconBubble: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.green,
+    },
+    translatorWaveGroup: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingHorizontal: 8,
+    },
+    translatorWaveBar: {
+      width: 8,
+      borderRadius: 999,
+      backgroundColor: darkMode ? colors.lightGrey : colors.green,
+      opacity: darkMode ? 0.9 : 0.75,
+    },
+    translatorWaveShort: {
+      height: 14,
+    },
+    translatorWaveMid: {
+      height: 24,
+    },
+    translatorWaveTall: {
+      height: 34,
+    },
+    translatorCopyBlock: {
+      gap: 4,
+    },
+    translatorTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 17,
+    },
+    translatorSubtitle: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      lineHeight: 20,
+      color: darkMode ? colors.lightGrey : colors.mildDarkGrey,
+    },
+    translatorFooterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      backgroundColor: colors.green,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+    },
+    translatorCta: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+      color: colors.white,
     },
   });
 };

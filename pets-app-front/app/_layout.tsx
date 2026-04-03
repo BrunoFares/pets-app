@@ -114,6 +114,10 @@ export default function RootLayout() {
         name="individual-charity-screen"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="pet-translator-screen"
+        options={{ headerShown: false }}
+      />
     </Stack>
   );
 }
