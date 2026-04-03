@@ -1,5 +1,4 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -229,25 +228,25 @@ const IllnessesScreen = () => {
                   </View>
                 </View>
 
-                <AdaptiveView style={styles.infoRow}>
-                  <AdaptiveView>
+                <View style={styles.infoRow}>
+                  <View>
                     <AdaptiveText style={styles.datesLabel}>
                       Diagnosis Date
                     </AdaptiveText>
                     <AdaptiveText style={styles.datesList}>
                       {formatDate(item.diagnosisDate)}
                     </AdaptiveText>
-                  </AdaptiveView>
+                  </View>
 
-                  <AdaptiveView style={styles.rightInfoBlock}>
+                  <View style={styles.rightInfoBlock}>
                     <AdaptiveText style={styles.datesLabel}>
                       {isOngoing ? "Status" : "Cured Date"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.datesList}>
                       {isOngoing ? "Still ongoing" : formatDate(item.curedDate)}
                     </AdaptiveText>
-                  </AdaptiveView>
-                </AdaptiveView>
+                  </View>
+                </View>
 
                 <View style={styles.summaryRow}>
                   <AdaptiveText style={styles.summaryText}>

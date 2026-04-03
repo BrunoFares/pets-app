@@ -9,7 +9,6 @@ import {
   useColorScheme,
 } from "react-native";
 import { AdaptiveText } from "./AdaptiveText";
-import { AdaptiveView } from "./AdaptiveView";
 
 const ReviewPost = ({ item }: { item: any }) => {
   const darkMode = useColorScheme() === "dark";
@@ -17,8 +16,8 @@ const ReviewPost = ({ item }: { item: any }) => {
   const { showFooter, setShowFooter } = useGlobal();
 
   return (
-    <AdaptiveView style={styles.post}>
-      <AdaptiveView style={{alignSelf: 'flex-start'}}>
+    <View style={styles.post}>
+      <View style={{ alignSelf: "flex-start" }}>
         <TouchableOpacity>
           {item.photo ? (
             <Image source={item.photo} />
@@ -26,17 +25,17 @@ const ReviewPost = ({ item }: { item: any }) => {
             <View style={styles.placeholder} />
           )}
         </TouchableOpacity>
-      </AdaptiveView>
+      </View>
 
-      <AdaptiveView>
+      <View>
         <TouchableOpacity>
           <AdaptiveText style={styles.postTitle}>{item.user}</AdaptiveText>
         </TouchableOpacity>
 
         <AdaptiveText style={styles.postContent}>{item.body}</AdaptiveText>
-      </AdaptiveView>
+      </View>
 
-      <AdaptiveView style={styles.additionalRow}>
+      <View style={styles.additionalRow}>
         <TouchableOpacity>
           <EvilIcons
             name="comment"
@@ -52,8 +51,8 @@ const ReviewPost = ({ item }: { item: any }) => {
             color={darkMode ? colors.white : colors.black}
           />
         </TouchableOpacity>
-      </AdaptiveView>
-    </AdaptiveView>
+      </View>
+    </View>
   );
 };
 
@@ -69,11 +68,11 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 12,
       paddingVertical: 15,
       flexDirection: "row",
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      justifyContent: "space-between",
+      alignItems: "center",
       borderBottomColor: darkMode ? colors.darkGrey : colors.lightGrey,
       borderBottomWidth: 1,
-        backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
     postTitle: {
       fontFamily: "Poppins-SemiBold",
@@ -82,12 +81,12 @@ const createStyles = ({ darkMode }: any) => {
     postContent: {
       fontFamily: "Poppins-Light",
       fontSize: 18,
-      width: 274
+      width: 274,
     },
     additionalRow: {
       justifyContent: "space-between",
       alignItems: "center",
-      gap: 10
+      gap: 10,
     },
   });
 };
