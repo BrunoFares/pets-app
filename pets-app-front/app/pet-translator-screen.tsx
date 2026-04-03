@@ -109,7 +109,7 @@ export default function PetTranslatorScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <AdaptiveView style={styles.heroCard}>
+        <AdaptiveView style={styles.grid}>
           <AdaptiveText style={styles.sectionEyebrow}>
             Pet Translator
           </AdaptiveText>
@@ -228,7 +228,7 @@ export default function PetTranslatorScreen() {
           </View>
         </AdaptiveView>
 
-        <AdaptiveView style={styles.translationCard}>
+        <AdaptiveView style={styles.grid}>
           <AdaptiveText style={styles.sectionEyebrow}>
             Translation Result
           </AdaptiveText>
@@ -285,10 +285,9 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) => {
       paddingBottom: 34,
       gap: 16,
     },
-    heroCard: {
+    grid: {
       padding: 22,
       borderRadius: 30,
-      backgroundColor: darkMode ? colors.darkGrey : colors.white,
       gap: 14,
 
       // shadow
@@ -340,7 +339,6 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) => {
     recorderCard: {
       padding: 22,
       borderRadius: 30,
-      backgroundColor: darkMode ? colors.darkGrey : colors.white,
       alignItems: "center",
       gap: 14,
 
@@ -455,23 +453,6 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) => {
     secondaryButtonText: {
       fontFamily: "Poppins-Medium",
       color: darkMode ? colors.white : colors.green,
-    },
-    translationCard: {
-      padding: 22,
-      borderRadius: 30,
-      backgroundColor: darkMode ? colors.darkGrey : colors.white,
-      gap: 14,
-
-      // shadow
-      shadowColor: colors.black,
-      shadowOffset: {
-        width: darkMode ? 5 : 0,
-        height: 10,
-      },
-      shadowRadius: 10,
-      shadowOpacity: darkMode ? 0.5 : 0.1,
-
-      elevation: 10,
     },
     translationHeader: {
       flexDirection: "row",

@@ -1,5 +1,4 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -14,6 +13,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -91,30 +91,30 @@ const VaccinesScreen = () => {
                 {item.vaccineName}
               </AdaptiveText>
 
-              <AdaptiveView
+              <View
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
                 }}
               >
-                <AdaptiveView>
+                <View>
                   <AdaptiveText style={styles.datesList}>
                     Date Administered
                   </AdaptiveText>
                   <AdaptiveText style={styles.datesList}>
                     {item.dateAdministered?.toDateString()}
                   </AdaptiveText>
-                </AdaptiveView>
+                </View>
 
-                <AdaptiveView>
+                <View>
                   <AdaptiveText style={styles.datesList}>
                     Next Due Date
                   </AdaptiveText>
                   <AdaptiveText style={styles.datesList}>
                     {item.nextDueDate?.toDateString()}
                   </AdaptiveText>
-                </AdaptiveView>
-              </AdaptiveView>
+                </View>
+              </View>
             </TouchableOpacity>
           </>
         )}

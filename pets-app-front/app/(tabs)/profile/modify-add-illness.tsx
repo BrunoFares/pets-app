@@ -170,7 +170,14 @@ const ModifyAddIllness = () => {
 
         <AdaptiveText style={styles.label}>Status</AdaptiveText>
         <TouchableOpacity
-          style={styles.picker}
+          style={[
+            styles.picker,
+            {
+              backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+              borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
+              borderWidth: 1,
+            },
+          ]}
           onPress={() => {
             setStatusModal(true);
           }}
@@ -393,9 +400,8 @@ const createStyles = ({ darkMode }: any) => {
       marginTop: 4,
     },
     picker: {
-      borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
-      borderWidth: 1,
       borderRadius: 16,
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.white,
       width: "85%",
       marginBottom: 12,
       flexDirection: "row",
@@ -429,8 +435,7 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 12,
-      borderWidth: 1,
-      borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.white,
     },
     addMedicationText: {
       fontFamily: "Poppins-Medium",
