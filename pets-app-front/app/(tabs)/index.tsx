@@ -129,7 +129,10 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
           <AdaptiveText
             style={{
@@ -401,13 +404,20 @@ const createStyles = ({ darkMode, componentWidth, width }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    },
+    scrollView: {
+      flex: 1,
       width,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    },
+    scrollContent: {
       alignItems: "center",
       gap: 12,
       paddingTop: Platform.select({
         android: 10,
       }),
-      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+      paddingBottom: 180,
     },
     header: {
       alignItems: "center",
