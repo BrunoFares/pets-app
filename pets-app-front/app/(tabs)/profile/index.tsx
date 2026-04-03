@@ -61,7 +61,13 @@ export default function Profile() {
             <View>
               <Animated.View style={styles.head}>
                 <CustomImage image={profileInfo.Image} />
-                <AdaptiveView>
+                <View
+                  style={{
+                    backgroundColor: darkMode
+                      ? colors.veryDarkGrey
+                      : colors.white,
+                  }}
+                >
                   <AdaptiveText style={styles.title}>Bruno</AdaptiveText>
                   <TouchableOpacity
                     style={styles.editProfile}
@@ -73,7 +79,7 @@ export default function Profile() {
                       Edit Profile
                     </AdaptiveText>
                   </TouchableOpacity>
-                </AdaptiveView>
+                </View>
               </Animated.View>
 
               <AdaptiveText
@@ -131,12 +137,13 @@ export default function Profile() {
             );
           }}
           ListFooterComponent={
-            <AdaptiveView
+            <View
               style={{
                 width: "95%",
                 flexDirection: "row",
                 alignSelf: "center",
                 gap: 14,
+                backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
               }}
             >
               <TouchableOpacity
@@ -176,7 +183,7 @@ export default function Profile() {
                   Log Out
                 </AdaptiveText>
               </TouchableOpacity>
-            </AdaptiveView>
+            </View>
           }
         />
         <LogOutModal

@@ -147,7 +147,16 @@ const ModifyAddVaccine = () => {
         </AdaptiveText>
         {Platform.OS === "android" && (
           <TouchableOpacity
-            style={[styles.picker, { width: "auto" }]}
+            style={[
+              styles.picker,
+              {
+                width: "auto",
+                backgroundColor: darkMode
+                  ? colors.averageDarkGrey
+                  : colors.white,
+                borderWidth: 0,
+              },
+            ]}
             onPress={() => setShowAdministeredDatePicker(true)}
           >
             <AdaptiveText style={styles.textPicker}>
@@ -182,7 +191,16 @@ const ModifyAddVaccine = () => {
 
             {Platform.OS === "android" && (
               <TouchableOpacity
-                style={[styles.picker, { width: "auto" }]}
+                style={[
+                  styles.picker,
+                  {
+                    backgroundColor: darkMode
+                      ? colors.averageDarkGrey
+                      : colors.white,
+                    width: "auto",
+                    borderWidth: 0,
+                  },
+                ]}
                 onPress={() => setShowNextDueDatePicker(true)}
               >
                 <AdaptiveText style={styles.textPicker}>

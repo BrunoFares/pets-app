@@ -67,7 +67,7 @@ const Pet = () => {
           keyExtractor={(item) => String(item.Id)}
           ListHeaderComponent={
             <>
-              <AdaptiveView style={styles.header}>
+              <View style={styles.header}>
                 <CustomImage />
                 <AdaptiveText style={styles.title}>{pet.Name}</AdaptiveText>
                 <TouchableOpacity
@@ -76,11 +76,11 @@ const Pet = () => {
                 >
                   <AdaptiveText style={styles.editBtnTxt}>Edit</AdaptiveText>
                 </TouchableOpacity>
-              </AdaptiveView>
+              </View>
 
-              <AdaptiveView style={styles.table}>
-                <AdaptiveView style={styles.centralRow}>
-                  <AdaptiveView
+              <View style={styles.table}>
+                <View style={styles.centralRow}>
+                  <View
                     style={[
                       styles.tableUnit,
                       {
@@ -95,9 +95,9 @@ const Pet = () => {
                     <AdaptiveText style={styles.tableUnitInfo}>
                       years old
                     </AdaptiveText>
-                  </AdaptiveView>
+                  </View>
 
-                  <AdaptiveView
+                  <View
                     style={[
                       styles.tableUnit,
                       {
@@ -115,10 +115,10 @@ const Pet = () => {
                     <AdaptiveText style={styles.tableUnitInfo}>
                       sex
                     </AdaptiveText>
-                  </AdaptiveView>
-                </AdaptiveView>
-                <AdaptiveView style={styles.centralRow}>
-                  <AdaptiveView
+                  </View>
+                </View>
+                <View style={styles.centralRow}>
+                  <View
                     style={[
                       styles.tableUnit,
                       {
@@ -133,9 +133,9 @@ const Pet = () => {
                     <AdaptiveText style={styles.tableUnitInfo}>
                       breed
                     </AdaptiveText>
-                  </AdaptiveView>
+                  </View>
 
-                  <AdaptiveView
+                  <View
                     style={[
                       styles.tableUnit,
                       {
@@ -150,11 +150,11 @@ const Pet = () => {
                     <AdaptiveText style={styles.tableUnitInfo}>
                       weight
                     </AdaptiveText>
-                  </AdaptiveView>
-                </AdaptiveView>
+                  </View>
+                </View>
 
-                <AdaptiveView style={styles.centralRow}>
-                  <AdaptiveView
+                <View style={styles.centralRow}>
+                  <View
                     style={[
                       styles.tableUnit,
                       {
@@ -169,9 +169,9 @@ const Pet = () => {
                     <AdaptiveText style={styles.tableUnitInfo}>
                       Kalinka is {!pet.Neutered && "Not"}neutered.
                     </AdaptiveText>
-                  </AdaptiveView>
+                  </View>
 
-                  <AdaptiveView
+                  <View
                     style={[
                       styles.tableUnit,
                       {
@@ -186,9 +186,9 @@ const Pet = () => {
                     <AdaptiveText style={styles.tableUnitInfo}>
                       colour
                     </AdaptiveText>
-                  </AdaptiveView>
-                </AdaptiveView>
-              </AdaptiveView>
+                  </View>
+                </View>
+              </View>
 
               <View
                 style={{
@@ -237,13 +237,16 @@ const Pet = () => {
               <AdaptiveText style={[styles.consTitle, { marginTop: 20 }]}>
                 Medical Information
               </AdaptiveText>
-              <AdaptiveView
+              <View
                 style={{
                   width: "90%",
                   flexDirection: "row",
                   alignSelf: "center",
                   gap: 14,
                   marginBottom: 20,
+                  backgroundColor: darkMode
+                    ? colors.veryDarkGrey
+                    : colors.white,
                 }}
               >
                 <TouchableOpacity
@@ -280,7 +283,7 @@ const Pet = () => {
                     Vaccination Record
                   </AdaptiveText>
                 </TouchableOpacity>
-              </AdaptiveView>
+              </View>
             </>
           }
         />
@@ -312,6 +315,7 @@ const createStyles = ({ darkMode }: any) => {
       alignItems: "center",
       gap: 10,
       marginBottom: 30,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
     title: {
       fontSize: 26,
@@ -321,6 +325,7 @@ const createStyles = ({ darkMode }: any) => {
       flexDirection: "row",
       justifyContent: "center",
       height: 140,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
     table: {
       height: 450,

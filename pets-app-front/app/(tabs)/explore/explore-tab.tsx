@@ -1,4 +1,3 @@
-import { AdaptiveView } from "@/components/AdaptiveView";
 import FilterByModal from "@/components/FilterByModal";
 import ShopItem from "@/components/ShopItem";
 import SortByModal from "@/components/SortByModal";
@@ -7,15 +6,15 @@ import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    FlatList,
-    Keyboard,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useColorScheme,
-    View,
+  FlatList,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+  View,
 } from "react-native";
 
 const ExploreTab = ({ items, title }: any) => {
@@ -53,8 +52,13 @@ const ExploreTab = ({ items, title }: any) => {
   };
 
   return (
-    <AdaptiveView
-      style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+    <View
+      style={{
+        backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
       <View style={styles.utilityBar}>
         <TouchableOpacity onPress={() => setFilterByModal(!filterByModal)}>
@@ -147,7 +151,7 @@ const ExploreTab = ({ items, title }: any) => {
         onClose={() => setSortByModal(false)}
         onDone={(value) => sortItems(value)}
       />
-    </AdaptiveView>
+    </View>
   );
 };
 
