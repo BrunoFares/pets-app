@@ -1,5 +1,4 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import ReviewPost from "@/components/ReviewPost";
 import { colors } from "@/constants/colors";
@@ -92,7 +91,9 @@ export default function ShopDetails() {
             {shop.image ? (
               <Image source={{ uri: shop.image }} style={{ height: 400 }} />
             ) : (
-              <View style={{ height: 400, backgroundColor: colors.lightGrey }} />
+              <View
+                style={{ height: 400, backgroundColor: colors.lightGrey }}
+              />
             )}
             <AdaptiveText
               style={{
@@ -124,16 +125,20 @@ export default function ShopDetails() {
               ★ {shop.rating}
             </AdaptiveText>
             {shop.description ? (
-              <AdaptiveText style={{ marginTop: 12, fontFamily: "Poppins-Regular" }}>
+              <AdaptiveText
+                style={{ marginTop: 12, fontFamily: "Poppins-Regular" }}
+              >
                 {shop.description}
               </AdaptiveText>
             ) : null}
 
-            <AdaptiveView style={styles.textInputContainer}>
+            <View style={styles.textInputContainer}>
               <TextInput
                 style={styles.textInput}
                 placeholder="Reply to user1..."
-                placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+                placeholderTextColor={
+                  darkMode ? colors.lightGrey : colors.darkGrey
+                }
                 onFocus={() => setShowFooter?.(false)}
                 onBlur={() => setShowFooter?.(true)}
                 multiline
@@ -143,7 +148,7 @@ export default function ShopDetails() {
                 size={24}
                 color={darkMode ? colors.white : colors.black}
               />
-            </AdaptiveView>
+            </View>
           </>
         }
         renderItem={({ item }) => {
