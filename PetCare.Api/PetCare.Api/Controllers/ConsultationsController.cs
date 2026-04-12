@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
-using System.Security.Claims;
+using PetCare.Api.Security;
 
 namespace PetCare.Api.Controllers;
 
@@ -13,134 +13,143 @@ namespace PetCare.Api.Controllers;
 [Authorize]
 public class ConsultationsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly AppDbContext _db;
 
-    public ConsultationsController(AppDbContext context)
+    public ConsultationsController(AppDbContext db)
     {
-        _context = context;
+        _db = db;
     }
 
-    private long Me() =>
-        long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
-
-    private Task<bool> PetBelongsToUser(Guid petId, long userId)
+    [HttpGet]
+    public async Task<IActionResult> GetAllForCurrentUserPets()
     {
-        return _context.Pets.AnyAsync(p => p.Id == petId && p.UserId == userId);
+        var me = User.GetUserId();
+        var consultations = await _db.Consultations
+            .Where(c => c.UserId == me)
+            .OrderByDescending(c => c.Date)
+            .Select(c => new ConsultationResponse(
+                c.Id,
+                c.PetId,
+                c.VetPlaceId,
+                c.VetPlace != null ? c.VetPlace.Name : null,
+                c.Date,
+                c.Details,
+                c.CreatedAt,
+                c.UpdatedAt
+            ))
+            .ToListAsync();
+
+        return Ok(consultations);
     }
 
-    // Create a new consultation
+    [HttpGet("{id:long}")]
+    public async Task<IActionResult> GetById(long id)
+    {
+        var me = User.GetUserId();
+        var consultation = await _db.Consultations
+            .Where(c => c.Id == id && c.UserId == me)
+            .Select(c => new ConsultationResponse(
+                c.Id,
+                c.PetId,
+                c.VetPlaceId,
+                c.VetPlace != null ? c.VetPlace.Name : null,
+                c.Date,
+                c.Details,
+                c.CreatedAt,
+                c.UpdatedAt
+            ))
+            .FirstOrDefaultAsync();
+
+        return consultation is null ? NotFound() : Ok(consultation);
+    }
+
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateConsultationRequest req)
+    public async Task<IActionResult> Create([FromBody] CreateConsultationRequest request)
     {
-        if (!await PetBelongsToUser(req.PetId, Me()))
-            return Forbid();
+        var me = User.GetUserId();
+        var petBelongsToUser = await _db.Pets.AnyAsync(p => p.Id == request.PetId && p.UserId == me);
+        if (!petBelongsToUser) return Forbid();
+
+        if (request.VetPlaceId is Guid vetId)
+        {
+            var vetExists = await _db.PetPlaces.AnyAsync(p => p.Id == vetId && p.Type == PlaceType.Vet);
+            if (!vetExists) return BadRequest(new { message = "Vet place not found." });
+        }
 
         var consultation = new ConsultationModel
         {
-            UserId = Me(),
-            PetId = req.PetId,
-            VetId = req.VetId.Trim(),
-            Date = req.Date,
-            Details = req.Details.Trim(),
+            UserId = me,
+            PetId = request.PetId,
+            VetPlaceId = request.VetPlaceId,
+            Date = request.Date,
+            Details = request.Details.Trim(),
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        _context.Consultations.Add(consultation);
-        await _context.SaveChangesAsync();
+        _db.Consultations.Add(consultation);
+        await _db.SaveChangesAsync();
 
-        return Ok(new
-        {
-            Id = consultation.Id.ToString(),
-            PetId = consultation.PetId.ToString(),
-            VetId = consultation.VetId,
-            Date = consultation.Date,
-            Details = consultation.Details
-        });
+        return CreatedAtAction(nameof(GetById), new { id = consultation.Id }, new { consultation.Id });
     }
 
-    // Get all consultations for a user
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var consultations = await _context.Consultations
-            .Where(c => c.UserId == Me())
-            .OrderByDescending(c => c.Date)
-            .Select(c => new
-            {
-                Id = c.Id.ToString(),
-                PetId = c.PetId.ToString(),
-                VetId = c.VetId,
-                Date = c.Date,
-                Details = c.Details
-            })
-            .ToListAsync();
-
-        return Ok(consultations);
-    }
-
-    // Get all consultations for a specific pet
-    [HttpGet("pet/{petId:guid}")]
-    public async Task<IActionResult> GetByPet(Guid petId)
-    {
-        if (!await PetBelongsToUser(petId, Me()))
-            return Forbid();
-
-        var consultations = await _context.Consultations
-            .Where(c => c.PetId == petId)
-            .OrderByDescending(c => c.Date)
-            .Select(c => new
-            {
-                Id = c.Id.ToString(),
-                PetId = c.PetId.ToString(),
-                VetId = c.VetId,
-                Date = c.Date,
-                Details = c.Details
-            })
-            .ToListAsync();
-
-        return Ok(consultations);
-    }
-
-    // Edit a consultation
     [HttpPut("{id:long}")]
-    public async Task<IActionResult> Update(long id, [FromBody] UpdateConsultationRequest req)
+    public async Task<IActionResult> Update(long id, [FromBody] UpdateConsultationRequest request)
     {
-        var consultation = await _context.Consultations.FirstOrDefaultAsync(c => c.Id == id);
+        var me = User.GetUserId();
+        var consultation = await _db.Consultations.FirstOrDefaultAsync(c => c.Id == id && c.UserId == me);
         if (consultation == null) return NotFound();
 
-        if (consultation.UserId != Me())
-            return Forbid();
+        if (request.VetPlaceId is Guid vetId)
+        {
+            var vetExists = await _db.PetPlaces.AnyAsync(p => p.Id == vetId && p.Type == PlaceType.Vet);
+            if (!vetExists) return BadRequest(new { message = "Vet place not found." });
+        }
 
-        consultation.VetId = req.VetId.Trim();
-        consultation.Date = req.Date;
-        consultation.Details = req.Details.Trim();
+        consultation.VetPlaceId = request.VetPlaceId;
+        consultation.Date = request.Date;
+        consultation.Details = request.Details.Trim();
         consultation.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _context.SaveChangesAsync();
-
-        return Ok(new
-        {
-            Id = consultation.Id.ToString(),
-            PetId = consultation.PetId.ToString(),
-            VetId = consultation.VetId,
-            Date = consultation.Date,
-            Details = consultation.Details
-        });
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Consultation updated." });
     }
 
-    // Delete a consultation
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(long id)
     {
-        var consultation = await _context.Consultations.FirstOrDefaultAsync(c => c.Id == id);
+        var me = User.GetUserId();
+        var consultation = await _db.Consultations.FirstOrDefaultAsync(c => c.Id == id && c.UserId == me);
         if (consultation == null) return NotFound();
 
-        if (consultation.UserId != Me())
-            return Forbid();
+        _db.Consultations.Remove(consultation);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 
-        _context.Consultations.Remove(consultation);
-        await _context.SaveChangesAsync();
+    [HttpGet("upcoming")]
+    public async Task<IActionResult> Upcoming([FromQuery] int days = 14)
+    {
+        var me = User.GetUserId();
+        if (days < 1 || days > 365) return BadRequest(new { message = "days must be between 1 and 365." });
 
-        return Ok(new { message = "Consultation deleted" });
+        var now = DateTimeOffset.UtcNow;
+        var until = now.AddDays(days);
+
+        var consultations = await _db.Consultations
+            .Where(c => c.UserId == me && c.Date >= now && c.Date <= until)
+            .OrderBy(c => c.Date)
+            .Select(c => new ConsultationResponse(
+                c.Id,
+                c.PetId,
+                c.VetPlaceId,
+                c.VetPlace != null ? c.VetPlace.Name : null,
+                c.Date,
+                c.Details,
+                c.CreatedAt,
+                c.UpdatedAt
+            ))
+            .ToListAsync();
+
+        return Ok(consultations);
     }
 }

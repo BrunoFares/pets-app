@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "upoNm2En6R4=",
+  "dgSpecHash": "+yZhlGRxAgI=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Admin\\Desktop\\SENIOR\\PetCare.Api\\PetCare.Api\\PetCare.Api.csproj",
+  "projectFilePath": "C:\\Users\\Admin\\Desktop\\SENIOR\\pets-app\\PetCare.Api\\PetCare.Api\\PetCare.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Admin\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\8.0.20\\microsoft.aspnetcore.authentication.jwtbearer.8.0.20.nupkg.sha512",

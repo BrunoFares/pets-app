@@ -1,13 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PetCare.Api.DTOs;
 using PetCare.Api.Data;
-using PetCare.Api.Model;
-using System.Security.Claims;
+using PetCare.Api.DTOs;
+using PetCare.Api.Security;
+
+namespace PetCare.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,43 +21,49 @@ public class UsersController : ControllerBase
         _env = env;
     }
 
-    private long Me() =>
-    long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
-
-    [Authorize]
-    [HttpPut("edit-profile")]
-    public async Task<IActionResult> EditProfile(UpdateProfileRequest request)
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
     {
-        var user = await _context.Users.FindAsync(Me());
+        var user = await _context.Users.FindAsync(User.GetUserId());
+        if (user is null) return NotFound();
 
-        if (user == null)
-            return NotFound();
+        return Ok(new UserProfileResponse(
+            user.Id,
+            user.Username,
+            user.Name,
+            user.FirstName,
+            user.LastName,
+            user.Email,
+            user.PhoneNumber,
+            user.AvatarUrl,
+            user.Description,
+            user.CreatedAt,
+            user.LastLogin
+        ));
+    }
 
-        if (user == null)
-            return NotFound();
+    [HttpPut("edit-profile")]
+    public async Task<IActionResult> EditProfile([FromBody] UpdateProfileRequest request)
+    {
+        var user = await _context.Users.FindAsync(User.GetUserId());
+        if (user == null) return NotFound();
 
-        if (!string.IsNullOrWhiteSpace(request.FirstName))
-            user.FirstName = request.FirstName.Trim();
-
-        if (!string.IsNullOrWhiteSpace(request.LastName))
-            user.LastName = request.LastName.Trim();
-
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-            user.PhoneNumber = request.PhoneNumber.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Name)) user.Name = request.Name.Trim();
+        if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName.Trim();
+        if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName.Trim();
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber)) user.PhoneNumber = request.PhoneNumber.Trim();
+        if (request.Description is not null) user.Description = request.Description.Trim();
 
         await _context.SaveChangesAsync();
-
         return Ok(new { message = "Profile updated successfully" });
     }
 
-    [Authorize]
     [HttpPost("avatar")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(5_000_000)]
     public async Task<IActionResult> UploadAvatar([FromForm] UploadAvatarRequest request)
     {
         var file = request.File;
-
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "No file uploaded." });
 
@@ -63,7 +71,7 @@ public class UsersController : ControllerBase
         if (!allowed.Contains(file.ContentType))
             return BadRequest(new { message = "Only JPG, PNG, WEBP are allowed." });
 
-        var user = await _context.Users.FindAsync(Me());
+        var user = await _context.Users.FindAsync(User.GetUserId());
         if (user == null) return NotFound();
 
         var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
@@ -82,10 +90,58 @@ public class UsersController : ControllerBase
         user.AvatarUrl = $"/uploads/users/{fileName}";
         await _context.SaveChangesAsync();
 
-        return Ok(new
+        return Ok(new { message = "Avatar updated", avatarUrl = user.AvatarUrl });
+    }
+
+    [HttpGet("bookmarks")]
+    public async Task<IActionResult> GetMyBookmarkedPosts()
+    {
+        var me = User.GetUserId();
+        var posts = await _context.ForumPostBookmarks
+            .Where(b => b.UserId == me)
+            .OrderByDescending(b => b.CreatedAt)
+            .Select(b => new
+            {
+                b.ForumPost.Id,
+                b.ForumPost.Content,
+                b.ForumPost.CreatedAt,
+                UserName = b.ForumPost.User.Name ?? b.ForumPost.User.Username
+            })
+            .ToListAsync();
+
+        return Ok(posts);
+    }
+
+    [HttpPost("bookmarks")]
+    public async Task<IActionResult> BookmarkPost([FromBody] BookmarkPostRequest request)
+    {
+        var me = User.GetUserId();
+        var exists = await _context.ForumPosts.AnyAsync(p => p.Id == request.ForumPostId);
+        if (!exists) return NotFound(new { message = "Post not found." });
+
+        var already = await _context.ForumPostBookmarks.AnyAsync(b => b.UserId == me && b.ForumPostId == request.ForumPostId);
+        if (already) return Ok(new { message = "Post already bookmarked." });
+
+        _context.ForumPostBookmarks.Add(new Model.ForumPostBookmarkModel
         {
-            message = "Avatar updated",
-            avatarUrl = user.AvatarUrl
+            UserId = me,
+            ForumPostId = request.ForumPostId,
+            CreatedAt = DateTimeOffset.UtcNow
         });
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Post bookmarked." });
+    }
+
+    [HttpDelete("bookmarks/{postId:guid}")]
+    public async Task<IActionResult> RemoveBookmark(Guid postId)
+    {
+        var me = User.GetUserId();
+        var bookmark = await _context.ForumPostBookmarks.FirstOrDefaultAsync(b => b.UserId == me && b.ForumPostId == postId);
+        if (bookmark is null) return NotFound(new { message = "Bookmark not found." });
+
+        _context.ForumPostBookmarks.Remove(bookmark);
+        await _context.SaveChangesAsync();
+        return NoContent();
     }
 }
