@@ -1,0 +1,45 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Admin\\Desktop\\SENIOR\\pets-app\\PetCare.Api\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|c:\\users\\admin\\desktop\\senior\\pets-app\\petcare.api\\petcare.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{DC3EB08E-5E81-460E-B4ED-F48ED7F320DE}|PetCare.Api\\PetCare.Api.csproj|solutionrelative:petcare.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\Admin\\Desktop\\SENIOR\\pets-app\\PetCare.Api\\PetCare.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "PetCare.Api\\appsettings.json",
+              "ToolTip": "C:\\Users\\Admin\\Desktop\\SENIOR\\pets-app\\PetCare.Api\\PetCare.Api\\appsettings.json",
+              "RelativeToolTip": "PetCare.Api\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAByAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-04-05T20:06:43.326Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
