@@ -17,7 +17,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const RegisterScreen = () => {
   const darkMode = useColorScheme() === "dark";
-  const styles = createStyles({ darkMode });
+  const { width } = useWindowDimensions();
+  const styles = createStyles({ darkMode, width });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -28,7 +29,7 @@ const RegisterScreen = () => {
       >
         <AdaptiveView style={styles.container}>
           <ScrollView
-            contentContainerStyle={{ width: useWindowDimensions().width, alignItems: "center" }}
+            contentContainerStyle={{ width, alignItems: "center" }}
           >
             <AdaptiveText
               style={{
@@ -57,13 +58,13 @@ const RegisterScreen = () => {
 
 export default RegisterScreen;
 
-const createStyles = ({ darkMode }: any) => {
+const createStyles = ({ darkMode, width }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
       alignItems: "center",
-      width: useWindowDimensions().width,
+      width,
       justifyContent: "center",
     },
     btn: {

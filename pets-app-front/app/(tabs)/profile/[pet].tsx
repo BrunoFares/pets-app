@@ -107,7 +107,7 @@ const Pet = () => {
                     ]}
                   >
                     <Ionicons
-                      name={pet.Sex.toLowerCase()}
+                      name={pet.Sex === "Male" ? "male" : "female"}
                       size={48}
                       color={darkMode ? colors.white : colors.black}
                       style={{ paddingVertical: 24 }}
