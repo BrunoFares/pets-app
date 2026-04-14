@@ -1,0 +1,12 @@
+.DS_Store
+
+# Backend IDE/build output
+PetCare.Api/.vs/
+PetCare.Api/PetCare.Api/bin/
+PetCare.Api/PetCare.Api/obj/
+PetCare.Api/PetCare.Api/wwwroot/uploads/
+
+# Frontend local tooling output
+pets-app-front/node_modules/
+pets-app-front/.expo/
+pets-app-front/.idea/
