@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Build a mapped Npgsql data source so C# enum <-> PG enum works
 var cs = builder.Configuration.GetConnectionString("Postgres");
 var dsb = new NpgsqlDataSourceBuilder(cs);
-dsb.MapEnum<PetSex>("pet_sex");      // 👈 map the enum name exactly as in DB
+dsb.MapEnum<PetSex>(pgName: "pet_sex"); // map enum type name in PostgreSQL
 var dataSource = dsb.Build();
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
