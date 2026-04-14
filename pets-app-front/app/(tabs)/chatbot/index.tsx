@@ -56,7 +56,7 @@ export default function ChatbotScreen() {
         <Animated.View style={{ transform: [{ translateY }] }}>
           <AdaptiveText style={styles.title}>Dr. Pet</AdaptiveText>
           <AdaptiveText style={styles.subtitle}>
-            Your personal assistant's {"\n"} personal assistant.
+            Your personal assistant&apos;s {"\n"} personal assistant.
           </AdaptiveText>
         </Animated.View>
 

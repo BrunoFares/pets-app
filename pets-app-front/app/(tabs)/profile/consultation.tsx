@@ -58,7 +58,7 @@ const Consultation = () => {
         <PageHeader title="" />
         <ScrollView contentContainerStyle={styles.container}>
           <AdaptiveText style={styles.title}>
-            {pet?.Name}'s Consultation
+            {`${pet?.Name ?? ""}'s Consultation`}
           </AdaptiveText>
 
           <AdaptiveText

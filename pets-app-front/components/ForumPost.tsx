@@ -19,9 +19,13 @@ import CustomImage from "./CustomImage";
 const ForumPost = ({
   item,
   size,
+  onClickPost,
+  onClickProfile,
 }: {
   item: ForumPostsModel;
   size?: "big" | "small";
+  onClickPost?: () => void;
+  onClickProfile?: () => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
@@ -31,6 +35,13 @@ const ForumPost = ({
   const { showFooter, setShowFooter } = useGlobal();
   const [user, setUser] = useState<AppUsersModel>();
   const [otherPost, setOtherPost] = useState<ForumPostsModel>();
+  const replyTarget = item.IsAReply
+    ? ForumPosts.find((i) => i.Id === item.ReplyingToPost)
+    : undefined;
+  const handlePostPress =
+    onClickPost ?? (() => goTo(item, "/(tabs)/forum/post/[id]", router));
+  const handleProfilePress =
+    onClickProfile ?? (() => goTo(item, "/(tabs)/forum/profile/[id]", router));
 
   const likePost = () => {
     setLiked(!liked);
@@ -57,13 +68,11 @@ const ForumPost = ({
   if (user && size === "small") {
     return (
       <TouchableOpacity
-        onPress={() => goTo(item, "/(tabs)/forum/post/[id]", router)}
+        onPress={handlePostPress}
         style={styles.post}
       >
         <AdaptiveView style={[styles.inner, { flexDirection: "row" }]}>
-          <TouchableOpacity
-            onPress={() => goTo(item, "/(tabs)/forum/profile/[id]", router)}
-          >
+          <TouchableOpacity onPress={handleProfilePress}>
             {/* {user.Image ? (
               <Image source={user.Image} />
             ) : (
@@ -73,9 +82,7 @@ const ForumPost = ({
           </TouchableOpacity>
 
           <AdaptiveView style={styles.inner}>
-            <TouchableOpacity
-              onPress={() => goTo(item, "/(tabs)/forum/profile/[id]", router)}
-            >
+            <TouchableOpacity onPress={handleProfilePress}>
               <AdaptiveText style={styles.postTitle}>
                 {item.UserName}
               </AdaptiveText>
@@ -147,10 +154,7 @@ const ForumPost = ({
     return (
       <>
         {item.IsAReply && (
-          <ForumPost
-            item={ForumPosts.find((i) => i.Id === item.ReplyingToPost)}
-            size="small"
-          />
+          replyTarget ? <ForumPost item={replyTarget} size="small" /> : null
         )}
         <AdaptiveView style={{ marginHorizontal: 20 }}>
           <TouchableOpacity
@@ -235,7 +239,7 @@ const ForumPost = ({
       </>
     );
   } else {
-    <AdaptiveText>Post unavailable.</AdaptiveText>;
+    return <AdaptiveText>Post unavailable.</AdaptiveText>;
   }
 };
 

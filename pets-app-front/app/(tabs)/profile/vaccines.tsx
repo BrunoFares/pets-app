@@ -63,7 +63,7 @@ const VaccinesScreen = () => {
       <PageHeader title="" />
 
       <AdaptiveText style={styles.title}>
-        Kalinka's Vaccination Record
+        Kalinka&apos;s Vaccination Record
       </AdaptiveText>
 
       <FlatList

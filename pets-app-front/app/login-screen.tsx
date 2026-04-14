@@ -47,7 +47,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <AdaptiveView style={{ flexDirection: "row", marginTop: 20 }}>
-          <AdaptiveText style={{ fontFamily: "Poppins-Regular"}} >Don't have an account? </AdaptiveText>
+          <AdaptiveText style={{ fontFamily: "Poppins-Regular"}} >Don&apos;t have an account? </AdaptiveText>
 
           <TouchableOpacity onPress={() => router.push("/register-screen")}>
             <AdaptiveText style={{ fontFamily: "Poppins-Bold", color: colors.green}}>Sign Up!</AdaptiveText>
