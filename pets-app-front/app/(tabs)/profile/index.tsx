@@ -5,13 +5,14 @@ import LogOutModal from "@/components/LogOutModal";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { AppUsersModel, PetModel } from "@/data/models";
-import { AppUsers, Pets } from "@/data/sample";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { apiRequest, clearAuthSession, resolveApiUrl } from "@/lib/api";
 import { goTo } from "@/utils";
 import { Feather, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Animated,
   FlatList,
   StyleSheet,
@@ -30,25 +31,109 @@ export default function Profile() {
   const styles = createStyles({ darkMode, translateY, containerWidth });
   const [logOutModal, setLogOutModal] = useState(false);
   const [profileInfo, setProfileInfo] = useState<AppUsersModel>();
-  const [pets, setPets] = useState<PetModel[]>();
+  const [pets, setPets] = useState<PetModel[]>([]);
   const { setShowFooter } = useGlobal();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadProfile = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [user, animals] = await Promise.all([
+        apiRequest<{
+          id: number;
+          username: string;
+          name?: string | null;
+          firstName: string;
+          lastName: string;
+          email: string;
+          phoneNumber: string;
+          image?: string | null;
+          description?: string | null;
+          createdAt: string;
+          lastLogin?: string | null;
+        }>("/api/Users/me"),
+        apiRequest<{
+          id: string;
+          userId: number;
+          name: string;
+          speciesId: number;
+          species: string;
+          breedId?: number | null;
+          breed?: string | null;
+          sex: "Male" | "Female";
+          birthDate?: string | null;
+          weightKg?: number | null;
+          color: string;
+          neutered: boolean;
+          avatarUrl?: string | null;
+          notes?: string | null;
+          createdAt: string;
+          updatedAt: string;
+        }[]>("/api/Pets"),
+      ]);
+
+      setProfileInfo({
+        Id: user.id,
+        Name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+        FirstName: user.firstName,
+        LastName: user.lastName,
+        Email: user.email,
+        PhoneNumber: user.phoneNumber,
+        PasswordHash: "",
+        Image: resolveApiUrl(user.image),
+        CreatedAt: user.createdAt,
+        LastLogin: user.lastLogin ?? null,
+        Description: user.description ?? "",
+        BookmarkedPostID: [],
+      });
+
+      setPets(
+        animals.map((pet) => ({
+          Id: pet.id,
+          UserId: pet.userId,
+          Name: pet.name,
+          SpeciesId: pet.speciesId,
+          BreedId: pet.breedId ?? null,
+          Sex: pet.sex,
+          BirthDate: pet.birthDate ?? null,
+          WeightKg: pet.weightKg ?? null,
+          Color: pet.color,
+          Neutered: pet.neutered,
+          AvatarUrl: resolveApiUrl(pet.avatarUrl),
+          Notes: pet.notes ?? "",
+          CreatedAt: pet.createdAt,
+          UpdatedAt: pet.updatedAt,
+          Species: pet.species.toLowerCase(),
+          Breed: pet.breed ?? null,
+          ConsultationsId: [],
+        })),
+      );
+    } catch (error) {
+      setProfileInfo(undefined);
+      setPets([]);
+      Alert.alert(
+        "Could not load profile",
+        error instanceof Error ? error.message : "Unable to load your profile.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const user = AppUsers[0];
-    const animals = Pets.filter((item) => item.UserId === user.Id);
-    setProfileInfo(user);
-    setPets(animals);
-  }, []);
+    loadProfile();
+  }, [loadProfile]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(true);
+      loadProfile();
 
       return () => {
         // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, [loadProfile, setShowFooter]), // The empty dependency array ensures the effect runs only on focus/unfocus.
   );
 
   if (profileInfo) {
@@ -68,7 +153,7 @@ export default function Profile() {
                       : colors.white,
                   }}
                 >
-                  <AdaptiveText style={styles.title}>Bruno</AdaptiveText>
+                  <AdaptiveText style={styles.title}>{profileInfo.Name}</AdaptiveText>
                   <TouchableOpacity
                     style={styles.editProfile}
                     onPress={() => {
@@ -189,7 +274,12 @@ export default function Profile() {
         <LogOutModal
           visible={logOutModal}
           onClose={() => setLogOutModal(false)}
-          onDone={() => {
+          onDone={async () => {
+            try {
+              await apiRequest("/api/Auth/logout", { method: "POST" });
+            } catch {}
+
+            await clearAuthSession();
             router.replace("/login-screen");
           }}
         />
@@ -199,7 +289,9 @@ export default function Profile() {
     return (
       <SafeAreaView style={styles.container}>
         <AdaptiveView>
-          <AdaptiveText>You are not logged in.</AdaptiveText>
+          <AdaptiveText>
+            {isLoading ? "Loading profile..." : "You are not logged in."}
+          </AdaptiveText>
         </AdaptiveView>
       </SafeAreaView>
     );
