@@ -1,7 +1,8 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
 import { colors } from "@/constants/colors";
-import { apiRequest, ApiRequestError, saveAuthSession } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthProvider";
+import { apiRequest, ApiRequestError } from "@/lib/api";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [email, setEmail] = useState("");
@@ -104,7 +106,7 @@ export default function LoginScreen() {
         }),
       });
 
-      await saveAuthSession(response);
+      await signIn(response);
       router.replace("/(tabs)");
     } catch (error) {
       console.error("[login] Login request failed", error);

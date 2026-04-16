@@ -1,9 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppUsersModel, PetModel } from "@/data/models";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const ACCESS_TOKEN_KEY = "access_token";
 const USER_ID_KEY = "user_id";
+const LAST_OPENED_AT_KEY = "auth_last_opened_at";
+const CACHED_PROFILE_KEY = "cached_profile";
+const CACHED_PETS_KEY = "cached_pets";
+const PROFILE_CACHE_UPDATED_AT_KEY = "profile_cache_updated_at";
+
+type UnauthorizedHandler = (() => void | Promise<void>) | null;
 
 type ApiErrorPayload = {
   errors?: string[] | Record<string, string[]>;
@@ -18,6 +25,8 @@ export type AuthSession = {
   accessToken: string;
   userId: number;
 };
+
+let unauthorizedHandler: UnauthorizedHandler = null;
 
 export class ApiRequestError extends Error {
   status: number;
@@ -82,6 +91,10 @@ export const API_BASE_URL =
       getDefaultApiBaseUrl(),
   );
 
+export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
+  unauthorizedHandler = handler;
+}
+
 export async function saveAuthSession(session: AuthSession) {
   await AsyncStorage.multiSet([
     [ACCESS_TOKEN_KEY, session.accessToken],
@@ -90,7 +103,36 @@ export async function saveAuthSession(session: AuthSession) {
 }
 
 export async function clearAuthSession() {
-  await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, USER_ID_KEY]);
+  await AsyncStorage.multiRemove([
+    ACCESS_TOKEN_KEY,
+    USER_ID_KEY,
+    LAST_OPENED_AT_KEY,
+    CACHED_PROFILE_KEY,
+    CACHED_PETS_KEY,
+    PROFILE_CACHE_UPDATED_AT_KEY,
+  ]);
+}
+
+export async function getAuthSession() {
+  const [[, accessToken], [, userIdValue]] = await AsyncStorage.multiGet([
+    ACCESS_TOKEN_KEY,
+    USER_ID_KEY,
+  ]);
+
+  if (!accessToken || !userIdValue) {
+    return null;
+  }
+
+  const userId = Number(userIdValue);
+
+  if (!Number.isFinite(userId)) {
+    return null;
+  }
+
+  return {
+    accessToken,
+    userId,
+  };
 }
 
 export async function getAccessToken() {
@@ -100,6 +142,72 @@ export async function getAccessToken() {
 export async function getStoredUserId() {
   const value = await AsyncStorage.getItem(USER_ID_KEY);
   return value ? Number(value) : null;
+}
+
+export async function saveLastOpenedAt(timestamp: number) {
+  await AsyncStorage.setItem(LAST_OPENED_AT_KEY, String(timestamp));
+}
+
+export async function getLastOpenedAt() {
+  const value = await AsyncStorage.getItem(LAST_OPENED_AT_KEY);
+  if (!value) return null;
+
+  const timestamp = Number(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+export async function saveCachedProfile(profile: AppUsersModel | null) {
+  if (!profile) {
+    await AsyncStorage.removeItem(CACHED_PROFILE_KEY);
+    return;
+  }
+
+  await AsyncStorage.setItem(CACHED_PROFILE_KEY, JSON.stringify(profile));
+}
+
+export async function getCachedProfile() {
+  const value = await AsyncStorage.getItem(CACHED_PROFILE_KEY);
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as AppUsersModel;
+  } catch {
+    await AsyncStorage.removeItem(CACHED_PROFILE_KEY);
+    return null;
+  }
+}
+
+export async function saveCachedPets(pets: PetModel[]) {
+  await AsyncStorage.setItem(CACHED_PETS_KEY, JSON.stringify(pets));
+}
+
+export async function getCachedPets() {
+  const value = await AsyncStorage.getItem(CACHED_PETS_KEY);
+  if (!value) return [];
+
+  try {
+    return JSON.parse(value) as PetModel[];
+  } catch {
+    await AsyncStorage.removeItem(CACHED_PETS_KEY);
+    return [];
+  }
+}
+
+export async function saveProfileCacheUpdatedAt(timestamp: number | null) {
+  if (timestamp === null) {
+    await AsyncStorage.removeItem(PROFILE_CACHE_UPDATED_AT_KEY);
+    return;
+  }
+
+  await AsyncStorage.setItem(PROFILE_CACHE_UPDATED_AT_KEY, String(timestamp));
+}
+
+export async function getProfileCacheUpdatedAt() {
+  const value = await AsyncStorage.getItem(PROFILE_CACHE_UPDATED_AT_KEY);
+  if (!value) return null;
+
+  const timestamp = Number(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 export function resolveApiUrl(path?: string | null) {
@@ -217,6 +325,10 @@ export async function apiRequest<T>(
       parsedBody,
       rawBody,
     });
+
+    if (response.status === 401 && token && unauthorizedHandler) {
+      void unauthorizedHandler();
+    }
 
     throw new ApiRequestError(detail, {
       status: response.status,
