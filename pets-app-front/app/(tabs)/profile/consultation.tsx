@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { PageHeader } from "@/components/PageHeader";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel, VetModel } from "@/data/models";
@@ -25,10 +26,10 @@ const Consultation = () => {
     if (typeof payload === "string") {
       try {
         parsed = JSON.parse(decodeURIComponent(payload));
-      } catch (e) {
+      } catch {
         try {
           parsed = JSON.parse(payload);
-        } catch (e2) {
+        } catch {
           // keep as string if parsing fails
           parsed = payload;
         }
@@ -49,13 +50,13 @@ const Consultation = () => {
       return () => {
         setShowFooter?.(true);
       };
-    }, []),
+    }, [setShowFooter]),
   );
 
-  if (consultation) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <PageHeader title="" />
+  return (
+    <SafeAreaView style={styles.container}>
+      <PageHeader title="" />
+      {consultation ? (
         <ScrollView contentContainerStyle={styles.container}>
           <AdaptiveText style={styles.title}>
             {`${pet?.Name ?? ""}'s Consultation`}
@@ -72,15 +73,20 @@ const Consultation = () => {
           </AdaptiveText>
 
           <AdaptiveText style={styles.sectionTitle}>
-            Details provided by {consultation.VetId}:
+            Details provided by {vet?.Name ?? consultation.VetId}:
           </AdaptiveText>
           <AdaptiveText style={{ marginHorizontal: "7%", fontSize: 17 }}>
             {consultation.Details}
           </AdaptiveText>
         </ScrollView>
-      </SafeAreaView>
-    );
-  } else;
+      ) : (
+        <ProfileEmptyState
+          title="No consultation details available"
+          subtitle="This consultation could not be found or has not been registered yet."
+        />
+      )}
+    </SafeAreaView>
+  );
 };
 
 export default Consultation;

@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { PageHeader } from "@/components/PageHeader";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import {
@@ -78,7 +79,7 @@ const IllnessesScreen = () => {
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
-    }, []),
+    }, [setShowFooter]),
   );
 
   const toggleMedications = (id: string) => {
@@ -99,7 +100,7 @@ const IllnessesScreen = () => {
     const start = startDate.getTime();
     const now = today.getTime();
 
-    if (datediff(start, now) % interval == 0) return true;
+    if (datediff(start, now) % interval === 0) return true;
     return false;
   };
 
@@ -191,14 +192,10 @@ const IllnessesScreen = () => {
         keyExtractor={(item) => String(item.Id)}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <AdaptiveText style={styles.emptyTitle}>
-              No illnesses recorded yet
-            </AdaptiveText>
-            <AdaptiveText style={styles.emptySubtitle}>
-              Keep track of past and ongoing medical conditions here.
-            </AdaptiveText>
-          </View>
+          <ProfileEmptyState
+            title="No illnesses recorded yet"
+            subtitle="Keep track of past and ongoing medical conditions here."
+          />
         }
         renderItem={({ item }) => {
           const isExpanded = expandedIds.includes(item.Id);
@@ -325,24 +322,6 @@ const createStyles = ({ darkMode }: any) => {
     },
     listContent: {
       paddingBottom: 20,
-    },
-    emptyState: {
-      marginTop: 60,
-      paddingHorizontal: 24,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    emptyTitle: {
-      fontFamily: "Poppins-SemiBold",
-      fontSize: 18,
-      textAlign: "center",
-      marginBottom: 6,
-    },
-    emptySubtitle: {
-      fontFamily: "Poppins-Light",
-      fontSize: 14,
-      opacity: 0.8,
-      textAlign: "center",
     },
     card: {
       alignSelf: "center",

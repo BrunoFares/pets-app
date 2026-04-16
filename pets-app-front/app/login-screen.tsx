@@ -1,8 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomInput from "@/components/CustomInput";
 import { colors } from "@/constants/colors";
-import { ApiRequestError, apiRequest, saveAuthSession } from "@/lib/api";
+import { apiRequest, ApiRequestError, saveAuthSession } from "@/lib/api";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -14,6 +13,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   useColorScheme,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -161,7 +161,7 @@ export default function LoginScreen() {
           </Text>
         </TouchableOpacity>
 
-        <AdaptiveView style={{ flexDirection: "row", marginTop: 20 }}>
+        <View style={{ flexDirection: "row", marginTop: 20 }}>
           <AdaptiveText style={{ fontFamily: "Poppins-Regular" }}>
             Don&apos;t have an account?{" "}
           </AdaptiveText>
@@ -173,7 +173,7 @@ export default function LoginScreen() {
               Sign Up!
             </AdaptiveText>
           </TouchableOpacity>
-        </AdaptiveView>
+        </View>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );
