@@ -3,7 +3,8 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomInput from "@/components/CustomInput";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
-import { apiRequest, saveAuthSession } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthProvider";
+import { apiRequest } from "@/lib/api";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -21,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const RegisterScreen = () => {
   const router = useRouter();
+  const { signIn } = useAuth();
   const darkMode = useColorScheme() === "dark";
   const { width } = useWindowDimensions();
   const styles = createStyles({ darkMode, width });
@@ -69,7 +71,7 @@ const RegisterScreen = () => {
         },
       );
 
-      await saveAuthSession(response);
+      await signIn(response);
       router.replace("/(tabs)");
     } catch (error) {
       Alert.alert(

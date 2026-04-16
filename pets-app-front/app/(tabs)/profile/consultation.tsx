@@ -3,8 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { ConsultationModel, PetModel, VetModel } from "@/data/models";
-import { Vets } from "@/data/sample";
+import { ConsultationModel, PetModel } from "@/data/models";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, useColorScheme } from "react-native";
@@ -17,7 +16,6 @@ const Consultation = () => {
   const { payload } = useLocalSearchParams<{ payload?: any }>();
   const [consultation, setConsultation] = useState<ConsultationModel>();
   const [pet, setPet] = useState<PetModel>();
-  const [vet, setVet] = useState<VetModel>();
 
   useEffect(() => {
     if (!payload) return;
@@ -36,9 +34,6 @@ const Consultation = () => {
       }
     }
 
-    const temp = Vets.find((item) => item.Id === parsed.item.VetId);
-
-    setVet(temp);
     setPet(parsed.pet);
     setConsultation(parsed.item);
   }, [payload]);
@@ -73,7 +68,7 @@ const Consultation = () => {
           </AdaptiveText>
 
           <AdaptiveText style={styles.sectionTitle}>
-            Details provided by {vet?.Name ?? consultation.VetId}:
+            Details provided by {consultation.VetId}:
           </AdaptiveText>
           <AdaptiveText style={{ marginHorizontal: "7%", fontSize: 17 }}>
             {consultation.Details}
