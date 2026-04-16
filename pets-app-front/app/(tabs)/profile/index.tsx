@@ -52,24 +52,26 @@ export default function Profile() {
           createdAt: string;
           lastLogin?: string | null;
         }>("/api/Users/me"),
-        apiRequest<{
-          id: string;
-          userId: number;
-          name: string;
-          speciesId: number;
-          species: string;
-          breedId?: number | null;
-          breed?: string | null;
-          sex: "Male" | "Female";
-          birthDate?: string | null;
-          weightKg?: number | null;
-          color: string;
-          neutered: boolean;
-          avatarUrl?: string | null;
-          notes?: string | null;
-          createdAt: string;
-          updatedAt: string;
-        }[]>("/api/Pets"),
+        apiRequest<
+          {
+            id: string;
+            userId: number;
+            name: string;
+            speciesId: number;
+            species: string;
+            breedId?: number | null;
+            breed?: string | null;
+            sex: "Male" | "Female";
+            birthDate?: string | null;
+            weightKg?: number | null;
+            color: string;
+            neutered: boolean;
+            avatarUrl?: string | null;
+            notes?: string | null;
+            createdAt: string;
+            updatedAt: string;
+          }[]
+        >("/api/Pets"),
       ]);
 
       setProfileInfo({
@@ -153,7 +155,9 @@ export default function Profile() {
                       : colors.white,
                   }}
                 >
-                  <AdaptiveText style={styles.title}>{profileInfo.Name}</AdaptiveText>
+                  <AdaptiveText style={styles.title}>
+                    {profileInfo.Name}
+                  </AdaptiveText>
                   <TouchableOpacity
                     style={styles.editProfile}
                     onPress={() => {
@@ -322,6 +326,8 @@ const createStyles = ({ darkMode, translateY, containerWidth }: any) => {
     editProfile: {
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
       paddingHorizontal: 16,
+      width: 120,
+      alignItems: "center",
       paddingVertical: 4,
       borderRadius: 10,
       marginTop: 4,
