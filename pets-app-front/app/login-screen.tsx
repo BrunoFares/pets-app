@@ -2,7 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomInput from "@/components/CustomInput";
 import { colors } from "@/constants/colors";
-import { apiRequest, saveAuthSession } from "@/lib/api";
+import { ApiRequestError, apiRequest, saveAuthSession } from "@/lib/api";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -24,6 +24,63 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const getLoginErrorMessage = (error: unknown) => {
+    if (!(error instanceof Error)) {
+      return "Unable to log in right now. Please try again.";
+    }
+
+    if (!(error instanceof ApiRequestError)) {
+      return error.message || "Unable to log in right now. Please try again.";
+    }
+
+    if (error.status === 0) {
+      return "We couldn't reach the server. Please check your connection and try again.";
+    }
+
+    const combinedMessage = [
+      error.message,
+      error.payload?.message,
+      error.payload?.detail,
+      error.payload?.title,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (error.status === 400 || error.status === 401) {
+      if (
+        combinedMessage.includes("invalid") ||
+        combinedMessage.includes("incorrect") ||
+        combinedMessage.includes("unauthorized") ||
+        combinedMessage.includes("password") ||
+        combinedMessage.includes("email") ||
+        combinedMessage.includes("credential")
+      ) {
+        return "Incorrect email or password. Please try again.";
+      }
+
+      return "We couldn't log you in with those details. Please check your email and password and try again.";
+    }
+
+    if (error.status === 403) {
+      return "Your account doesn't have access right now. Please contact support if this keeps happening.";
+    }
+
+    if (error.status === 404) {
+      return "We couldn't find an account with that email.";
+    }
+
+    if (error.status === 429) {
+      return "Too many login attempts. Please wait a moment and try again.";
+    }
+
+    if (error.status >= 500) {
+      return "The server is having trouble right now. Please try again in a moment.";
+    }
+
+    return "Unable to log in right now. Please try again.";
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -51,10 +108,7 @@ export default function LoginScreen() {
       router.replace("/(tabs)");
     } catch (error) {
       console.error("[login] Login request failed", error);
-      Alert.alert(
-        "Login failed",
-        error instanceof Error ? error.message : "Unable to log in.",
-      );
+      Alert.alert("Login failed", getLoginErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }

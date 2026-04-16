@@ -8,12 +8,37 @@ const USER_ID_KEY = "user_id";
 type ApiErrorPayload = {
   errors?: string[] | Record<string, string[]>;
   message?: string;
+  detail?: string;
+  title?: string;
+  status?: number;
+  type?: string;
 };
 
 export type AuthSession = {
   accessToken: string;
   userId: number;
 };
+
+export class ApiRequestError extends Error {
+  status: number;
+  payload: ApiErrorPayload | null;
+  rawBody: string;
+
+  constructor(
+    message: string,
+    options: {
+      status: number;
+      payload: ApiErrorPayload | null;
+      rawBody: string;
+    },
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = options.status;
+    this.payload = options.payload;
+    this.rawBody = options.rawBody;
+  }
+}
 
 function getDefaultApiBaseUrl() {
   if (Platform.OS === "android") {
@@ -47,7 +72,7 @@ function extractApiErrorMessage(payload: ApiErrorPayload | null) {
     }
   }
 
-  return payload.message ?? null;
+  return payload.message ?? payload.detail ?? payload.title ?? null;
 }
 
 export const API_BASE_URL =
@@ -123,8 +148,13 @@ export async function apiRequest<T>(
       method: init.method ?? "GET",
       error,
     });
-    throw new Error(
+    throw new ApiRequestError(
       `Network request failed while calling ${url}.${localhostHint}`,
+      {
+        status: 0,
+        payload: null,
+        rawBody: "",
+      },
     );
   }
 
@@ -154,8 +184,13 @@ export async function apiRequest<T>(
           contentType,
           rawBody,
         });
-        throw new Error(
+        throw new ApiRequestError(
           `The server returned invalid JSON for ${path}. Status: ${response.status}.`,
+          {
+            status: response.status,
+            payload: null,
+            rawBody,
+          },
         );
       }
     } else {
@@ -183,7 +218,11 @@ export async function apiRequest<T>(
       rawBody,
     });
 
-    throw new Error(detail);
+    throw new ApiRequestError(detail, {
+      status: response.status,
+      payload,
+      rawBody,
+    });
   }
 
   if (response.status === 204) {
@@ -201,8 +240,13 @@ export async function apiRequest<T>(
       contentType,
       rawBody,
     });
-    throw new Error(
+    throw new ApiRequestError(
       `Expected JSON but received '${contentType || "unknown content type"}' from ${path}.`,
+      {
+        status: response.status,
+        payload: null,
+        rawBody,
+      },
     );
   }
 
