@@ -8,12 +8,17 @@ import {
   MedicationRecordModel,
   PetModel,
 } from "@/data/models";
-import { IllnessRecords, MedicationRecords } from "@/data/sample";
+import {
+  fetchIllnessMedications,
+  fetchPetIllnesses,
+  parseRoutePayload,
+} from "@/lib/profile-api";
 import { datediff, goTo } from "@/utils";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   LayoutAnimation,
   Platform,
@@ -40,46 +45,55 @@ const IllnessesScreen = () => {
   const { payload } = useLocalSearchParams<{ payload?: any }>();
 
   const [pet, setPet] = useState<PetModel>();
+  const [petId, setPetId] = useState<string>();
   const [illnesses, setIllnesses] = useState<IllnessRecordModel[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [medications, setMedications] = useState<
     Record<string, MedicationRecordModel[]>
   >({});
 
-  useEffect(() => {
-    if (!payload) return;
+  const loadIllnesses = useCallback(async (id: string) => {
+    try {
+      const illnessResponse = await fetchPetIllnesses(id);
+      setIllnesses(illnessResponse);
 
-    let parsed: any = payload;
-    if (typeof payload === "string") {
-      try {
-        parsed = JSON.parse(decodeURIComponent(payload));
-      } catch {
-        try {
-          parsed = JSON.parse(payload);
-        } catch {
-          parsed = payload;
-        }
-      }
-    }
+      const medicationEntries = await Promise.all(
+        illnessResponse.map(async (illness) => [
+          String(illness.Id),
+          await fetchIllnessMedications(illness.Id),
+        ]),
+      );
 
-    setPet(parsed.pet);
-
-    const ill = IllnessRecords.filter((item) => item.petId === parsed.pet.Id);
-    setIllnesses(ill);
-
-    const medMap: Record<string, MedicationRecordModel[]> = {};
-    for (const illness of ill) {
-      medMap[illness.Id] = MedicationRecords.filter(
-        (item: MedicationRecordModel) => item.illnessId === illness.Id,
+      setMedications(Object.fromEntries(medicationEntries));
+    } catch (error) {
+      Alert.alert(
+        "Unable to load illness history",
+        error instanceof Error ? error.message : "Please try again.",
       );
     }
-    setMedications(medMap);
-  }, [payload]);
+  }, []);
+
+  useEffect(() => {
+    const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
+    if (!parsed?.pet) return;
+
+    setPet(parsed.pet);
+    setPetId(String(parsed.pet.Id));
+    void loadIllnesses(String(parsed.pet.Id));
+  }, [loadIllnesses, payload]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
-    }, [setShowFooter]),
+
+      if (petId) {
+        void loadIllnesses(petId);
+      }
+
+      return () => {
+        setShowFooter?.(true);
+      };
+    }, [loadIllnesses, petId, setShowFooter]),
   );
 
   const toggleMedications = (id: string) => {
@@ -273,7 +287,11 @@ const IllnessesScreen = () => {
                     activeOpacity={0.85}
                     style={styles.innerActionButton}
                     onPress={() => {
-                      goTo({ item }, "/profile/modify-add-illness", router);
+                      goTo(
+                        { item: { ...item, medications: illnessMeds }, pet },
+                        "/profile/modify-add-illness",
+                        router,
+                      );
                     }}
                   >
                     <AdaptiveText style={styles.innerActionButtonText}>

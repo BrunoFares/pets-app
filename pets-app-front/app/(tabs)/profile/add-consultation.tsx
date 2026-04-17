@@ -1,14 +1,22 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
+import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { BreedModel, Color, Sex, SpeciesModel } from "@/data/models";
-import { Breeds, Species } from "@/data/sample";
+import { PetModel } from "@/data/models";
+import { apiRequest } from "@/lib/api";
+import {
+  VetOption,
+  fetchVetOptions,
+  parseRoutePayload,
+} from "@/lib/profile-api";
+import { AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Keyboard,
   Platform,
   ScrollView,
@@ -23,30 +31,19 @@ const AddConsultation = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
+  const { payload } = useLocalSearchParams<{ payload?: any }>();
+  const router = useRouter();
 
-  const [date, setDate] = useState(new Date(1598051730000));
+  const [pet, setPet] = useState<PetModel>();
+  const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [details, setDetails] = useState("");
+  const [selectedVet, setSelectedVet] = useState<VetOption>();
+  const [vetOptions, setVetOptions] = useState<VetOption[]>([]);
+  const [vetModal, setVetModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [selectedName, setSelectedName] = useState<string>();
-  const [selectedSex, setSelectedSex] = useState<string>();
-  const [selectedBreed, setSelectedBreed] = useState<BreedModel>();
-  const [selectedSpecies, setSelectedSpecies] = useState<SpeciesModel>();
-  const [selectedColor, setSelectedColor] = useState<string>();
-  const [selectedNeutered, setSelectedNeutered] = useState<string>();
-  const [selectedWeight, setSelectedWeight] = useState<string>();
-
-  const [breedsToChoose, setBreedsToChoose] = useState<BreedModel[]>();
-  const [speciesToChoose, setSpeciesToChoose] = useState<SpeciesModel[]>();
-  const [colorsToChoose, setColorsToChoose] = useState<any>();
-  const [sexToChoose, setSexToChoose] = useState<any>();
-
-  const [sexModal, setSexModal] = useState(false);
-  const [speciesModal, setSpeciesModal] = useState(false);
-  const [breedModal, setBreedModal] = useState(false);
-  const [colorModal, setColorModal] = useState(false);
-  const [neuteredModal, setNeuteredModal] = useState(false);
-
-  const onChange = (event: any, selectedDate: any) => {
+  const onChange = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setDate(selectedDate);
     }
@@ -60,37 +57,68 @@ const AddConsultation = () => {
       return () => {
         setShowFooter?.(true);
       };
-    }, []),
+    }, [setShowFooter]),
   );
 
   useEffect(() => {
-    const species = Species;
-    const colors = Color;
-    const sex = Sex;
+    const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
+    if (parsed?.pet) {
+      setPet(parsed.pet);
+    }
+  }, [payload]);
 
-    const colorsWithId = Object.entries(colors).map(([colorName], index) => ({
-      id: index + 1,
-      Name: colorName,
-    }));
+  useEffect(() => {
+    const loadVetOptions = async () => {
+      try {
+        const vets = await fetchVetOptions();
+        setVetOptions(vets);
+      } catch (error) {
+        Alert.alert(
+          "Unable to load vets",
+          error instanceof Error ? error.message : "Please try again.",
+        );
+      }
+    };
 
-    const sexWithId = Object.entries(sex).map(([sexName], index) => ({
-      id: index + 1,
-      Name: sexName,
-    }));
-
-    setSpeciesToChoose(species);
-    setColorsToChoose(colorsWithId);
-    setSexToChoose(sexWithId);
+    void loadVetOptions();
   }, []);
 
-  // when species changes, reset breeds
-  useEffect(() => {
-    const breed = Breeds.filter(
-      (item) => item.SpeciesId === selectedSpecies?.id,
-    );
-    setBreedsToChoose(breed);
-    setSelectedBreed(undefined);
-  }, [selectedSpecies]);
+  const handleSave = async () => {
+    if (!pet) {
+      Alert.alert("Pet unavailable", "We couldn't determine which pet to use.");
+      return;
+    }
+
+    if (!details.trim()) {
+      Alert.alert(
+        "Missing information",
+        "Please add some consultation details before saving.",
+      );
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await apiRequest("/api/Consultations", {
+        method: "POST",
+        body: JSON.stringify({
+          petId: pet.Id,
+          vetPlaceId: selectedVet?.Id ?? null,
+          date: date.toISOString(),
+          details: details.trim(),
+        }),
+      });
+
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        "Unable to save consultation",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -103,15 +131,9 @@ const AddConsultation = () => {
       >
         <AdaptiveText style={styles.title}>Add Consultation</AdaptiveText>
 
-          {/* <AdaptiveText style={{ width: "84%", marginBottom: 5 }}>
-          Name
-        </AdaptiveText>
-        <CustomInput
-          value={selectedName}
-          onChangeText={setSelectedName}
-          style={{ width: "84%" }}
-          label={"Name"}
-        /> */}
+        {pet?.Name && (
+          <AdaptiveText style={styles.subtitle}>For {pet.Name}</AdaptiveText>
+        )}
 
         <AdaptiveText style={{ width: "84%", marginBottom: 5, marginTop: 10 }}>
           Date of Consultation
@@ -130,7 +152,7 @@ const AddConsultation = () => {
           <DateTimePicker
             testID="dateTimePicker"
             value={date}
-            mode={"date"}
+            mode="date"
             onChange={onChange}
           />
         )}
@@ -138,18 +160,54 @@ const AddConsultation = () => {
           <DateTimePicker
             testID="dateTimePicker"
             value={date}
-            mode={"date"}
+            mode="date"
             onChange={onChange}
           />
         )}
 
-        <AdaptiveText style={{ width: "84%" }}>Description</AdaptiveText>
-        <CustomInput style={{ height: 200 }} />
+        <AdaptiveText style={{ width: "84%" }}>Vet</AdaptiveText>
+        <TouchableOpacity style={styles.picker} onPress={() => setVetModal(true)}>
+          <AdaptiveText style={styles.textPicker}>
+            {selectedVet?.Name || "Select vet (optional)..."}
+          </AdaptiveText>
+          <AntDesign
+            name="down"
+            size={10}
+            style={{ paddingRight: 16 }}
+            color={darkMode ? colors.white : colors.veryDarkGrey}
+          />
+        </TouchableOpacity>
 
-        <TouchableOpacity style={styles.buttonSave}>
-          <Text style={styles.btnTextSave}>Save changes</Text>
+        <AdaptiveText style={{ width: "84%" }}>Description</AdaptiveText>
+        <CustomInput
+          value={details}
+          onChangeText={setDetails}
+          multiline
+          textAlignVertical="top"
+          style={styles.descriptionInput}
+        />
+
+        <TouchableOpacity
+          style={styles.buttonSave}
+          disabled={isSubmitting}
+          onPress={handleSave}
+        >
+          <Text style={styles.btnTextSave}>
+            {isSubmitting ? "Saving..." : "Save changes"}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <ListWithoutConfirmationModal
+        title="Select the veterinarian"
+        listElements={vetOptions}
+        visible={vetModal}
+        onClose={() => setVetModal(false)}
+        onDone={(val: VetOption) => {
+          setVetModal(false);
+          setSelectedVet(val);
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -165,6 +223,11 @@ const createStyles = ({ darkMode }: any) => {
     title: {
       fontSize: 24,
       fontFamily: "Poppins-SemiBold",
+    },
+    subtitle: {
+      fontFamily: "Poppins-Light",
+      fontSize: 14,
+      opacity: 0.8,
     },
     picker: {
       borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
@@ -183,13 +246,17 @@ const createStyles = ({ darkMode }: any) => {
       paddingVertical: 12,
       paddingHorizontal: 16,
     },
+    descriptionInput: {
+      width: "84%",
+      minHeight: 180,
+    },
     buttonSave: {
       backgroundColor: colors.green,
       paddingVertical: 20,
       paddingHorizontal: 80,
       borderRadius: 20,
       marginBottom: "10%",
-      marginTop: 200,
+      marginTop: 20,
     },
     btnTextSave: {
       color: colors.white,

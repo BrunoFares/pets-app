@@ -4,14 +4,24 @@ import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { BreedModel, Color, Sex, SpeciesModel } from "@/data/models";
-import { Breeds, Species } from "@/data/sample";
+import { apiRequest } from "@/lib/api";
+import {
+  fetchBreedOptions,
+  fetchSpeciesOptions,
+  toApiPetColor,
+  toApiPetSex,
+  uploadPetAvatar,
+} from "@/lib/profile-api";
 import { AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Keyboard,
   Platform,
   ScrollView,
@@ -23,27 +33,33 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+type PetResponse = {
+  id: string;
+};
+
 const AddPet = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
+  const { refreshProfile } = useAuth();
   const router = useRouter();
 
-  const [date, setDate] = useState(new Date(1598051730000));
+  const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [selectedName, setSelectedName] = useState<string>();
-  const [selectedSex, setSelectedSex] = useState<string>();
+  const [selectedName, setSelectedName] = useState("");
+  const [selectedSex, setSelectedSex] = useState("");
   const [selectedBreed, setSelectedBreed] = useState<BreedModel>();
   const [selectedSpecies, setSelectedSpecies] = useState<SpeciesModel>();
-  const [selectedColor, setSelectedColor] = useState<string>();
-  const [selectedNeutered, setSelectedNeutered] = useState<string>();
-  const [selectedWeight, setSelectedWeight] = useState<string>();
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedNeutered, setSelectedNeutered] = useState("");
+  const [selectedWeight, setSelectedWeight] = useState("");
+  const [selectedImageAsset, setSelectedImageAsset] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
 
-  const [breedsToChoose, setBreedsToChoose] = useState<BreedModel[]>();
-  const [speciesToChoose, setSpeciesToChoose] = useState<SpeciesModel[]>();
-  const [colorsToChoose, setColorsToChoose] = useState<any>();
-  const [sexToChoose, setSexToChoose] = useState<any>();
+  const [breedsToChoose, setBreedsToChoose] = useState<BreedModel[]>([]);
+  const [speciesToChoose, setSpeciesToChoose] = useState<SpeciesModel[]>([]);
 
   const [sexModal, setSexModal] = useState(false);
   const [speciesModal, setSpeciesModal] = useState(false);
@@ -51,7 +67,25 @@ const AddPet = () => {
   const [colorModal, setColorModal] = useState(false);
   const [neuteredModal, setNeuteredModal] = useState(false);
 
-  const onChange = (event: any, selectedDate: any) => {
+  const colorsToChoose = useMemo(
+    () =>
+      Object.values(Color).map((value, index) => ({
+        id: index + 1,
+        Name: value,
+      })),
+    [],
+  );
+
+  const sexToChoose = useMemo(
+    () =>
+      Object.values(Sex).map((value, index) => ({
+        id: index + 1,
+        Name: value,
+      })),
+    [],
+  );
+
+  const onChange = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setDate(selectedDate);
     }
@@ -65,37 +99,122 @@ const AddPet = () => {
       return () => {
         setShowFooter?.(true);
       };
-    }, []),
+    }, [setShowFooter]),
   );
 
   useEffect(() => {
-    const species = Species;
-    const colors = Color;
-    const sex = Sex;
+    const loadSpecies = async () => {
+      try {
+        const species = await fetchSpeciesOptions();
+        setSpeciesToChoose(species);
+      } catch (error) {
+        Alert.alert(
+          "Unable to load pet details",
+          error instanceof Error ? error.message : "Please try again.",
+        );
+      }
+    };
 
-    const colorsWithId = Object.entries(colors).map(([colorName], index) => ({
-      id: index + 1,
-      Name: colorName,
-    }));
-
-    const sexWithId = Object.entries(sex).map(([sexName], index) => ({
-      id: index + 1,
-      Name: sexName,
-    }));
-
-    setSpeciesToChoose(species);
-    setColorsToChoose(colorsWithId);
-    setSexToChoose(sexWithId);
+    void loadSpecies();
   }, []);
 
-  // when species changes, reset breeds
   useEffect(() => {
-    const breed = Breeds.filter(
-      (item) => item.SpeciesId === selectedSpecies?.id,
-    );
-    setBreedsToChoose(breed);
-    setSelectedBreed(undefined);
+    const loadBreeds = async () => {
+      if (!selectedSpecies?.id) {
+        setBreedsToChoose([]);
+        setSelectedBreed(undefined);
+        return;
+      }
+
+      try {
+        const breeds = await fetchBreedOptions(Number(selectedSpecies.id));
+        setBreedsToChoose(breeds);
+        setSelectedBreed(undefined);
+      } catch (error) {
+        Alert.alert(
+          "Unable to load breeds",
+          error instanceof Error ? error.message : "Please try again.",
+        );
+      }
+    };
+
+    void loadBreeds();
   }, [selectedSpecies]);
+
+  const handleSave = async () => {
+    if (!selectedName.trim()) {
+      Alert.alert("Missing information", "Please enter your pet's name.");
+      return;
+    }
+
+    if (!selectedSpecies) {
+      Alert.alert("Missing information", "Please select your pet's species.");
+      return;
+    }
+
+    if (!selectedSex) {
+      Alert.alert("Missing information", "Please select your pet's sex.");
+      return;
+    }
+
+    if (!selectedColor) {
+      Alert.alert("Missing information", "Please select your pet's color.");
+      return;
+    }
+
+    if (!selectedNeutered) {
+      Alert.alert(
+        "Missing information",
+        "Please tell us whether your pet is neutered.",
+      );
+      return;
+    }
+
+    const trimmedWeight = selectedWeight.trim();
+    const parsedWeight =
+      trimmedWeight.length > 0 ? Number(trimmedWeight) : null;
+    const isInvalidWeight =
+      trimmedWeight.length > 0 &&
+      (parsedWeight === null || !Number.isFinite(parsedWeight) || parsedWeight < 0);
+
+    if (isInvalidWeight) {
+      Alert.alert("Invalid weight", "Please enter a valid weight in kilograms.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const createdPet = await apiRequest<PetResponse>("/api/Pets", {
+        method: "POST",
+        body: JSON.stringify({
+          name: selectedName.trim(),
+          speciesId: Number(selectedSpecies.id),
+          breedId: selectedBreed ? Number(selectedBreed.id) : null,
+          sex: toApiPetSex(selectedSex),
+          birthDate: date.toISOString(),
+          weightKg: parsedWeight,
+          color: toApiPetColor(selectedColor),
+          neutered: selectedNeutered === "Yes",
+          notes: null,
+        }),
+      });
+
+      if (selectedImageAsset) {
+        await uploadPetAvatar(createdPet.id, selectedImageAsset);
+      }
+
+      await refreshProfile();
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        "Unable to save pet",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -117,7 +236,10 @@ const AddPet = () => {
           }}
         >
           <View>
-            <CustomImage withEdits={true} />
+            <CustomImage
+              withEdits
+              onImageSelected={setSelectedImageAsset}
+            />
           </View>
           <View
             style={{
@@ -151,7 +273,7 @@ const AddPet = () => {
               <DateTimePicker
                 testID="dateTimePicker"
                 value={date}
-                mode={"date"}
+                mode="date"
                 onChange={onChange}
               />
             )}
@@ -159,185 +281,160 @@ const AddPet = () => {
               <DateTimePicker
                 testID="dateTimePicker"
                 value={date}
-                mode={"date"}
+                mode="date"
                 onChange={onChange}
               />
             )}
           </View>
         </View>
 
-          <AdaptiveText style={{ width: "84%" }}>Species</AdaptiveText>
-          <TouchableOpacity
-            style={styles.picker}
-            onPress={() => {
-              setSpeciesModal(true);
-            }}
-          >
-            <AdaptiveText style={styles.textPicker}>
-              {selectedSpecies?.Name || "Select species..."}
-            </AdaptiveText>
-            <AntDesign
-              name="down"
-              size={10}
-              style={{ paddingRight: 16 }}
-              color={darkMode ? colors.white : colors.veryDarkGrey}
-            />
-          </TouchableOpacity>
-
-          {selectedSpecies && (
-            <>
-              <AdaptiveText style={{ width: "84%" }}>Breed</AdaptiveText>
-              <TouchableOpacity
-                style={styles.picker}
-                onPress={() => {
-                  setBreedModal(true);
-                }}
-              >
-                <AdaptiveText style={styles.textPicker}>
-                  {selectedBreed?.Name || "Select breed..."}
-                </AdaptiveText>
-                <AntDesign
-                  name="down"
-                  size={10}
-                  style={{ paddingRight: 16 }}
-                  color={darkMode ? colors.white : colors.veryDarkGrey}
-                />
-              </TouchableOpacity>
-            </>
-          )}
-
-          <AdaptiveText style={{ width: "84%" }}>Sex</AdaptiveText>
-          <TouchableOpacity
-            style={styles.picker}
-            onPress={() => {
-              setSexModal(true);
-            }}
-          >
-            <AdaptiveText style={styles.textPicker}>
-              {selectedSex || "Select sex..."}
-            </AdaptiveText>
-            <AntDesign
-              name="down"
-              size={10}
-              style={{ paddingRight: 16 }}
-              color={darkMode ? colors.white : colors.veryDarkGrey}
-            />
-          </TouchableOpacity>
-
-          <AdaptiveText style={{ width: "84%" }}>Neutered</AdaptiveText>
-          <TouchableOpacity
-            style={styles.picker}
-            onPress={() => {
-              setNeuteredModal(true);
-            }}
-          >
-            <AdaptiveText style={styles.textPicker}>
-              {selectedNeutered || "Select neutered..."}
-            </AdaptiveText>
-            <AntDesign
-              name="down"
-              size={10}
-              style={{ paddingRight: 16 }}
-              color={darkMode ? colors.white : colors.veryDarkGrey}
-            />
-          </TouchableOpacity>
-
-          <AdaptiveText style={{ width: "84%" }}>Weight</AdaptiveText>
-          <CustomInput
-            value={selectedWeight}
-            onChangeText={setSelectedWeight}
-            style={{ width: "84%" }}
+        <AdaptiveText style={{ width: "84%" }}>Species</AdaptiveText>
+        <TouchableOpacity style={styles.picker} onPress={() => setSpeciesModal(true)}>
+          <AdaptiveText style={styles.textPicker}>
+            {selectedSpecies?.Name || "Select species..."}
+          </AdaptiveText>
+          <AntDesign
+            name="down"
+            size={10}
+            style={{ paddingRight: 16 }}
+            color={darkMode ? colors.white : colors.veryDarkGrey}
           />
+        </TouchableOpacity>
 
-          <AdaptiveText style={{ width: "84%" }}>Color</AdaptiveText>
-          <TouchableOpacity
-            style={styles.picker}
-            onPress={() => {
-              setColorModal(true);
-            }}
-          >
-            <AdaptiveText style={styles.textPicker}>
-              {selectedColor || "Select color..."}
-            </AdaptiveText>
-            <AntDesign
-              name="down"
-              size={10}
-              style={{ paddingRight: 16 }}
-              color={darkMode ? colors.white : colors.veryDarkGrey}
-            />
-          </TouchableOpacity>
+        {selectedSpecies && (
+          <>
+            <AdaptiveText style={{ width: "84%" }}>Breed</AdaptiveText>
+            <TouchableOpacity style={styles.picker} onPress={() => setBreedModal(true)}>
+              <AdaptiveText style={styles.textPicker}>
+                {selectedBreed?.Name || "Select breed..."}
+              </AdaptiveText>
+              <AntDesign
+                name="down"
+                size={10}
+                style={{ paddingRight: 16 }}
+                color={darkMode ? colors.white : colors.veryDarkGrey}
+              />
+            </TouchableOpacity>
+          </>
+        )}
 
-          <TouchableOpacity style={styles.buttonSave}>
-            <Text style={styles.btnTextSave}>Save changes</Text>
-          </TouchableOpacity>
+        <AdaptiveText style={{ width: "84%" }}>Sex</AdaptiveText>
+        <TouchableOpacity style={styles.picker} onPress={() => setSexModal(true)}>
+          <AdaptiveText style={styles.textPicker}>
+            {selectedSex || "Select sex..."}
+          </AdaptiveText>
+          <AntDesign
+            name="down"
+            size={10}
+            style={{ paddingRight: 16 }}
+            color={darkMode ? colors.white : colors.veryDarkGrey}
+          />
+        </TouchableOpacity>
+
+        <AdaptiveText style={{ width: "84%" }}>Neutered</AdaptiveText>
+        <TouchableOpacity
+          style={styles.picker}
+          onPress={() => setNeuteredModal(true)}
+        >
+          <AdaptiveText style={styles.textPicker}>
+            {selectedNeutered || "Select neutered..."}
+          </AdaptiveText>
+          <AntDesign
+            name="down"
+            size={10}
+            style={{ paddingRight: 16 }}
+            color={darkMode ? colors.white : colors.veryDarkGrey}
+          />
+        </TouchableOpacity>
+
+        <AdaptiveText style={{ width: "84%" }}>Weight (Kg)</AdaptiveText>
+        <CustomInput
+          value={selectedWeight}
+          onChangeText={setSelectedWeight}
+          keyboardType="decimal-pad"
+          style={{ width: "84%" }}
+        />
+
+        <AdaptiveText style={{ width: "84%" }}>Color</AdaptiveText>
+        <TouchableOpacity style={styles.picker} onPress={() => setColorModal(true)}>
+          <AdaptiveText style={styles.textPicker}>
+            {selectedColor || "Select color..."}
+          </AdaptiveText>
+          <AntDesign
+            name="down"
+            size={10}
+            style={{ paddingRight: 16 }}
+            color={darkMode ? colors.white : colors.veryDarkGrey}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.buttonSave}
+          disabled={isSubmitting}
+          onPress={handleSave}
+        >
+          <Text style={styles.btnTextSave}>
+            {isSubmitting ? "Saving..." : "Save changes"}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <ListWithoutConfirmationModal
-          title={"Select the species of the pet"}
-          listElements={speciesToChoose}
-          visible={speciesModal}
-          onClose={() => {
-            setSpeciesModal(false);
-          }}
-          onDone={(val: any) => {
-            setSpeciesModal(false);
-            setSelectedSpecies(val);
-          }}
-        />
+        title="Select the species of the pet"
+        listElements={speciesToChoose}
+        visible={speciesModal}
+        onClose={() => setSpeciesModal(false)}
+        onDone={(val: SpeciesModel) => {
+          setSpeciesModal(false);
+          setSelectedSpecies(val);
+        }}
+      />
 
       <ListWithoutConfirmationModal
-          title={"Select the sex of the pet"}
-          listElements={sexToChoose}
-          visible={sexModal}
-          onClose={() => {
-            setSexModal(false);
-          }}
-          onDone={(val: string) => {
-            setSexModal(false);
-            setSelectedSex(val);
-          }}
-        />
+        title="Select the sex of the pet"
+        listElements={sexToChoose}
+        visible={sexModal}
+        onClose={() => setSexModal(false)}
+        onDone={(val: { Name: string }) => {
+          setSexModal(false);
+          setSelectedSex(val.Name);
+        }}
+      />
 
       <ListWithoutConfirmationModal
-          title={"Select the breed of the pet"}
-          listElements={breedsToChoose}
-          visible={breedModal}
-          onClose={() => {
-            setBreedModal(false);
-          }}
-          onDone={(val: any) => {
-            setBreedModal(false);
-            setSelectedBreed(val);
-          }}
-        />
+        title="Select the breed of the pet"
+        listElements={breedsToChoose}
+        visible={breedModal}
+        onClose={() => setBreedModal(false)}
+        onDone={(val: BreedModel) => {
+          setBreedModal(false);
+          setSelectedBreed(val);
+        }}
+      />
 
       <ListWithoutConfirmationModal
-          title={"Select the color of the pet"}
-          listElements={colorsToChoose}
-          visible={colorModal}
-          onClose={() => {
-            setColorModal(false);
-          }}
-          onDone={(val: any) => {
-            setColorModal(false);
-            setSelectedColor(val);
-          }}
-        />
+        title="Select the color of the pet"
+        listElements={colorsToChoose}
+        visible={colorModal}
+        onClose={() => setColorModal(false)}
+        onDone={(val: { Name: string }) => {
+          setColorModal(false);
+          setSelectedColor(val.Name);
+        }}
+      />
 
       <ListWithoutConfirmationModal
-          title={"Is your pet neutered?"}
-          listElements={[
-            { id: 1, Name: "Yes" },
-            { id: 2, Name: "No" },
-          ]}
-          visible={neuteredModal}
-          onClose={() => {
-            setNeuteredModal(false);
-          }}
-          onDone={(val: any) => {
-            setNeuteredModal(false);
-            setSelectedNeutered(val);
-          }}
+        title="Is your pet neutered?"
+        listElements={[
+          { id: 1, Name: "Yes" },
+          { id: 2, Name: "No" },
+        ]}
+        visible={neuteredModal}
+        onClose={() => setNeuteredModal(false)}
+        onDone={(val: { Name: string }) => {
+          setNeuteredModal(false);
+          setSelectedNeutered(val.Name);
+        }}
       />
     </SafeAreaView>
   );
