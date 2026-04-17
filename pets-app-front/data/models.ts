@@ -1,6 +1,6 @@
 export interface AppUsersModel {
   // account info
-  Id: string;
+  Id: string | number;
   Name: string;
   FirstName: string;
   LastName: string;
@@ -9,8 +9,8 @@ export interface AppUsersModel {
   PasswordHash: string;
   Image: string;
 
-  CreatedAt: number;
-  LastLogin: number;
+  CreatedAt: number | string;
+  LastLogin: number | string | null;
 
   // forum info
   Description: string;
@@ -19,13 +19,16 @@ export interface AppUsersModel {
 
 export interface ForumPostsModel {
   Id: string;
-  UserId: string;
+  UserId: string | number;
   UserName: string;
   Content: string;
-  Attachments: [];
-  CreatedAt: number;
+  Attachments: string[];
+  CreatedAt: number | string;
+  UpdatedAt?: number | string | null;
   IsAReply: boolean;
-  ReplyingToPost?: string;
+  ReplyingToPost?: string | null;
+  RepliesCount?: number;
+  IsBookmarked?: boolean;
 }
 
 export interface ChatModel {
@@ -40,21 +43,21 @@ export interface ChatModel {
 
 export interface PetModel {
   Id: string;
-  UserId: string; // BIGINT (matches users.id)
+  UserId: string | number; // BIGINT (matches users.id)
   Name: string;
-  SpeciesId: 1;
-  BreedId: 1;
+  SpeciesId: number;
+  BreedId: number | null;
   Sex: "Male" | "Female";
-  BirthDate: Date;
-  WeightKg: number;
+  BirthDate: Date | string | null;
+  WeightKg: number | null;
   Color: string;
   Neutered: boolean;
-  AvatarUrl: string; // user-uploaded URL (or CDN URL)
+  AvatarUrl: string | null; // user-uploaded URL (or CDN URL)
   Notes: string;
-  CreatedAt: number;
-  UpdatedAt: number;
+  CreatedAt: number | string;
+  UpdatedAt: number | string;
   Species: string;
-  Breed: string;
+  Breed: string | null;
   ConsultationsId: number[];
 }
 
@@ -94,15 +97,15 @@ export interface PetPlaceModel {
 }
 
 export interface SpeciesModel {
-  id: string;
+  id: string | number;
   Code: string;
   Name: string;
-  Breeds: string[];
+  Breeds: Array<string | BreedModel>;
 }
 
 export interface BreedModel {
-  id: string;
-  SpeciesId: string;
+  id: string | number;
+  SpeciesId: string | number;
   Name: string;
   Species: string;
 }
