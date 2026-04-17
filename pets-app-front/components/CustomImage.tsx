@@ -15,10 +15,12 @@ const CustomImage = ({
   customStyles,
   image,
   withEdits = false,
+  onImageSelected,
 }: {
   customStyles?: any;
   image?: any;
   withEdits?: boolean;
+  onImageSelected?: (asset: ImagePicker.ImagePickerAsset | null) => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
@@ -37,7 +39,7 @@ const CustomImage = ({
     }
 
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -46,7 +48,9 @@ const CustomImage = ({
     console.log(result);
 
     if (!result.canceled) {
-      setChosenImage(result.assets[0].uri);
+      const asset = result.assets[0];
+      setChosenImage(asset.uri);
+      onImageSelected?.(asset);
     }
   };
 

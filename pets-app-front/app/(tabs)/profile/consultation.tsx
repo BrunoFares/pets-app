@@ -4,9 +4,18 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
+import {
+  fetchConsultationById,
+  parseRoutePayload,
+} from "@/lib/profile-api";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, useColorScheme } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Consultation = () => {
@@ -16,36 +25,52 @@ const Consultation = () => {
   const { payload } = useLocalSearchParams<{ payload?: any }>();
   const [consultation, setConsultation] = useState<ConsultationModel>();
   const [pet, setPet] = useState<PetModel>();
+  const [consultationId, setConsultationId] = useState<string>();
+
+  const loadConsultation = useCallback(async (id: string) => {
+    try {
+      const response = await fetchConsultationById(id);
+      setConsultation(response);
+    } catch (error) {
+      Alert.alert(
+        "Unable to load consultation",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    }
+  }, []);
 
   useEffect(() => {
-    if (!payload) return;
+    const parsed = parseRoutePayload<{ item?: ConsultationModel; pet?: PetModel }>(
+      payload,
+    );
+    if (!parsed) return;
 
-    let parsed: any = payload;
-    if (typeof payload === "string") {
-      try {
-        parsed = JSON.parse(decodeURIComponent(payload));
-      } catch {
-        try {
-          parsed = JSON.parse(payload);
-        } catch {
-          // keep as string if parsing fails
-          parsed = payload;
-        }
-      }
+    if (parsed.item) {
+      setConsultation({
+        ...parsed.item,
+        Date:
+          parsed.item.Date instanceof Date
+            ? parsed.item.Date
+            : new Date(parsed.item.Date),
+      });
+      setConsultationId(String(parsed.item.Id));
+      void loadConsultation(String(parsed.item.Id));
     }
-
     setPet(parsed.pet);
-    setConsultation(parsed.item);
-  }, [payload]);
+  }, [loadConsultation, payload]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
 
+      if (consultationId) {
+        void loadConsultation(consultationId);
+      }
+
       return () => {
         setShowFooter?.(true);
       };
-    }, [setShowFooter]),
+    }, [consultationId, loadConsultation, setShowFooter]),
   );
 
   return (
@@ -64,11 +89,12 @@ const Consultation = () => {
               top: -10,
             }}
           >
-            {consultation.Date}
+            {consultation.Date.toDateString()}
           </AdaptiveText>
 
           <AdaptiveText style={styles.sectionTitle}>
-            Details provided by {consultation.VetId}:
+            Details provided by{" "}
+            {consultation.VetName || consultation.VetId || "your vet"}:
           </AdaptiveText>
           <AdaptiveText style={{ marginHorizontal: "7%", fontSize: 17 }}>
             {consultation.Details}

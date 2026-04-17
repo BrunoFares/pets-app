@@ -4,11 +4,15 @@ import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationMo
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { PetModel, VaccineRecordModel } from "@/data/models";
+import { apiRequest } from "@/lib/api";
+import { parseRoutePayload, toApiVaccineStatus } from "@/lib/profile-api";
 import { AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Keyboard,
   Platform,
   ScrollView,
@@ -24,22 +28,22 @@ const ModifyAddVaccine = () => {
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
   const { payload } = useLocalSearchParams<{ payload?: any }>();
+  const router = useRouter();
 
   const [showAdministeredDatePicker, setShowAdministeredDatePicker] =
-    useState<boolean>(false);
-  const [showNextDueDatePicker, setShowNextDueDatePicker] =
-    useState<boolean>(false);
+    useState(false);
+  const [showNextDueDatePicker, setShowNextDueDatePicker] = useState(false);
 
-  const [vaccineAvailable, setVaccineAvailable] = useState<boolean>();
-  const [selectedName, setSelectedName] = useState<string>();
-  const [selectedStatus, setSelectedStatus] = useState<string>();
-  const [administeredDate, setAdministeredDate] = useState<Date>(
-    new Date(1598051730000),
-  );
-  const [nextDueDate, setNextDueDate] = useState<Date>(new Date(1598051730000));
-  const [selectedNotes, setSelectedNotes] = useState<string>();
-
+  const [pet, setPet] = useState<PetModel>();
+  const [vaccine, setVaccine] = useState<VaccineRecordModel>();
+  const [selectedName, setSelectedName] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [administeredDate, setAdministeredDate] = useState<Date>(new Date());
+  const [nextDueDate, setNextDueDate] = useState<Date>(new Date());
+  const [selectedNotes, setSelectedNotes] = useState("");
+  const [selectedVeterinarian, setSelectedVeterinarian] = useState("");
   const [statusModal, setStatusModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const statusToChoose = [
     { id: 1, Name: "Done" },
@@ -48,61 +52,116 @@ const ModifyAddVaccine = () => {
   ];
 
   useEffect(() => {
-    if (!payload) return;
+    const parsed = parseRoutePayload<{ item?: VaccineRecordModel; pet?: PetModel }>(
+      payload,
+    );
+    if (!parsed) return;
 
-    let parsed: any = payload;
-    if (typeof payload === "string") {
-      try {
-        parsed = JSON.parse(decodeURIComponent(payload));
-      } catch (e) {
-        try {
-          parsed = JSON.parse(payload);
-        } catch (e2) {
-          // keep as string if parsing fails
-          parsed = payload;
-        }
-      }
-    }
+    setPet(parsed.pet);
 
-    if (!parsed) {
-      setVaccineAvailable(false);
+    if (!parsed.item) {
+      setVaccine(undefined);
       return;
     }
 
-    setVaccineAvailable(true);
-    setSelectedName(parsed.item.vaccineName);
-    setSelectedStatus(parsed.item.status);
-    setAdministeredDate(safeDate(parsed.item.dateAdministered));
-    setNextDueDate(safeDate(parsed.item.nextDueDate));
-    setSelectedNotes(parsed.item.notes);
-    console.log(parsed);
+    setVaccine(parsed.item);
+    setSelectedName(parsed.item.vaccineName ?? "");
+    setSelectedStatus(parsed.item.status ?? "");
+    setAdministeredDate(
+      parsed.item.dateAdministered
+        ? new Date(parsed.item.dateAdministered)
+        : new Date(),
+    );
+    setNextDueDate(
+      parsed.item.nextDueDate ? new Date(parsed.item.nextDueDate) : new Date(),
+    );
+    setSelectedNotes(parsed.item.notes ?? "");
+    setSelectedVeterinarian(parsed.item.veterinarian ?? "");
   }, [payload]);
 
-  const onChangeAdministered = (event: any, selectedDate: any) => {
+  const onChangeAdministered = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setAdministeredDate(selectedDate);
     }
     setShowAdministeredDatePicker(false);
   };
 
-  const onChangeNextDue = (event: any, selectedDate: any) => {
+  const onChangeNextDue = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setNextDueDate(selectedDate);
     }
     setShowNextDueDatePicker(false);
   };
 
-  const safeDate = (value: any, fallback = new Date()) => {
-    if (!value) return fallback;
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? fallback : d;
-  };
-
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
-    }, []),
+
+      return () => {
+        setShowFooter?.(true);
+      };
+    }, [setShowFooter]),
   );
+
+  const handleSave = async () => {
+    if (!pet) {
+      Alert.alert("Pet unavailable", "We couldn't determine which pet to use.");
+      return;
+    }
+
+    if (!selectedName.trim()) {
+      Alert.alert("Missing information", "Please enter the vaccine name.");
+      return;
+    }
+
+    if (!selectedStatus) {
+      Alert.alert("Missing information", "Please select the vaccine status.");
+      return;
+    }
+
+    const body = {
+      petId: pet.Id,
+      vaccineName: selectedName.trim(),
+      status: toApiVaccineStatus(selectedStatus),
+      dateAdministered:
+        selectedStatus === "Done" ? administeredDate.toISOString() : null,
+      nextDueDate: selectedStatus === "Due" ? nextDueDate.toISOString() : null,
+      notes: selectedNotes.trim() || null,
+      veterinarian: selectedVeterinarian.trim() || null,
+    };
+
+    try {
+      setIsSubmitting(true);
+
+      if (vaccine) {
+        await apiRequest(`/api/Vaccines/${vaccine.Id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            vaccineName: body.vaccineName,
+            status: body.status,
+            dateAdministered: body.dateAdministered,
+            nextDueDate: body.nextDueDate,
+            notes: body.notes,
+            veterinarian: body.veterinarian,
+          }),
+        });
+      } else {
+        await apiRequest("/api/Vaccines", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+      }
+
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        "Unable to save vaccine",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -114,7 +173,7 @@ const ModifyAddVaccine = () => {
         contentContainerStyle={{ alignItems: "center", gap: 10 }}
       >
         <AdaptiveText style={styles.title}>
-          {vaccineAvailable ? "Modify" : "Add"} Vaccination
+          {vaccine ? "Modify" : "Add"} Vaccination
         </AdaptiveText>
 
         <AdaptiveText style={{ width: "84%" }}>Name</AdaptiveText>
@@ -125,12 +184,7 @@ const ModifyAddVaccine = () => {
         />
 
         <AdaptiveText style={{ width: "84%" }}>Status</AdaptiveText>
-        <TouchableOpacity
-          style={styles.picker}
-          onPress={() => {
-            setStatusModal(true);
-          }}
-        >
+        <TouchableOpacity style={styles.picker} onPress={() => setStatusModal(true)}>
           <AdaptiveText style={styles.textPicker}>
             {selectedStatus || "Select Status..."}
           </AdaptiveText>
@@ -168,7 +222,7 @@ const ModifyAddVaccine = () => {
           <DateTimePicker
             testID="dateTimePicker"
             value={administeredDate}
-            mode={"date"}
+            mode="date"
             onChange={onChangeAdministered}
           />
         )}
@@ -176,7 +230,7 @@ const ModifyAddVaccine = () => {
           <DateTimePicker
             testID="dateTimePicker"
             value={administeredDate}
-            mode={"date"}
+            mode="date"
             onChange={onChangeAdministered}
           />
         )}
@@ -213,7 +267,7 @@ const ModifyAddVaccine = () => {
               <DateTimePicker
                 testID="dateTimePicker"
                 value={nextDueDate}
-                mode={"date"}
+                mode="date"
                 onChange={onChangeNextDue}
               />
             )}
@@ -222,29 +276,46 @@ const ModifyAddVaccine = () => {
               <DateTimePicker
                 testID="dateTimePicker"
                 value={nextDueDate}
-                mode={"date"}
+                mode="date"
                 onChange={onChangeNextDue}
               />
             )}
           </>
         )}
 
-        <AdaptiveText style={{ width: "84%" }}>Notes</AdaptiveText>
-        <CustomInput style={{ height: 200 }} value={selectedNotes} />
+        <AdaptiveText style={{ width: "84%" }}>Veterinarian</AdaptiveText>
+        <CustomInput
+          value={selectedVeterinarian}
+          onChangeText={setSelectedVeterinarian}
+          style={{ width: "84%" }}
+        />
 
-        <TouchableOpacity style={styles.buttonSave}>
-          <Text style={styles.btnTextSave}>Save changes</Text>
+        <AdaptiveText style={{ width: "84%" }}>Notes</AdaptiveText>
+        <CustomInput
+          style={styles.notesInput}
+          value={selectedNotes}
+          onChangeText={setSelectedNotes}
+          multiline
+          textAlignVertical="top"
+        />
+
+        <TouchableOpacity
+          style={styles.buttonSave}
+          disabled={isSubmitting}
+          onPress={handleSave}
+        >
+          <Text style={styles.btnTextSave}>
+            {isSubmitting ? "Saving..." : "Save changes"}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
       <ListWithoutConfirmationModal
-        title={"Select the status of the illness"}
+        title="Select the vaccination status"
         listElements={statusToChoose}
         visible={statusModal}
-        onClose={() => {
-          setStatusModal(false);
-        }}
-        onDone={(val: any) => {
+        onClose={() => setStatusModal(false)}
+        onDone={(val: { Name: string }) => {
           setStatusModal(false);
           setSelectedStatus(val.Name);
         }}
@@ -281,6 +352,10 @@ const createStyles = ({ darkMode }: any) => {
       color: darkMode ? colors.white : colors.black,
       paddingVertical: 12,
       paddingHorizontal: 16,
+    },
+    notesInput: {
+      minHeight: 180,
+      width: "84%",
     },
     buttonSave: {
       backgroundColor: colors.green,

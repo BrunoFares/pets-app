@@ -75,6 +75,7 @@ export interface ConsultationModel {
   Id: string;
   PetId: string;
   VetId: string;
+  VetName?: string | null;
   Date: Date;
   Details: string;
 }
@@ -100,7 +101,7 @@ export interface SpeciesModel {
   id: string | number;
   Code: string;
   Name: string;
-  Breeds: Array<string | BreedModel>;
+  Breeds: (string | BreedModel)[];
 }
 
 export interface BreedModel {

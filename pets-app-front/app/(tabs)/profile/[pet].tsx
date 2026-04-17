@@ -6,12 +6,17 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
-import { Consultations } from "@/data/sample";
+import {
+  fetchPetById,
+  fetchPetConsultations,
+  parseRoutePayload,
+} from "@/lib/profile-api";
 import { calculateAge, goTo } from "@/utils";
 import { Entypo, Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -28,35 +33,47 @@ const Pet = () => {
   const { setShowFooter } = useGlobal();
   const { payload } = useLocalSearchParams<{ payload?: any }>();
   const [pet, setPet] = useState<PetModel>();
-  const [consultations, setConsultations] = useState<ConsultationModel[]>();
+  const [petId, setPetId] = useState<string>();
+  const [consultations, setConsultations] = useState<ConsultationModel[]>([]);
+
+  const loadPetData = useCallback(async (id: string) => {
+    try {
+      const [petResponse, consultationResponse] = await Promise.all([
+        fetchPetById(id),
+        fetchPetConsultations(id),
+      ]);
+
+      setPet(petResponse);
+      setConsultations(consultationResponse);
+    } catch (error) {
+      Alert.alert(
+        "Unable to load pet",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    }
+  }, []);
 
   useEffect(() => {
-    if (!payload) return;
-
-    let parsed: any = payload;
-    if (typeof payload === "string") {
-      try {
-        parsed = JSON.parse(decodeURIComponent(payload));
-      } catch {
-        try {
-          parsed = JSON.parse(payload);
-        } catch {
-          // keep as string if parsing fails
-          parsed = payload;
-        }
-      }
-    }
-
-    const cons = Consultations.filter((item) => item.PetId === parsed.Id);
-    setConsultations(cons);
+    const parsed = parseRoutePayload<PetModel>(payload);
+    if (!parsed) return;
 
     setPet(parsed);
-  }, [payload]);
+    setPetId(String(parsed.Id));
+    void loadPetData(String(parsed.Id));
+  }, [loadPetData, payload]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
-    }, [setShowFooter]),
+
+      if (petId) {
+        void loadPetData(petId);
+      }
+
+      return () => {
+        setShowFooter?.(true);
+      };
+    }, [loadPetData, petId, setShowFooter]),
   );
 
   if (pet) {
@@ -69,11 +86,11 @@ const Pet = () => {
           ListHeaderComponent={
             <>
               <View style={styles.header}>
-                <CustomImage />
+                <CustomImage image={pet.AvatarUrl} />
                 <AdaptiveText style={styles.title}>{pet.Name}</AdaptiveText>
                 <TouchableOpacity
                   style={styles.editBtn}
-                  onPress={() => goTo({}, "/profile/edit-pet", router)}
+                  onPress={() => goTo({ pet }, "/profile/edit-pet", router)}
                 >
                   <AdaptiveText style={styles.editBtnTxt}>Edit</AdaptiveText>
                 </TouchableOpacity>
@@ -91,7 +108,9 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {calculateAge(new Date(pet.BirthDate))}
+                      {pet.BirthDate
+                        ? calculateAge(new Date(pet.BirthDate))
+                        : "-"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
                       years old
@@ -129,7 +148,7 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {pet.Breed}
+                      {pet.Breed || "-"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
                       breed
@@ -146,7 +165,7 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {pet.WeightKg} Kg
+                      {pet.WeightKg ? `${pet.WeightKg} Kg` : "-"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
                       weight
@@ -168,7 +187,7 @@ const Pet = () => {
                       {pet.Neutered ? "Yes" : "No"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
-                      Kalinka is {!pet.Neutered && "Not"}neutered.
+                      {pet.Name} is {pet.Neutered ? "" : "not "}neutered.
                     </AdaptiveText>
                   </View>
 
@@ -211,7 +230,7 @@ const Pet = () => {
                     borderRadius: 20,
                     padding: 5,
                   }}
-                  onPress={() => goTo("", "/profile/add-consultation", router)}
+                  onPress={() => goTo({ pet }, "/profile/add-consultation", router)}
                 >
                   <Feather
                     name="plus"
@@ -231,6 +250,11 @@ const Pet = () => {
               }}
             >
               <AdaptiveText>{item.Date.toDateString()}</AdaptiveText>
+              {!!item.VetName && (
+                <AdaptiveText style={styles.consultationMeta}>
+                  {item.VetName}
+                </AdaptiveText>
+              )}
             </TouchableOpacity>
           )}
           ListEmptyComponent={
@@ -374,6 +398,12 @@ const createStyles = ({ darkMode }: any) => {
       paddingVertical: 10,
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
       borderRadius: 10,
+    },
+    consultationMeta: {
+      fontFamily: "Poppins-Light",
+      fontSize: 12,
+      marginTop: 2,
+      opacity: 0.8,
     },
     editBtn: {
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
