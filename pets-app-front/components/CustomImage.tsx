@@ -54,7 +54,13 @@ const CustomImage = ({
     <View style={[styles.pfpBox, customStyles]}>
       {chosenImage || image ? (
         <Image
-          source={chosenImage ? { uri: chosenImage } : image}
+          source={
+            chosenImage
+              ? { uri: chosenImage }
+              : typeof image === "string"
+                ? { uri: image }
+                : image
+          }
           style={[styles.pfp, customStyles]}
         />
       ) : (

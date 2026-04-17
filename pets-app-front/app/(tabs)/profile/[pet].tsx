@@ -2,6 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
 import { PageHeader } from "@/components/PageHeader";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
@@ -36,10 +37,10 @@ const Pet = () => {
     if (typeof payload === "string") {
       try {
         parsed = JSON.parse(decodeURIComponent(payload));
-      } catch (e) {
+      } catch {
         try {
           parsed = JSON.parse(payload);
-        } catch (e2) {
+        } catch {
           // keep as string if parsing fails
           parsed = payload;
         }
@@ -55,7 +56,7 @@ const Pet = () => {
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
-    }, []),
+    }, [setShowFooter]),
   );
 
   if (pet) {
@@ -232,6 +233,13 @@ const Pet = () => {
               <AdaptiveText>{item.Date.toDateString()}</AdaptiveText>
             </TouchableOpacity>
           )}
+          ListEmptyComponent={
+            <ProfileEmptyState
+              compact
+              title="No consultations registered yet"
+              subtitle="Add your pet's first consultation to keep their medical visits organized here."
+            />
+          }
           ListFooterComponent={
             <>
               <AdaptiveText style={[styles.consTitle, { marginTop: 20 }]}>
