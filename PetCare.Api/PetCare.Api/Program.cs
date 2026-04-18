@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.FileProviders;
 using Npgsql;                         // 👈 add
 using System.Text;
 using System.Text.Json.Serialization;
 using PetCare.Api.Data;
 using PetCare.Api.Model;            // PetSex
+
+const string AdminUiCorsPolicy = "AdminUiCors";
+const string AdminUiRoutePrefix = "/admin";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +52,30 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(AdminUiCorsPolicy, policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin =>
+            {
+                if (string.Equals(origin, "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Host is "localhost" or "127.0.0.1" or "::1";
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 // JWT
 var secret = builder.Configuration["Jwt:Secret"] ?? "dev_secret_change_me_very_long";
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
@@ -67,6 +96,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+var adminUiPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "..", "pets-app-admin"));
+var hasAdminUi = Directory.Exists(adminUiPath);
 
 if (app.Environment.IsDevelopment())
 {
@@ -74,7 +105,27 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors(AdminUiCorsPolicy);
 app.UseHttpsRedirection();
+
+if (hasAdminUi)
+{
+    var adminUiProvider = new PhysicalFileProvider(adminUiPath);
+    app.UseDefaultFiles(new DefaultFilesOptions
+    {
+        FileProvider = adminUiProvider,
+        RequestPath = AdminUiRoutePrefix,
+        DefaultFileNames = { "index.html" }
+    });
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = adminUiProvider,
+        RequestPath = AdminUiRoutePrefix,
+        ContentTypeProvider = new FileExtensionContentTypeProvider()
+    });
+}
+
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();

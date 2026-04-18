@@ -1,12 +1,22 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { ChatSessionModel } from "@/data/models";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import {
+  createChat,
+  fetchChats,
+  getChatSessionPreview,
+  getChatSessionTitle,
+} from "@/lib/chat-api";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
+  Alert,
   Animated,
   FlatList,
   Keyboard,
@@ -22,115 +32,190 @@ export default function ChatbotScreen() {
   const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const [chats, setChats] = useState<any[]>([]);
-  const { showFooter, setShowFooter } = useGlobal();
+  const [chats, setChats] = useState<ChatSessionModel[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setShowFooter } = useGlobal();
 
   useFocusEffect(
     useCallback(() => {
-      // API all to get the chats
-      const userChats = [
-        { key: 1, title: "firstChat", content: "content1" },
-        { key: 2, title: "secondChat", content: "content2" },
-        { key: 3, title: "thirdChat", content: "content3" },
-        { key: 4, title: "fourthChat", content: "content4" },
-        { key: 5, title: "fifthChat", content: "content5" },
-      ];
-      setChats(userChats);
-    }, []),
-  );
+      let isActive = true;
 
-  useFocusEffect(
-    useCallback(() => {
+      const loadChats = async () => {
+        setIsLoading(true);
+
+        try {
+          const response = await fetchChats();
+
+          if (!isActive) return;
+
+          const sortedChats = [...response].sort((a, b) => {
+            const aTimestamp = new Date(a.UpdatedAt ?? a.CreatedAt).getTime();
+            const bTimestamp = new Date(b.UpdatedAt ?? b.CreatedAt).getTime();
+            return bTimestamp - aTimestamp;
+          });
+
+          setChats(sortedChats);
+        } catch (error) {
+          if (!isActive) return;
+
+          setChats([]);
+          Alert.alert(
+            "Could not load chats",
+            error instanceof Error ? error.message : "Please try again.",
+          );
+        } finally {
+          if (isActive) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      void loadChats();
+
       return () => {
-        // This code runs when the screen is unfocused (or unmounted).
+        isActive = false;
         setShowFooter?.(true);
       };
-    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, [setShowFooter]),
   );
 
   const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
 
+  const handleStartChat = async () => {
+    const content = prompt.trim();
+
+    if (!content || isSubmitting) {
+      return;
+    }
+
+    Keyboard.dismiss();
+    setIsSubmitting(true);
+
+    try {
+      const id = await createChat([{ role: "User", content }]);
+      setPrompt("");
+      setShowFooter?.(true);
+      router.push({
+        pathname: "/(tabs)/chatbot/[id]",
+        params: { id },
+      });
+    } catch (error) {
+      Alert.alert(
+        "Could not start chat",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View>
+      <View style={styles.screen}>
         <Animated.View style={{ transform: [{ translateY }] }}>
           <AdaptiveText style={styles.title}>Dr. Pet</AdaptiveText>
           <AdaptiveText style={styles.subtitle}>
-            Your personal assistant's {"\n"} personal assistant.
+            Your personal assistant&apos;s {"\n"} personal assistant.
           </AdaptiveText>
         </Animated.View>
 
-        <View
-          style={[
-            styles.txtInputContainer,
-            showFooter !== undefined && !showFooter && { bottom: 0 },
-          ]}
-        >
+        <View style={styles.txtInputContainer}>
           <TextInput
             placeholder="Enter a new prompt..."
             placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
             style={styles.txtInput}
+            value={prompt}
+            onChangeText={setPrompt}
             onFocus={() => setShowFooter?.(false)}
             onBlur={() => setShowFooter?.(true)}
           />
-          <TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              backgroundColor: prompt.trim()
+                ? darkMode
+                  ? colors.white
+                  : colors.black
+                : colors.darkGrey,
+              borderRadius: 20,
+              padding: 6,
+              right: 4,
+            }}
+            disabled={!prompt.trim() || isSubmitting}
+            onPress={() => void handleStartChat()}
+          >
             <Feather
               name="arrow-up"
               size={24}
-              color={darkMode ? colors.white : colors.black}
+              color={
+                prompt.trim()
+                  ? darkMode
+                    ? colors.black
+                    : colors.white
+                  : darkMode
+                    ? colors.white
+                    : colors.black
+              }
             />
           </TouchableOpacity>
         </View>
 
-        {chats ? (
-          <FlatList
-            data={chats}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={Keyboard.dismiss}
-            contentContainerStyle={{ alignSelf: "center", width: "90%" }}
-            keyExtractor={(item) => String(item.key)}
-            renderItem={({ item }) => {
-              return (
-                <TouchableOpacity
-                  style={styles.chat}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/chatbot/[id]",
-                      params: { id: String(item.key) },
-                    })
-                  }
-                >
-                  <View>
-                    <AdaptiveText style={styles.chatTitle}>
-                      {item.title}
-                    </AdaptiveText>
-                    <AdaptiveText style={styles.chatContent}>
-                      {item.content}
-                    </AdaptiveText>
-                  </View>
-                  <Feather
-                    name="arrow-right"
-                    size={24}
-                    color={darkMode ? colors.white : colors.black}
-                  />
-                </TouchableOpacity>
-              );
-            }}
-            ItemSeparatorComponent={() => <View style={{ height: 15 }} />}
-          />
-        ) : (
-          <AdaptiveText
-            style={{
-              alignSelf: "center",
-              fontFamily: "Poppins-SemiBold",
-              marginTop: 250,
-            }}
-          >
-            No items found.
-          </AdaptiveText>
-        )}
+        <FlatList
+          style={styles.chatList}
+          data={chats}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+          contentContainerStyle={{
+            alignSelf: "center",
+            width: "90%",
+            paddingBottom: 100,
+            marginTop: 0,
+            paddingTop: 0,
+            flexGrow: chats.length === 0 ? 1 : 0,
+            justifyContent: "flex-start",
+          }}
+          keyExtractor={(item) => item.Id}
+          renderItem={({ item }) => {
+            return (
+              <TouchableOpacity
+                style={styles.chat}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/chatbot/[id]",
+                    params: { id: item.Id },
+                  })
+                }
+              >
+                <View style={styles.chatCopy}>
+                  <AdaptiveText style={styles.chatTitle}>
+                    {getChatSessionTitle(item)}
+                  </AdaptiveText>
+                  <AdaptiveText style={styles.chatContent}>
+                    {getChatSessionPreview(item)}
+                  </AdaptiveText>
+                </View>
+                <Feather
+                  name="arrow-right"
+                  size={24}
+                  color={darkMode ? colors.white : colors.black}
+                />
+              </TouchableOpacity>
+            );
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: 15 }} />}
+          ListEmptyComponent={
+            <ProfileEmptyState
+              style={{ width: "98%" }}
+              title="No conversations yet"
+              subtitle="Start a new prompt above and your saved chats will appear here."
+            />
+          }
+        />
       </View>
+
+      {(isLoading || isSubmitting) && <LoadingOverlay />}
     </SafeAreaView>
   );
 }
@@ -140,6 +225,9 @@ const createStyles = ({ darkMode }: any) => {
     container: {
       flex: 1,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    },
+    screen: {
+      flex: 1,
     },
     title: {
       fontSize: 26,
@@ -153,10 +241,8 @@ const createStyles = ({ darkMode }: any) => {
       marginTop: 5,
       textAlign: "center",
     },
-    body: {
+    chatList: {
       flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
     },
     chat: {
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
@@ -167,11 +253,16 @@ const createStyles = ({ darkMode }: any) => {
       justifyContent: "space-between",
       alignItems: "center",
     },
+    chatCopy: {
+      flex: 1,
+      paddingRight: 14,
+    },
     chatTitle: {
       fontFamily: "Poppins-SemiBold",
     },
     chatContent: {
       fontFamily: "Poppins-Light",
+      marginTop: 2,
     },
     txtInputContainer: {
       flexDirection: "row",
@@ -180,9 +271,8 @@ const createStyles = ({ darkMode }: any) => {
       backgroundColor: darkMode ? colors.darkGrey : colors.white,
       borderRadius: 24,
       alignItems: "center",
-      marginVertical: 30,
+      marginTop: 30,
 
-      // shadow
       shadowColor: colors.black,
       shadowOffset: { width: 0, height: 10 },
       shadowRadius: 10,
