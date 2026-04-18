@@ -32,11 +32,11 @@ const ListWithoutConfirmationModal = ({
       <FlatList
         contentContainerStyle={styles.body}
         data={listElements}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={(item) => String(item.id ?? item.Id)}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => {
-              setSelected(item.name);
+              setSelected(item.Name ?? item.name);
               onDone(item);
             }}
           >
@@ -44,10 +44,12 @@ const ListWithoutConfirmationModal = ({
               style={{
                 fontSize: 22,
                 fontFamily:
-                  selected === item.Name ? "Poppins-Bold" : "Poppins-Regular",
+                  selected === (item.Name ?? item.name)
+                    ? "Poppins-Bold"
+                    : "Poppins-Regular",
               }}
             >
-              {item.Name}
+              {item.Name ?? item.name}
             </AdaptiveText>
           </TouchableOpacity>
         )}
