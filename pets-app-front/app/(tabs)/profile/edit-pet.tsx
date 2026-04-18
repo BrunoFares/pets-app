@@ -2,6 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomImage from "@/components/CustomImage";
 import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -48,6 +49,9 @@ const EditPet = () => {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingPet, setIsLoadingPet] = useState(true);
+  const [isLoadingSpecies, setIsLoadingSpecies] = useState(true);
+  const [isLoadingBreeds, setIsLoadingBreeds] = useState(false);
 
   const [selectedName, setSelectedName] = useState("");
   const [selectedSex, setSelectedSex] = useState("");
@@ -67,6 +71,8 @@ const EditPet = () => {
   const [breedModal, setBreedModal] = useState(false);
   const [colorModal, setColorModal] = useState(false);
   const [neuteredModal, setNeuteredModal] = useState(false);
+  const isLoading =
+    isSubmitting || isLoadingPet || isLoadingSpecies || isLoadingBreeds;
 
   const colorsToChoose = useMemo(
     () =>
@@ -94,6 +100,8 @@ const EditPet = () => {
   };
 
   const loadPet = useCallback(async (id: string) => {
+    setIsLoadingPet(true);
+
     try {
       const pet = await fetchPetById(id);
 
@@ -115,6 +123,8 @@ const EditPet = () => {
         "Unable to load pet",
         error instanceof Error ? error.message : "Please try again.",
       );
+    } finally {
+      setIsLoadingPet(false);
     }
   }, []);
 
@@ -134,6 +144,8 @@ const EditPet = () => {
 
   useEffect(() => {
     const loadSpecies = async () => {
+      setIsLoadingSpecies(true);
+
       try {
         const species = await fetchSpeciesOptions();
         setSpeciesToChoose(species);
@@ -142,6 +154,8 @@ const EditPet = () => {
           "Unable to load pet details",
           error instanceof Error ? error.message : "Please try again.",
         );
+      } finally {
+        setIsLoadingSpecies(false);
       }
     };
 
@@ -150,7 +164,11 @@ const EditPet = () => {
 
   useEffect(() => {
     const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
-    if (!parsed?.pet) return;
+    if (!parsed?.pet) {
+      setPetId(undefined);
+      setIsLoadingPet(false);
+      return;
+    }
 
     setPetId(String(parsed.pet.Id));
     setSelectedName(parsed.pet.Name);
@@ -166,6 +184,8 @@ const EditPet = () => {
         setDate(parsedDate);
       }
     }
+
+    setIsLoadingPet(true);
   }, [payload]);
 
   useEffect(() => {
@@ -192,8 +212,11 @@ const EditPet = () => {
       if (!selectedSpecies?.id) {
         setBreedsToChoose([]);
         setSelectedBreed(undefined);
+        setIsLoadingBreeds(false);
         return;
       }
+
+      setIsLoadingBreeds(true);
 
       try {
         const breeds = await fetchBreedOptions(Number(selectedSpecies.id));
@@ -215,6 +238,8 @@ const EditPet = () => {
           "Unable to load breeds",
           error instanceof Error ? error.message : "Please try again.",
         );
+      } finally {
+        setIsLoadingBreeds(false);
       }
     };
 
@@ -522,6 +547,8 @@ const EditPet = () => {
           setSelectedNeutered(val.Name);
         }}
       />
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

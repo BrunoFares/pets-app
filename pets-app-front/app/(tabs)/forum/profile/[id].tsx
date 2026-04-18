@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomImage from "@/components/CustomImage";
 import ForumPost from "@/components/ForumPost";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { AppUsersModel, ForumPostsModel } from "@/data/models";
@@ -36,19 +37,50 @@ const ProfileScreen = () => {
 
   const [posts, setPosts] = useState<ForumPostsModel[]>();
   const [replies, setReplies] = useState<ForumPostsModel[]>();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const selectedPost = payload
-      ? JSON.parse(decodeURIComponent(payload))
-      : null;
+    let selectedPost: ForumPostsModel | null = null;
+
+    if (payload) {
+      try {
+        selectedPost = JSON.parse(decodeURIComponent(payload));
+      } catch {
+        try {
+          selectedPost = JSON.parse(payload);
+        } catch {
+          selectedPost = null;
+        }
+      }
+    }
+
     const selectedUserID = selectedPost?.UserId;
 
     if (!selectedUserID) {
       setUser(undefined);
       setPosts([]);
       setReplies([]);
+      setIsLoading(false);
       return;
     }
+
+    setUser({
+      Id: selectedUserID,
+      Name: selectedPost?.UserName ?? "User",
+      FirstName: "",
+      LastName: "",
+      Email: "",
+      PhoneNumber: "",
+      PasswordHash: "",
+      Image: "",
+      CreatedAt: "",
+      LastLogin: null,
+      Description: "",
+      BookmarkedPostID: [],
+    });
+    setPosts([]);
+    setReplies([]);
+    setIsLoading(true);
 
     const loadPosts = async () => {
       try {
@@ -71,26 +103,14 @@ const ProfileScreen = () => {
           (item) => String(item.UserId) === String(selectedUserID),
         );
 
-        setUser({
-          Id: selectedUserID,
-          Name: selectedPost?.UserName ?? "User",
-          FirstName: "",
-          LastName: "",
-          Email: "",
-          PhoneNumber: "",
-          PasswordHash: "",
-          Image: "",
-          CreatedAt: "",
-          LastLogin: null,
-          Description: "",
-          BookmarkedPostID: [],
-        });
         setPosts(displayPosts.filter((item) => !item.IsAReply));
         setReplies(displayPosts);
       } catch {
         setUser(undefined);
         setPosts([]);
         setReplies([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -218,6 +238,8 @@ const ProfileScreen = () => {
       ) : (
         <AdaptiveText>No profile found.</AdaptiveText>
       )}
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

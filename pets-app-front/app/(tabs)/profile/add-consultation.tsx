@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -42,6 +43,8 @@ const AddConsultation = () => {
   const [vetOptions, setVetOptions] = useState<VetOption[]>([]);
   const [vetModal, setVetModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingVets, setIsLoadingVets] = useState(true);
+  const isLoading = isSubmitting || isLoadingVets;
 
   const onChange = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
@@ -69,6 +72,8 @@ const AddConsultation = () => {
 
   useEffect(() => {
     const loadVetOptions = async () => {
+      setIsLoadingVets(true);
+
       try {
         const vets = await fetchVetOptions();
         setVetOptions(vets);
@@ -77,6 +82,8 @@ const AddConsultation = () => {
           "Unable to load vets",
           error instanceof Error ? error.message : "Please try again.",
         );
+      } finally {
+        setIsLoadingVets(false);
       }
     };
 
@@ -208,6 +215,8 @@ const AddConsultation = () => {
           setSelectedVet(val);
         }}
       />
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

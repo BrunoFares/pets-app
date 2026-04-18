@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import ForumPost from "@/components/ForumPost";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
@@ -26,11 +27,14 @@ export default function ForumScreen() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [posts, setPosts] = useState<ForumPostsModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { setShowFooter } = useGlobal();
 
   useFocusEffect(
     useCallback(() => {
       const loadPosts = async () => {
+        setIsLoading(true);
+
         try {
           const forumPosts = await apiRequest<{
             id: string;
@@ -63,6 +67,8 @@ export default function ForumScreen() {
           );
         } catch {
           setPosts([]);
+        } finally {
+          setIsLoading(false);
         }
       };
 
@@ -136,6 +142,8 @@ export default function ForumScreen() {
           </AdaptiveText>
         )}
       </View>
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 }

@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import ForumPost from "@/components/ForumPost";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -40,6 +41,7 @@ const PostScreen = () => {
   const { setShowFooter } = useGlobal();
   const [item, setItem] = useState<ForumPostsModel>();
   const [replies, setReplies] = useState<ForumPostsModel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,16 +70,20 @@ const PostScreen = () => {
     if (selectedPost) {
       setItem(selectedPost);
       setReplies([]);
+      setIsLoading(false);
       return;
     }
 
     if (!id) {
       setItem(undefined);
       setReplies([]);
+      setIsLoading(false);
       return;
     }
 
     const loadPost = async () => {
+      setIsLoading(true);
+
       try {
         const [post, postReplies] = await Promise.all([
           apiRequest<any>(`/api/ForumPosts/${id}`),
@@ -89,6 +95,8 @@ const PostScreen = () => {
       } catch {
         setItem(undefined);
         setReplies([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -129,6 +137,8 @@ const PostScreen = () => {
           </AdaptiveText>
         )}
       </View>
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

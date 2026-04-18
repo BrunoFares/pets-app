@@ -318,10 +318,20 @@ export async function fetchPetVaccines(petId: string) {
   return response.map(mapApiVaccineToModel);
 }
 
+export async function fetchDueVaccines() {
+  const response = await apiRequest<ApiVaccineResponse[]>("/api/Vaccines/due");
+  return response.map(mapApiVaccineToModel);
+}
+
 export async function fetchPetIllnesses(petId: string) {
   const response = await apiRequest<ApiIllnessResponse[]>(
     `/api/Illnesses/pet/${petId}`,
   );
+  return response.map(mapApiIllnessToModel);
+}
+
+export async function fetchOngoingIllnesses() {
+  const response = await apiRequest<ApiIllnessResponse[]>("/api/Illnesses/ongoing");
   return response.map(mapApiIllnessToModel);
 }
 
@@ -330,6 +340,20 @@ export async function fetchIllnessMedications(illnessId: string | number) {
     `/api/Medications/illness/${illnessId}`,
   );
   return response.map(mapApiMedicationToModel);
+}
+
+export async function fetchMedicationReminders() {
+  const response = await apiRequest<ApiMedicationResponse[]>(
+    "/api/Medications/needs-reminders",
+  );
+  return response.map(mapApiMedicationToModel);
+}
+
+export async function fetchUpcomingConsultations() {
+  const response = await apiRequest<ApiConsultationResponse[]>(
+    "/api/Consultations/upcoming",
+  );
+  return response.map(mapApiConsultationToModel);
 }
 
 export async function fetchSpeciesOptions() {

@@ -2,6 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomImage from "@/components/CustomImage";
 import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -47,6 +48,9 @@ const AddPet = () => {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingSpecies, setIsLoadingSpecies] = useState(true);
+  const [isLoadingBreeds, setIsLoadingBreeds] = useState(false);
+  const isLoading = isSubmitting || isLoadingSpecies || isLoadingBreeds;
 
   const [selectedName, setSelectedName] = useState("");
   const [selectedSex, setSelectedSex] = useState("");
@@ -104,6 +108,8 @@ const AddPet = () => {
 
   useEffect(() => {
     const loadSpecies = async () => {
+      setIsLoadingSpecies(true);
+
       try {
         const species = await fetchSpeciesOptions();
         setSpeciesToChoose(species);
@@ -112,6 +118,8 @@ const AddPet = () => {
           "Unable to load pet details",
           error instanceof Error ? error.message : "Please try again.",
         );
+      } finally {
+        setIsLoadingSpecies(false);
       }
     };
 
@@ -123,8 +131,11 @@ const AddPet = () => {
       if (!selectedSpecies?.id) {
         setBreedsToChoose([]);
         setSelectedBreed(undefined);
+        setIsLoadingBreeds(false);
         return;
       }
+
+      setIsLoadingBreeds(true);
 
       try {
         const breeds = await fetchBreedOptions(Number(selectedSpecies.id));
@@ -135,6 +146,8 @@ const AddPet = () => {
           "Unable to load breeds",
           error instanceof Error ? error.message : "Please try again.",
         );
+      } finally {
+        setIsLoadingBreeds(false);
       }
     };
 
@@ -436,6 +449,8 @@ const AddPet = () => {
           setSelectedNeutered(val.Name);
         }}
       />
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

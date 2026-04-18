@@ -1,4 +1,5 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
@@ -31,8 +32,11 @@ const VaccinesScreen = () => {
   const [vaccines, setVaccines] = useState<VaccineRecordModel[]>([]);
   const [pet, setPet] = useState<PetModel>();
   const [petId, setPetId] = useState<string>();
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadVaccines = useCallback(async (id: string) => {
+    setIsLoading(true);
+
     try {
       const response = await fetchPetVaccines(id);
       setVaccines(response);
@@ -41,12 +45,20 @@ const VaccinesScreen = () => {
         "Unable to load vaccines",
         error instanceof Error ? error.message : "Please try again.",
       );
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
-    if (!parsed?.pet) return;
+    if (!parsed?.pet) {
+      setPet(undefined);
+      setPetId(undefined);
+      setVaccines([]);
+      setIsLoading(false);
+      return;
+    }
 
     setPet(parsed.pet);
     setPetId(String(parsed.pet.Id));
@@ -80,10 +92,12 @@ const VaccinesScreen = () => {
         keyExtractor={(item) => String(item.Id)}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <ProfileEmptyState
-            title="No vaccines recorded yet"
-            subtitle="Add vaccinations here so upcoming doses and past records are easy to review."
-          />
+          isLoading ? null : (
+            <ProfileEmptyState
+              title="No vaccines recorded yet"
+              subtitle="Add vaccinations here so upcoming doses and past records are easy to review."
+            />
+          )
         }
         renderItem={({ item }) => (
           <>
@@ -153,6 +167,8 @@ const VaccinesScreen = () => {
           color={darkMode ? colors.white : colors.black}
         />
       </TouchableOpacity>
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

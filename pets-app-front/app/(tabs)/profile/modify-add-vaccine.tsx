@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -320,6 +321,8 @@ const ModifyAddVaccine = () => {
           setSelectedStatus(val.Name);
         }}
       />
+
+      {isSubmitting && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

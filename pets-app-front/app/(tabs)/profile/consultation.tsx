@@ -1,4 +1,5 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
@@ -26,8 +27,11 @@ const Consultation = () => {
   const [consultation, setConsultation] = useState<ConsultationModel>();
   const [pet, setPet] = useState<PetModel>();
   const [consultationId, setConsultationId] = useState<string>();
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadConsultation = useCallback(async (id: string) => {
+    setIsLoading(true);
+
     try {
       const response = await fetchConsultationById(id);
       setConsultation(response);
@@ -36,6 +40,8 @@ const Consultation = () => {
         "Unable to load consultation",
         error instanceof Error ? error.message : "Please try again.",
       );
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -43,7 +49,13 @@ const Consultation = () => {
     const parsed = parseRoutePayload<{ item?: ConsultationModel; pet?: PetModel }>(
       payload,
     );
-    if (!parsed) return;
+    if (!parsed) {
+      setConsultation(undefined);
+      setPet(undefined);
+      setConsultationId(undefined);
+      setIsLoading(false);
+      return;
+    }
 
     if (parsed.item) {
       setConsultation({
@@ -55,6 +67,10 @@ const Consultation = () => {
       });
       setConsultationId(String(parsed.item.Id));
       void loadConsultation(String(parsed.item.Id));
+    } else {
+      setConsultation(undefined);
+      setConsultationId(undefined);
+      setIsLoading(false);
     }
     setPet(parsed.pet);
   }, [loadConsultation, payload]);
@@ -106,6 +122,8 @@ const Consultation = () => {
           subtitle="This consultation could not be found or has not been registered yet."
         />
       )}
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

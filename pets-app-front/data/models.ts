@@ -31,6 +31,21 @@ export interface ForumPostsModel {
   IsBookmarked?: boolean;
 }
 
+export interface ChatMessageModel {
+  Id: string;
+  Role: "User" | "Bot";
+  Content: string;
+  CreatedAt: number | string;
+}
+
+export interface ChatSessionModel {
+  Id: string;
+  UserId: string | number;
+  Discussion: ChatMessageModel[];
+  CreatedAt: number | string;
+  UpdatedAt?: number | string | null;
+}
+
 export interface ChatModel {
   Id: string;
   UserId: string;
@@ -39,6 +54,24 @@ export interface ChatModel {
     Bot: string[];
   };
   CreatedAt: number;
+}
+
+export interface PlaceModel {
+  Id: string;
+  Name: string;
+  Phone: string;
+  Email: string;
+  Photo: string | null;
+  Description: string;
+  AddressLine1: string;
+  AddressLine2?: string | null;
+  City: string;
+  Country: string;
+  Status: "Active" | "Inactive" | "Closed";
+  Type: "Vet" | "PetShop" | "Other";
+  Latitude: number | null;
+  Longitude: number | null;
+  CreatedAt: number | string;
 }
 
 export interface PetModel {

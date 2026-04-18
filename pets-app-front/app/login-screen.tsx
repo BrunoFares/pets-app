@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { apiRequest, ApiRequestError } from "@/lib/api";
@@ -176,6 +177,8 @@ export default function LoginScreen() {
             </AdaptiveText>
           </TouchableOpacity>
         </View>
+
+        {isSubmitting && <LoadingOverlay />}
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );

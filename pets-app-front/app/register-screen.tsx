@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomInput from "@/components/CustomInput";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -116,6 +117,8 @@ const RegisterScreen = () => {
               <Text style={styles.txtBtn}>{isSubmitting ? "Registering..." : "Register"}</Text>
             </TouchableOpacity>
           </ScrollView>
+
+          {isSubmitting && <LoadingOverlay />}
         </AdaptiveView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
