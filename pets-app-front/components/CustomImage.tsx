@@ -15,12 +15,10 @@ const CustomImage = ({
   customStyles,
   image,
   withEdits = false,
-  onImageSelected,
 }: {
   customStyles?: any;
   image?: any;
   withEdits?: boolean;
-  onImageSelected?: (asset: ImagePicker.ImagePickerAsset | null) => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
@@ -39,7 +37,7 @@ const CustomImage = ({
     }
 
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ["images", "videos"],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -48,9 +46,7 @@ const CustomImage = ({
     console.log(result);
 
     if (!result.canceled) {
-      const asset = result.assets[0];
-      setChosenImage(asset.uri);
-      onImageSelected?.(asset);
+      setChosenImage(result.assets[0].uri);
     }
   };
 
@@ -58,13 +54,7 @@ const CustomImage = ({
     <View style={[styles.pfpBox, customStyles]}>
       {chosenImage || image ? (
         <Image
-          source={
-            chosenImage
-              ? { uri: chosenImage }
-              : typeof image === "string"
-                ? { uri: image }
-                : image
-          }
+          source={chosenImage ? { uri: chosenImage } : image}
           style={[styles.pfp, customStyles]}
         />
       ) : (
