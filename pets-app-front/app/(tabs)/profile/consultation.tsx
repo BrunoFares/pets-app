@@ -1,22 +1,12 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
-import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { ConsultationModel, PetModel } from "@/data/models";
-import {
-  fetchConsultationById,
-  parseRoutePayload,
-} from "@/lib/profile-api";
+import { ConsultationModel, PetModel, VetModel } from "@/data/models";
+import { Vets } from "@/data/sample";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  useColorScheme,
-} from "react-native";
+import { ScrollView, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Consultation = () => {
@@ -26,76 +16,49 @@ const Consultation = () => {
   const { payload } = useLocalSearchParams<{ payload?: any }>();
   const [consultation, setConsultation] = useState<ConsultationModel>();
   const [pet, setPet] = useState<PetModel>();
-  const [consultationId, setConsultationId] = useState<string>();
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadConsultation = useCallback(async (id: string) => {
-    setIsLoading(true);
-
-    try {
-      const response = await fetchConsultationById(id);
-      setConsultation(response);
-    } catch (error) {
-      Alert.alert(
-        "Unable to load consultation",
-        error instanceof Error ? error.message : "Please try again.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [vet, setVet] = useState<VetModel>();
 
   useEffect(() => {
-    const parsed = parseRoutePayload<{ item?: ConsultationModel; pet?: PetModel }>(
-      payload,
-    );
-    if (!parsed) {
-      setConsultation(undefined);
-      setPet(undefined);
-      setConsultationId(undefined);
-      setIsLoading(false);
-      return;
+    if (!payload) return;
+
+    let parsed: any = payload;
+    if (typeof payload === "string") {
+      try {
+        parsed = JSON.parse(decodeURIComponent(payload));
+      } catch (e) {
+        try {
+          parsed = JSON.parse(payload);
+        } catch (e2) {
+          // keep as string if parsing fails
+          parsed = payload;
+        }
+      }
     }
 
-    if (parsed.item) {
-      setConsultation({
-        ...parsed.item,
-        Date:
-          parsed.item.Date instanceof Date
-            ? parsed.item.Date
-            : new Date(parsed.item.Date),
-      });
-      setConsultationId(String(parsed.item.Id));
-      void loadConsultation(String(parsed.item.Id));
-    } else {
-      setConsultation(undefined);
-      setConsultationId(undefined);
-      setIsLoading(false);
-    }
+    const temp = Vets.find((item) => item.Id === parsed.item.VetId);
+
+    setVet(temp);
     setPet(parsed.pet);
-  }, [loadConsultation, payload]);
+    setConsultation(parsed.item);
+  }, [payload]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
 
-      if (consultationId) {
-        void loadConsultation(consultationId);
-      }
-
       return () => {
         setShowFooter?.(true);
       };
-    }, [consultationId, loadConsultation, setShowFooter]),
+    }, []),
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <PageHeader title="" />
-      {consultation ? (
+  if (consultation) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <PageHeader title="" />
         <ScrollView contentContainerStyle={styles.container}>
           <AdaptiveText style={styles.title}>
-            {`${pet?.Name ?? ""}'s Consultation`}
+            {pet?.Name}'s Consultation
           </AdaptiveText>
 
           <AdaptiveText
@@ -105,27 +68,19 @@ const Consultation = () => {
               top: -10,
             }}
           >
-            {consultation.Date.toDateString()}
+            {consultation.Date}
           </AdaptiveText>
 
           <AdaptiveText style={styles.sectionTitle}>
-            Details provided by{" "}
-            {consultation.VetName || consultation.VetId || "your vet"}:
+            Details provided by {consultation.VetId}:
           </AdaptiveText>
           <AdaptiveText style={{ marginHorizontal: "7%", fontSize: 17 }}>
             {consultation.Details}
           </AdaptiveText>
         </ScrollView>
-      ) : (
-        <ProfileEmptyState
-          title="No consultation details available"
-          subtitle="This consultation could not be found or has not been registered yet."
-        />
-      )}
-
-      {isLoading && <LoadingOverlay />}
-    </SafeAreaView>
-  );
+      </SafeAreaView>
+    );
+  } else;
 };
 
 export default Consultation;

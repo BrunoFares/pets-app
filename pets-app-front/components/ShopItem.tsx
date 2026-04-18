@@ -10,9 +10,9 @@ const ShopItem = ({
     style
 }: {
     name: string;
-    image?: string | null;
+    image: string;
     location: string;
-    rating?: string | number | null;
+    rating: string;
     style?: ViewStyle
 }) => {
     const darkMode = useColorScheme() === 'dark';
@@ -23,9 +23,7 @@ const ShopItem = ({
             <CustomImage image={image} customStyles={styles.image} />
             <Text style={styles.name}>{name}</Text>
             <Text style={styles.location}>{location}</Text>
-            {rating !== undefined && rating !== null && rating !== "" ? (
-              <Text style={styles.rating}>★ {rating}</Text>
-            ) : null}
+            <Text style={styles.rating}>★ {rating}</Text>
         </View>
     )
 };

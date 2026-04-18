@@ -1,31 +1,23 @@
 import FilterByModal from "@/components/FilterByModal";
-import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import ShopItem from "@/components/ShopItem";
 import SortByModal from "@/components/SortByModal";
 import { colors } from "@/constants/colors";
-import { PlaceModel } from "@/data/models";
-import { formatPlaceLocation } from "@/lib/discovery-api";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   FlatList,
   Keyboard,
   Platform,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   useColorScheme,
   View,
 } from "react-native";
 
-const ExploreTab = ({
-  items,
-  title,
-}: {
-  items: PlaceModel[];
-  title: string;
-}) => {
+const ExploreTab = ({ items, title }: any) => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const router = useRouter();
@@ -34,34 +26,29 @@ const ExploreTab = ({
   const [displayedItems, setDisplayedItems] = useState(items);
   const placeholderText = "Search for " + title;
 
-  useEffect(() => {
-    setDisplayedItems(items);
-  }, [items]);
-
   const searchItems = (prompt: string) => {
-    const display = items.filter((item) => {
-      return item.Name.toLowerCase().includes(prompt.toLowerCase());
+    const display = items.filter((item: any) => {
+      return item.name.toLowerCase().includes(prompt.toLowerCase());
     });
     setDisplayedItems(display);
   };
 
-  const filterItems = (_filters: string[]) => {};
+  const filterItems = (filters: string[]) => {};
 
   const sortItems = (order: string) => {
-    const nextItems = [...displayedItems];
-
     switch (order) {
+      case "popular":
+        displayedItems.sort((a: any, b: any) => b.rating - a.rating);
+        break;
       case "atoz":
-        nextItems.sort((a, b) => a.Name.localeCompare(b.Name));
+        displayedItems.sort((a: any, b: any) => a.name.localeCompare(b.name));
         break;
       case "ztoa":
-        nextItems.sort((a, b) => b.Name.localeCompare(a.Name));
+        displayedItems.sort((a: any, b: any) => b.name.localeCompare(a.name));
         break;
       default:
         break;
     }
-
-    setDisplayedItems(nextItems);
   };
 
   return (
@@ -106,48 +93,53 @@ const ExploreTab = ({
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        style={styles.list}
-        data={displayedItems}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={Keyboard.dismiss}
-        keyExtractor={(item) => String(item.Id)}
-        contentContainerStyle={{
-          width: 370,
-          flexGrow: displayedItems.length === 0 ? 1 : 0,
-          justifyContent: displayedItems.length === 0 ? "center" : "flex-start",
-        }}
-        renderItem={({ item }) => {
-          return (
-            <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/explore/[key]",
-                  params: { key: String(item.Id) },
-                })
-              }
-            >
-              <ShopItem
-                name={item.Name}
-                location={formatPlaceLocation(item)}
-                image={item.Photo}
-              />
-            </TouchableOpacity>
-          );
-        }}
-        ItemSeparatorComponent={() => <View style={{ height: 15 }} />}
-        ListEmptyComponent={
-          <ProfileEmptyState
-            title={`No ${title.toLowerCase()} found`}
-            subtitle="Try another search term or check back later."
-            style={{ width: 370, marginTop: 0 }}
-          />
-        }
-        ListFooterComponent={
-          <View style={{ height: Platform.select({ ios: 90, android: 100 }) }} />
-        }
-      />
+      {displayedItems ? (
+        <FlatList
+          data={displayedItems}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+          keyExtractor={(item) => String(item.key)}
+          contentContainerStyle={{ width: 370 }}
+          renderItem={({ item }) => {
+            const payload = encodeURIComponent(JSON.stringify(item));
+            return (
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/explore/[key]",
+                    params: { key: String(item.key), payload },
+                  })
+                }
+              >
+                <ShopItem
+                  name={item.name}
+                  location={item.location}
+                  rating={item.rating}
+                  image={item.image}
+                />
+              </TouchableOpacity>
+            );
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
+          ListFooterComponent={
+            <View
+              style={{ height: Platform.select({ ios: 90, android: 100 }) }}
+            />
+          } // bottom padding
+        />
+      ) : (
+        <Text
+          style={{
+            color: darkMode ? colors.white : colors.black,
+            alignSelf: "center",
+            fontFamily: "Poppins-SemiBold",
+            marginTop: 250,
+          }}
+        >
+          No items found.
+        </Text>
+      )}
 
       <FilterByModal
         visible={filterByModal}
@@ -180,9 +172,6 @@ const createStyles = ({ darkMode }: any) => {
       color: darkMode ? colors.white : colors.black,
       borderRadius: 30,
       paddingLeft: 20,
-    },
-    list: {
-      flex: 1,
     },
   });
 };

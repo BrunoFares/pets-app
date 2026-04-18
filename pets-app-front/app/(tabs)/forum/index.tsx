@@ -1,11 +1,10 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import ForumPost from "@/components/ForumPost";
-import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
+import { ForumPosts } from "@/data/sample";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { apiRequest } from "@/lib/api";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -27,54 +26,23 @@ export default function ForumScreen() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [posts, setPosts] = useState<ForumPostsModel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { setShowFooter } = useGlobal();
+  const { showFooter, setShowFooter } = useGlobal();
 
   useFocusEffect(
     useCallback(() => {
-      const loadPosts = async () => {
-        setIsLoading(true);
-
-        try {
-          const forumPosts = await apiRequest<{
-            id: string;
-            userId: number;
-            userName: string;
-            content: string;
-            attachments: string[];
-            createdAt: string;
-            updatedAt?: string | null;
-            isAReply: boolean;
-            replyingToPost?: string | null;
-            repliesCount: number;
-            isBookmarked: boolean;
-          }[]>("/api/ForumPosts");
-
-          setPosts(
-            forumPosts.map((post) => ({
-              Id: post.id,
-              UserId: post.userId,
-              UserName: post.userName,
-              Content: post.content,
-              Attachments: post.attachments ?? [],
-              CreatedAt: post.createdAt,
-              UpdatedAt: post.updatedAt ?? null,
-              IsAReply: post.isAReply,
-              ReplyingToPost: post.replyingToPost ?? null,
-              RepliesCount: post.repliesCount,
-              IsBookmarked: post.isBookmarked,
-            })),
-          );
-        } catch {
-          setPosts([]);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      loadPosts();
+      // API call to get the Posts
+      const forumPosts = ForumPosts;
+      setPosts(forumPosts);
     }, []),
   );
+
+  const goTo = (item: any, location: any) => {
+    const payload = encodeURIComponent(JSON.stringify(item));
+    router.push({
+      pathname: location,
+      params: { id: String(item.key), payload },
+    });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -82,7 +50,7 @@ export default function ForumScreen() {
         // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, [setShowFooter]), // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
   );
 
   const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
@@ -142,8 +110,6 @@ export default function ForumScreen() {
           </AdaptiveText>
         )}
       </View>
-
-      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 }
