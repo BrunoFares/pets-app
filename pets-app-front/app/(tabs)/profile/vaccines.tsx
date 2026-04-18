@@ -1,20 +1,14 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
-import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PetModel, VaccineRecordModel } from "@/data/models";
-import {
-  fetchPetVaccines,
-  parseRoutePayload,
-} from "@/lib/profile-api";
+import { VaccineRecords } from "@/data/sample";
 import { goTo } from "@/utils";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   StyleSheet,
   TouchableOpacity,
@@ -29,54 +23,39 @@ const VaccinesScreen = () => {
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
   const { payload } = useLocalSearchParams<{ payload?: any }>();
-  const [vaccines, setVaccines] = useState<VaccineRecordModel[]>([]);
+  const [vaccines, setVaccines] = useState<VaccineRecordModel[]>();
   const [pet, setPet] = useState<PetModel>();
-  const [petId, setPetId] = useState<string>();
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadVaccines = useCallback(async (id: string) => {
-    setIsLoading(true);
-
-    try {
-      const response = await fetchPetVaccines(id);
-      setVaccines(response);
-    } catch (error) {
-      Alert.alert(
-        "Unable to load vaccines",
-        error instanceof Error ? error.message : "Please try again.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
-    const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
-    if (!parsed?.pet) {
-      setPet(undefined);
-      setPetId(undefined);
-      setVaccines([]);
-      setIsLoading(false);
-      return;
+    if (!payload) return;
+
+    let parsed: any = payload;
+    if (typeof payload === "string") {
+      try {
+        parsed = JSON.parse(decodeURIComponent(payload));
+      } catch (e) {
+        try {
+          parsed = JSON.parse(payload);
+        } catch (e2) {
+          // keep as string if parsing fails
+          parsed = payload;
+        }
+      }
     }
 
     setPet(parsed.pet);
-    setPetId(String(parsed.pet.Id));
-    void loadVaccines(String(parsed.pet.Id));
-  }, [loadVaccines, payload]);
+    const vax = VaccineRecords.filter((item) => item.petId === parsed.pet.Id);
+    setVaccines(vax);
+  }, [payload]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
 
-      if (petId) {
-        void loadVaccines(petId);
-      }
-
       return () => {
         setShowFooter?.(true);
       };
-    }, [loadVaccines, petId, setShowFooter]),
+    }, []),
   );
 
   return (
@@ -84,26 +63,17 @@ const VaccinesScreen = () => {
       <PageHeader title="" />
 
       <AdaptiveText style={styles.title}>
-        {pet?.Name ? `${pet.Name}'s Vaccination Record` : "Vaccination Record"}
+        Kalinka's Vaccination Record
       </AdaptiveText>
 
       <FlatList
         data={vaccines}
         keyExtractor={(item) => String(item.Id)}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          isLoading ? null : (
-            <ProfileEmptyState
-              title="No vaccines recorded yet"
-              subtitle="Add vaccinations here so upcoming doses and past records are easy to review."
-            />
-          )
-        }
         renderItem={({ item }) => (
           <>
             <TouchableOpacity
               onPress={() => {
-                goTo({ item, pet }, "/profile/modify-add-vaccine", router);
+                goTo({ item }, "/profile/modify-add-vaccine", router);
               }}
               style={{
                 alignSelf: "center",
@@ -158,7 +128,7 @@ const VaccinesScreen = () => {
           marginBottom: 20,
         }}
         onPress={() => {
-          goTo({ pet }, "/profile/modify-add-vaccine", router);
+          goTo("", "/profile/modify-add-vaccine", router);
         }}
       >
         <Feather
@@ -167,8 +137,6 @@ const VaccinesScreen = () => {
           color={darkMode ? colors.white : colors.black}
         />
       </TouchableOpacity>
-
-      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
@@ -189,9 +157,6 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 10,
       marginBottom: 10,
       textAlign: "center",
-    },
-    listContent: {
-      paddingBottom: 20,
     },
     datesList: {
       fontFamily: "Poppins-Light",
