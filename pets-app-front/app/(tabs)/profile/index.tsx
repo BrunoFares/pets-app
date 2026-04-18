@@ -1,7 +1,9 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import LogOutModal from "@/components/LogOutModal";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -26,8 +28,7 @@ export default function Profile() {
   const { translateY } = useHeaderSlide({ height: 200, duration: 200 });
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
-  const [containerWidth, setContainerWidth] = useState(0);
-  const styles = createStyles({ darkMode, translateY, containerWidth });
+  const styles = createStyles({ darkMode, translateY });
   const [logOutModal, setLogOutModal] = useState(false);
   const { setShowFooter } = useGlobal();
   const {
@@ -41,7 +42,7 @@ export default function Profile() {
     signOut,
   } = useAuth();
 
-  const isLoading = isHydrating || (isRefreshingProfile && !profileInfo);
+  const isLoading = isHydrating || isRefreshingProfile;
 
   useFocusEffect(
     useCallback(() => {
@@ -61,12 +62,7 @@ export default function Profile() {
       return () => {
         setShowFooter?.(true);
       };
-    }, [
-      isAuthenticated,
-      refreshProfile,
-      setShowFooter,
-      shouldRefreshProfile,
-    ]),
+    }, [isAuthenticated, refreshProfile, setShowFooter, shouldRefreshProfile]),
   );
 
   if (profileInfo) {
@@ -130,10 +126,6 @@ export default function Profile() {
             return (
               <TouchableOpacity
                 style={styles.petListItem}
-                onLayout={(event) => {
-                  const { width } = event.nativeEvent.layout;
-                  setContainerWidth(width);
-                }}
                 onPress={() => {
                   goTo(item, "/(tabs)/profile/[pet]", router);
                 }}
@@ -156,6 +148,15 @@ export default function Profile() {
               </TouchableOpacity>
             );
           }}
+          ListEmptyComponent={
+            <ProfileEmptyState
+              style={{
+                width: "95%",
+              }}
+              title="No pets added yet"
+              subtitle="Add your first pet to start tracking their profile, consultations, vaccines, and illness history here."
+            />
+          }
           ListFooterComponent={
             <View
               style={{
@@ -163,6 +164,7 @@ export default function Profile() {
                 flexDirection: "row",
                 alignSelf: "center",
                 gap: 14,
+                marginTop: -10,
                 backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
               }}
             >
@@ -214,26 +216,32 @@ export default function Profile() {
             await signOut();
           }}
         />
+
+        {isLoading && <LoadingOverlay />}
       </SafeAreaView>
     );
   } else {
     return (
       <SafeAreaView style={styles.container}>
-        <AdaptiveView>
-          <AdaptiveText>
-            {isLoading
-              ? "Loading profile..."
-              : isAuthenticated
+        {isLoading ? (
+          <View style={styles.loadingFallback} />
+        ) : (
+          <AdaptiveView>
+            <AdaptiveText>
+              {isAuthenticated
                 ? "Unable to load your profile right now."
                 : "You are not logged in."}
-          </AdaptiveText>
-        </AdaptiveView>
+            </AdaptiveText>
+          </AdaptiveView>
+        )}
+
+        {isLoading && <LoadingOverlay />}
       </SafeAreaView>
     );
   }
 }
 
-const createStyles = ({ darkMode, translateY, containerWidth }: any) => {
+const createStyles = ({ darkMode, translateY }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -279,7 +287,7 @@ const createStyles = ({ darkMode, translateY, containerWidth }: any) => {
       gap: 20,
       alignItems: "center",
       justifyContent: "center",
-      width: containerWidth,
+      width: "95%",
       paddingVertical: 15,
       borderRadius: 20,
       alignSelf: "center",
@@ -318,6 +326,10 @@ const createStyles = ({ darkMode, translateY, containerWidth }: any) => {
       fontSize: 20,
       textAlign: "center",
       color: colors.white,
+    },
+    loadingFallback: {
+      flex: 1,
+      width: "100%",
     },
   });
 };

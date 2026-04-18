@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
@@ -72,10 +73,12 @@ const ModifyAddIllness = () => {
   const [selectedDescription, setSelectedDescription] = useState("");
   const [statusModal, setStatusModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingMedications, setIsLoadingMedications] = useState(false);
   const [initialMedicationIds, setInitialMedicationIds] = useState<string[]>([]);
   const [medications, setMedications] = useState<MedicationForm[]>([
     createMedicationForm(),
   ]);
+  const isLoading = isSubmitting || isLoadingMedications;
 
   const statusToChoose = useMemo(
     () => [
@@ -131,8 +134,11 @@ const ModifyAddIllness = () => {
   useEffect(() => {
     const loadMedications = async () => {
       if (!illness || medications.some((item) => item.apiId)) {
+        setIsLoadingMedications(false);
         return;
       }
+
+      setIsLoadingMedications(true);
 
       try {
         const response = await fetchIllnessMedications(illness.Id);
@@ -146,6 +152,8 @@ const ModifyAddIllness = () => {
         }
       } catch (error) {
         console.error("[illness] Failed to load medications", error);
+      } finally {
+        setIsLoadingMedications(false);
       }
     };
 
@@ -547,6 +555,8 @@ const ModifyAddIllness = () => {
           setSelectedStatus(val.Name);
         }}
       />
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

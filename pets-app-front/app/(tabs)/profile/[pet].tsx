@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
@@ -32,42 +33,74 @@ const Pet = () => {
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
   const { payload } = useLocalSearchParams<{ payload?: any }>();
+  const routePet = React.useMemo(
+    () => parseRoutePayload<PetModel>(payload) ?? undefined,
+    [payload],
+  );
   const [pet, setPet] = useState<PetModel>();
   const [petId, setPetId] = useState<string>();
   const [consultations, setConsultations] = useState<ConsultationModel[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const hasLoadedCurrentPet = React.useRef(false);
+  const displayedPet = pet ?? routePet;
 
-  const loadPetData = useCallback(async (id: string) => {
-    try {
-      const [petResponse, consultationResponse] = await Promise.all([
-        fetchPetById(id),
-        fetchPetConsultations(id),
-      ]);
+  const loadPetData = useCallback(
+    async (id: string, options?: { showLoader?: boolean }) => {
+      if (options?.showLoader) {
+        setIsInitialLoading(true);
+      }
 
-      setPet(petResponse);
-      setConsultations(consultationResponse);
-    } catch (error) {
-      Alert.alert(
-        "Unable to load pet",
-        error instanceof Error ? error.message : "Please try again.",
-      );
-    }
-  }, []);
+      try {
+        const [petResponse, consultationResponse] = await Promise.all([
+          fetchPetById(id),
+          fetchPetConsultations(id),
+        ]);
+
+        setPet(petResponse);
+        setConsultations(consultationResponse);
+      } catch (error) {
+        Alert.alert(
+          "Unable to load pet",
+          error instanceof Error ? error.message : "Please try again.",
+        );
+      } finally {
+        if (options?.showLoader) {
+          setIsInitialLoading(false);
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    const parsed = parseRoutePayload<PetModel>(payload);
-    if (!parsed) return;
+    hasLoadedCurrentPet.current = false;
 
-    setPet(parsed);
-    setPetId(String(parsed.Id));
-    void loadPetData(String(parsed.Id));
-  }, [loadPetData, payload]);
+    if (!routePet) {
+      setPet(undefined);
+      setPetId(undefined);
+      setConsultations([]);
+      setIsInitialLoading(false);
+      return;
+    }
+
+    setPet(routePet);
+    setConsultations([]);
+    setPetId(String(routePet.Id));
+    setIsInitialLoading(true);
+  }, [routePet]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
 
       if (petId) {
-        void loadPetData(petId);
+        const request = loadPetData(petId, {
+          showLoader: !hasLoadedCurrentPet.current,
+        });
+
+        void request.finally(() => {
+          hasLoadedCurrentPet.current = true;
+        });
       }
 
       return () => {
@@ -76,7 +109,7 @@ const Pet = () => {
     }, [loadPetData, petId, setShowFooter]),
   );
 
-  if (pet) {
+  if (displayedPet) {
     return (
       <SafeAreaView style={styles.container}>
         <PageHeader title="" />
@@ -86,11 +119,15 @@ const Pet = () => {
           ListHeaderComponent={
             <>
               <View style={styles.header}>
-                <CustomImage image={pet.AvatarUrl} />
-                <AdaptiveText style={styles.title}>{pet.Name}</AdaptiveText>
+                <CustomImage image={displayedPet.AvatarUrl} />
+                <AdaptiveText style={styles.title}>
+                  {displayedPet.Name}
+                </AdaptiveText>
                 <TouchableOpacity
                   style={styles.editBtn}
-                  onPress={() => goTo({ pet }, "/profile/edit-pet", router)}
+                  onPress={() =>
+                    goTo({ pet: displayedPet }, "/profile/edit-pet", router)
+                  }
                 >
                   <AdaptiveText style={styles.editBtnTxt}>Edit</AdaptiveText>
                 </TouchableOpacity>
@@ -108,8 +145,8 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {pet.BirthDate
-                        ? calculateAge(new Date(pet.BirthDate))
+                      {displayedPet.BirthDate
+                        ? calculateAge(new Date(displayedPet.BirthDate))
                         : "-"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
@@ -127,7 +164,7 @@ const Pet = () => {
                     ]}
                   >
                     <Ionicons
-                      name={pet.Sex === "Male" ? "male" : "female"}
+                      name={displayedPet.Sex === "Male" ? "male" : "female"}
                       size={48}
                       color={darkMode ? colors.white : colors.black}
                       style={{ paddingVertical: 24 }}
@@ -148,7 +185,7 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {pet.Breed || "-"}
+                      {displayedPet.Breed || "-"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
                       breed
@@ -165,7 +202,9 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {pet.WeightKg ? `${pet.WeightKg} Kg` : "-"}
+                      {displayedPet.WeightKg
+                        ? `${displayedPet.WeightKg} Kg`
+                        : "-"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
                       weight
@@ -184,10 +223,12 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {pet.Neutered ? "Yes" : "No"}
+                      {displayedPet.Neutered ? "Yes" : "No"}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
-                      {pet.Name} is {pet.Neutered ? "" : "not "}neutered.
+                      {displayedPet.Name} is{" "}
+                      {displayedPet.Neutered ? "" : "not "}
+                      neutered.
                     </AdaptiveText>
                   </View>
 
@@ -201,7 +242,7 @@ const Pet = () => {
                     ]}
                   >
                     <AdaptiveText style={styles.tableUnitTxt}>
-                      {pet.Color}
+                      {displayedPet.Color}
                     </AdaptiveText>
                     <AdaptiveText style={styles.tableUnitInfo}>
                       colour
@@ -230,7 +271,13 @@ const Pet = () => {
                     borderRadius: 20,
                     padding: 5,
                   }}
-                  onPress={() => goTo({ pet }, "/profile/add-consultation", router)}
+                  onPress={() =>
+                    goTo(
+                      { pet: displayedPet },
+                      "/profile/add-consultation",
+                      router,
+                    )
+                  }
                 >
                   <Feather
                     name="plus"
@@ -245,7 +292,7 @@ const Pet = () => {
             <TouchableOpacity
               style={styles.consultation}
               onPress={() => {
-                const deliverable = { item, pet };
+                const deliverable = { item, pet: displayedPet };
                 goTo(deliverable, "/profile/consultation", router);
               }}
             >
@@ -258,11 +305,13 @@ const Pet = () => {
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <ProfileEmptyState
-              compact
-              title="No consultations registered yet"
-              subtitle="Add your pet's first consultation to keep their medical visits organized here."
-            />
+            isInitialLoading ? null : (
+              <ProfileEmptyState
+                compact
+                title="No consultations registered yet"
+                subtitle="Add your pet's first consultation to keep their medical visits organized here."
+              />
+            )
           }
           ListFooterComponent={
             <>
@@ -283,7 +332,7 @@ const Pet = () => {
               >
                 <TouchableOpacity
                   onPress={() => {
-                    goTo({ pet }, "/profile/illnesses", router);
+                    goTo({ pet: displayedPet }, "/profile/illnesses", router);
                   }}
                   style={styles.vaccinesBtn}
                 >
@@ -302,7 +351,7 @@ const Pet = () => {
                 <TouchableOpacity
                   style={styles.vaccinesBtn}
                   onPress={() => {
-                    goTo({ pet }, "/profile/vaccines", router);
+                    goTo({ pet: displayedPet }, "/profile/vaccines", router);
                   }}
                 >
                   <FontAwesome5
@@ -319,15 +368,23 @@ const Pet = () => {
             </>
           }
         />
+        {isInitialLoading && <LoadingOverlay />}
       </SafeAreaView>
     );
   } else {
     return (
       <SafeAreaView style={styles.container}>
         <PageHeader title="" />
-        <AdaptiveView style={styles.container}>
-          <AdaptiveText>Pet unavailable.</AdaptiveText>
-        </AdaptiveView>
+        {isInitialLoading ? (
+          <>
+            <View style={styles.loadingFallback} />
+            <LoadingOverlay />
+          </>
+        ) : (
+          <AdaptiveView style={styles.container}>
+            <AdaptiveText>Pet unavailable.</AdaptiveText>
+          </AdaptiveView>
+        )}
       </SafeAreaView>
     );
   }
@@ -429,6 +486,10 @@ const createStyles = ({ darkMode }: any) => {
       fontSize: 12,
       textAlign: "center",
       color: darkMode ? colors.white : colors.black,
+    },
+    loadingFallback: {
+      flex: 1,
+      width: "100%",
     },
   });
 };

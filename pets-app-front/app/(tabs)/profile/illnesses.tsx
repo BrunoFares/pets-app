@@ -1,4 +1,5 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
@@ -51,8 +52,11 @@ const IllnessesScreen = () => {
   const [medications, setMedications] = useState<
     Record<string, MedicationRecordModel[]>
   >({});
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadIllnesses = useCallback(async (id: string) => {
+    setIsLoading(true);
+
     try {
       const illnessResponse = await fetchPetIllnesses(id);
       setIllnesses(illnessResponse);
@@ -70,12 +74,21 @@ const IllnessesScreen = () => {
         "Unable to load illness history",
         error instanceof Error ? error.message : "Please try again.",
       );
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
-    if (!parsed?.pet) return;
+    if (!parsed?.pet) {
+      setPet(undefined);
+      setPetId(undefined);
+      setIllnesses([]);
+      setMedications({});
+      setIsLoading(false);
+      return;
+    }
 
     setPet(parsed.pet);
     setPetId(String(parsed.pet.Id));
@@ -206,10 +219,12 @@ const IllnessesScreen = () => {
         keyExtractor={(item) => String(item.Id)}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <ProfileEmptyState
-            title="No illnesses recorded yet"
-            subtitle="Keep track of past and ongoing medical conditions here."
-          />
+          isLoading ? null : (
+            <ProfileEmptyState
+              title="No illnesses recorded yet"
+              subtitle="Keep track of past and ongoing medical conditions here."
+            />
+          )
         }
         renderItem={({ item }) => {
           const isExpanded = expandedIds.includes(item.Id);
@@ -317,6 +332,8 @@ const IllnessesScreen = () => {
           color={darkMode ? colors.white : colors.black}
         />
       </TouchableOpacity>
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

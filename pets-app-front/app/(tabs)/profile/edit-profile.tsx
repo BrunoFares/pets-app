@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomImage from "@/components/CustomImage";
 import CustomInput from "@/components/CustomInput";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -186,6 +187,8 @@ const EditProfile = () => {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {isSubmitting && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
