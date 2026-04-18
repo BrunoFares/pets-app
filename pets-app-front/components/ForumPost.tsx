@@ -1,16 +1,15 @@
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { ForumPostsModel } from "@/data/models";
-import { apiRequest } from "@/lib/api";
+import { AppUsersModel, ForumPostsModel } from "@/data/models";
+import { AppUsers, ForumPosts } from "@/data/sample";
 import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
   useColorScheme,
-  View,
 } from "react-native";
 import { goTo } from "../utils";
 import { AdaptiveText } from "./AdaptiveText";
@@ -20,81 +19,77 @@ import CustomImage from "./CustomImage";
 const ForumPost = ({
   item,
   size,
-  onClickPost,
-  onClickProfile,
 }: {
   item: ForumPostsModel;
   size?: "big" | "small";
-  onClickPost?: () => void;
-  onClickProfile?: () => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
   const styles = createStyles({ darkMode });
   const [liked, setLiked] = useState<boolean>();
-  const [bookmarked, setBookmarked] = useState<boolean>(
-    item.IsBookmarked ?? false,
-  );
-  const { setShowFooter } = useGlobal();
-  const handlePostPress =
-    onClickPost ?? (() => goTo(item, "/(tabs)/forum/post/[id]", router));
-  const handleProfilePress =
-    onClickProfile ?? (() => goTo(item, "/(tabs)/forum/profile/[id]", router));
+  const [bookmarked, setBookmarked] = useState<boolean>();
+  const { showFooter, setShowFooter } = useGlobal();
+  const [user, setUser] = useState<AppUsersModel>();
+  const [otherPost, setOtherPost] = useState<ForumPostsModel>();
 
-  const syncBookmark = async (nextBookmarked: boolean) => {
-    if (nextBookmarked) {
-      await apiRequest("/api/Users/bookmarks", {
-        method: "POST",
-        body: JSON.stringify({ forumPostId: item.Id }),
-      });
-      return;
+  const likePost = () => {
+    setLiked(!liked);
+  };
+
+  useEffect(() => {
+    const selectedUserID = item["UserId"];
+    const selectedUser = AppUsers.find((item) => item.Id === selectedUserID);
+    setUser(selectedUser);
+
+    if (item["IsAReply"]) {
+      const selectedOtherPostID = item["ReplyingToPost"];
+      const selectedOtherPost = ForumPosts.find(
+        (item) => item.Id === selectedOtherPostID,
+      );
+      setOtherPost(selectedOtherPost);
     }
+  }, []);
 
-    await apiRequest(`/api/Users/bookmarks/${item.Id}`, {
-      method: "DELETE",
-    });
+  const bookmarkPost = () => {
+    setBookmarked(!bookmarked);
   };
 
-  const likePost = async () => {
-    setLiked(true);
-  };
-
-  const bookmarkPost = async () => {
-    const nextBookmarked = !bookmarked;
-    setBookmarked(nextBookmarked);
-
-    try {
-      await syncBookmark(nextBookmarked);
-    } catch (error) {
-      setBookmarked(!nextBookmarked);
-      console.error("Failed to update bookmark status.", error);
-    }
-  };
-
-  if (size === "small") {
+  if (user && size === "small") {
     return (
-      <TouchableOpacity onPress={handlePostPress} style={styles.post}>
+      <TouchableOpacity
+        onPress={() => goTo(item, "/(tabs)/forum/post/[id]", router)}
+        style={styles.post}
+      >
         <AdaptiveView style={[styles.inner, { flexDirection: "row" }]}>
-          <TouchableOpacity onPress={handleProfilePress}>
+          <TouchableOpacity
+            onPress={() => goTo(item, "/(tabs)/forum/profile/[id]", router)}
+          >
             {/* {user.Image ? (
               <Image source={user.Image} />
             ) : (
               <View style={styles.placeholder} />
             )} */}
-            <CustomImage customStyles={styles.placeholder} />
+            <CustomImage image={user.Image} customStyles={styles.placeholder} />
           </TouchableOpacity>
 
           <AdaptiveView style={styles.inner}>
-            <TouchableOpacity onPress={handleProfilePress}>
+            <TouchableOpacity
+              onPress={() => goTo(item, "/(tabs)/forum/profile/[id]", router)}
+            >
               <AdaptiveText style={styles.postTitle}>
                 {item.UserName}
               </AdaptiveText>
             </TouchableOpacity>
 
-            {item.IsAReply && (
-              <TouchableOpacity style={styles.reply} onPress={handlePostPress}>
+            {otherPost && (
+              <TouchableOpacity
+                style={styles.reply}
+                onPress={() =>
+                  goTo(otherPost, "/(tabs)/forum/post/[id]", router)
+                }
+              >
                 <AdaptiveText style={styles.replyTxt}>
-                  Replying to another post
+                  Replying to {otherPost.UserName}
                 </AdaptiveText>
               </TouchableOpacity>
             )}
@@ -148,10 +143,16 @@ const ForumPost = ({
         </AdaptiveView>
       </TouchableOpacity>
     );
-  } else if (size === "big") {
+  } else if (user && size === "big") {
     return (
       <>
-        <View style={{ marginHorizontal: 20 }}>
+        {item.IsAReply && (
+          <ForumPost
+            item={ForumPosts.find((i) => i.Id === item.ReplyingToPost)}
+            size="small"
+          />
+        )}
+        <AdaptiveView style={{ marginHorizontal: 20 }}>
           <TouchableOpacity
             style={{
               flexDirection: "row",
@@ -161,15 +162,20 @@ const ForumPost = ({
             }}
             onPress={() => goTo(item, "/(tabs)/forum/profile/[id]", router)}
           >
-            <CustomImage customStyles={styles.placeholder} />
+            {/* {user.Image ? (
+              <Image source={user.Image} />
+            ) : (
+              <View style={styles.placeholder} />
+            )} */}
+            <CustomImage image={user.Image} customStyles={styles.placeholder} />
             <AdaptiveText style={styles.postTitle}>
               {item.UserName}
             </AdaptiveText>
           </TouchableOpacity>
           <AdaptiveText style={styles.postBody}>{item.Content}</AdaptiveText>
-        </View>
+        </AdaptiveView>
 
-        <View style={styles.additionalRowBig}>
+        <AdaptiveView style={styles.additionalRowBig}>
           <TouchableOpacity>
             <EvilIcons
               name="comment"
@@ -209,9 +215,9 @@ const ForumPost = ({
               color={darkMode ? colors.white : colors.black}
             />
           </TouchableOpacity>
-        </View>
+        </AdaptiveView>
 
-        <View style={styles.textInputContainer}>
+        <AdaptiveView style={styles.textInputContainer}>
           <TextInput
             style={styles.textInput}
             placeholder="Reply to user1..."
@@ -225,11 +231,11 @@ const ForumPost = ({
             size={24}
             color={darkMode ? colors.white : colors.black}
           />
-        </View>
+        </AdaptiveView>
       </>
     );
   } else {
-    return <AdaptiveText>Post unavailable.</AdaptiveText>;
+    <AdaptiveText>Post unavailable.</AdaptiveText>;
   }
 };
 
