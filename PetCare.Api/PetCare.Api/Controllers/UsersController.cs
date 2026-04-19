@@ -30,11 +30,9 @@ public class UsersController : ControllerBase
         return Ok(new UserProfileResponse(
             user.Id,
             user.Username,
-            user.Name,
             user.FirstName,
             user.LastName,
             user.Email,
-            user.PhoneNumber,
             user.AvatarUrl,
             user.Description,
             user.CreatedAt,
@@ -48,10 +46,24 @@ public class UsersController : ControllerBase
         var user = await _context.Users.FindAsync(User.GetUserId());
         if (user == null) return NotFound();
 
-        if (!string.IsNullOrWhiteSpace(request.Name)) user.Name = request.Name.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Username))
+        {
+            var username = request.Username.Trim();
+            var usernameTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Username == username);
+            if (usernameTaken) return Conflict(new { message = "Username already exists." });
+            user.Username = username;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var email = request.Email.Trim().ToLowerInvariant();
+            var emailTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Email == email);
+            if (emailTaken) return Conflict(new { message = "Email already exists." });
+            user.Email = email;
+        }
+
         if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName.Trim();
         if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName.Trim();
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber)) user.PhoneNumber = request.PhoneNumber.Trim();
         if (request.Description is not null) user.Description = request.Description.Trim();
 
         await _context.SaveChangesAsync();
@@ -105,7 +117,7 @@ public class UsersController : ControllerBase
                 b.ForumPost.Id,
                 b.ForumPost.Content,
                 b.ForumPost.CreatedAt,
-                UserName = b.ForumPost.User.Name ?? b.ForumPost.User.Username
+                UserName = GetDisplayName(b.ForumPost.User)
             })
             .ToListAsync();
 
@@ -143,5 +155,11 @@ public class UsersController : ControllerBase
         _context.ForumPostBookmarks.Remove(bookmark);
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    private static string GetDisplayName(Model.AppUser user)
+    {
+        var fullName = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName;
     }
 }

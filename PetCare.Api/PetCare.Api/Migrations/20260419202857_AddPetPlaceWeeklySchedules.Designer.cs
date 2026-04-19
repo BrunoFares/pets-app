@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PetCare.Api.Data;
@@ -13,9 +14,11 @@ using PetCare.Api.Model;
 namespace PetCare.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260419202857_AddPetPlaceWeeklySchedules")]
+    partial class AddPetPlaceWeeklySchedules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -296,27 +299,6 @@ namespace PetCare.Api.Migrations
                     b.HasIndex("ForumPostId");
 
                     b.ToTable("forum_post_bookmarks", "public");
-                });
-
-            modelBuilder.Entity("PetCare.Api.Model.ForumPostLikeModel", b =>
-                {
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("user_id");
-
-                    b.Property<Guid>("ForumPostId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("forum_post_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.HasKey("UserId", "ForumPostId");
-
-                    b.HasIndex("ForumPostId");
-
-                    b.ToTable("forum_post_likes", "public");
                 });
 
             modelBuilder.Entity("PetCare.Api.Model.ForumPostModel", b =>
@@ -893,25 +875,6 @@ namespace PetCare.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PetCare.Api.Model.ForumPostLikeModel", b =>
-                {
-                    b.HasOne("PetCare.Api.Model.ForumPostModel", "ForumPost")
-                        .WithMany("Likes")
-                        .HasForeignKey("ForumPostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PetCare.Api.Model.AppUser", "User")
-                        .WithMany("LikedPosts")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ForumPost");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("PetCare.Api.Model.ForumPostModel", b =>
                 {
                     b.HasOne("PetCare.Api.Model.ForumPostModel", "ReplyingToPost")
@@ -1010,8 +973,6 @@ namespace PetCare.Api.Migrations
 
                     b.Navigation("ForumPosts");
 
-                    b.Navigation("LikedPosts");
-
                     b.Navigation("Pets");
                 });
 
@@ -1030,8 +991,6 @@ namespace PetCare.Api.Migrations
                     b.Navigation("Attachments");
 
                     b.Navigation("Bookmarks");
-
-                    b.Navigation("Likes");
 
                     b.Navigation("Replies");
                 });
