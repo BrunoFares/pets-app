@@ -48,7 +48,7 @@ function getReminderAccent(
 ): string {
   if (urgency === "overdue") return colors.red;
   if (urgency === "today") return colors.lightOrange;
-  return darkMode ? colors.lightGreen : (colors.green ?? colors.darkGreen);
+  return darkMode ? colors.lightGreen : colors.green;
 }
 
 export default function HomeScreen() {
