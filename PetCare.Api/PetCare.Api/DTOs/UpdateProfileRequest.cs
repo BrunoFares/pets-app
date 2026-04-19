@@ -4,17 +4,17 @@ namespace PetCare.Api.DTOs;
 
 public class UpdateProfileRequest
 {
-    [MaxLength(100)]
-    public string? Username { get; set; }
-
-    [EmailAddress, MaxLength(320)]
-    public string? Email { get; set; }
+    [MaxLength(200)]
+    public string? Name { get; set; }
 
     [MaxLength(100)]
     public string? FirstName { get; set; }
 
     [MaxLength(100)]
     public string? LastName { get; set; }
+
+    [MaxLength(50)]
+    public string? PhoneNumber { get; set; }
 
     [MaxLength(1000)]
     public string? Description { get; set; }
@@ -23,9 +23,11 @@ public class UpdateProfileRequest
 public record UserProfileResponse(
     long Id,
     string Username,
+    string? Name,
     string FirstName,
     string LastName,
     string Email,
+    string PhoneNumber,
     string? Image,
     string? Description,
     DateTimeOffset CreatedAt,

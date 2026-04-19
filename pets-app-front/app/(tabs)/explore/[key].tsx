@@ -1,182 +1,228 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
-import ReviewPost from "@/components/ReviewPost";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
-import { useGlobal } from "@/contexts/GlobalProvider";
-import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
-import { useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import { PlaceModel } from "@/data/models";
 import {
-  FlatList,
-  Keyboard,
+  fetchPlaceById,
+  formatPlaceAddress,
+  formatPlaceLocation,
+} from "@/lib/discovery-api";
+import { Image } from "expo-image";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useState } from "react";
+import {
+  Alert,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useColorScheme,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type Shop = {
-  key: string;
-  name: string;
-  location: string;
-  rating: number;
-  image?: string;
-  description?: string;
-};
+function getPlaceDetailsTitle(place: PlaceModel | null) {
+  if (place?.Type === "Vet") return "Vet Details";
+  if (place?.Type === "PetShop") return "Pet Shop Details";
+  return "Place Details";
+}
 
-export default function ShopDetails() {
-  const { payload } = useLocalSearchParams<{ payload?: string }>();
-  const shop: Shop | null = payload
-    ? JSON.parse(decodeURIComponent(payload))
-    : null;
+export default function PlaceDetails() {
+  const { key } = useLocalSearchParams<{ key?: string }>();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const { setShowFooter } = useGlobal();
+  const [place, setPlace] = useState<PlaceModel | null>(null);
+  const [isLoading, setIsLoading] = useState(Boolean(key));
 
-  const [reviews, setReviews] = useState([
-    {
-      key: 1,
-      title: "rev1",
-      user: "kalinka",
-      body: "reviewbody typeshit",
-    },
-    {
-      key: 2,
-      title: "re 2",
-      user: "minouche",
-      body: "matrix matrix martain garrix",
-    },
-    {
-      key: 3,
-      title: "rev3",
-      user: "serge",
-      body: "oui",
-    },
-    {
-      key: 4,
-      title: "rev4",
-      user: "allah",
-      body: "marhaba kif el chabeb khallik healthy kermela la elsy",
-    },
-    {
-      key: 5,
-      title: "rev5",
-      user: "kalinka",
-      body: "rje3et",
-    },
-  ]);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-  if (!shop) return <Text style={{ margin: 24 }}>Missing shop data.</Text>;
+      const loadPlace = async () => {
+        if (!key) {
+          setPlace(null);
+          setIsLoading(false);
+          return;
+        }
+
+        setIsLoading(true);
+
+        try {
+          const response = await fetchPlaceById(key);
+
+          if (!isActive) return;
+
+          setPlace(response);
+        } catch (error) {
+          if (!isActive) return;
+
+          setPlace(null);
+          Alert.alert(
+            "Could not load place",
+            error instanceof Error ? error.message : "Please try again.",
+          );
+        } finally {
+          if (isActive) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      void loadPlace();
+
+      return () => {
+        isActive = false;
+      };
+    }, [key]),
+  );
 
   return (
-    <SafeAreaView
-      style={{ backgroundColor: darkMode ? colors.veryDarkGrey : colors.white }}
-    >
-      <PageHeader title="" />
+    <SafeAreaView style={styles.container}>
+      <PageHeader title={getPlaceDetailsTitle(place)} />
 
-      <FlatList
-        data={reviews}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={Keyboard.dismiss}
-        keyExtractor={(item) => String(item.key)}
-        contentContainerStyle={{
-          backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-        }}
-        ListHeaderComponent={
-          <>
-            {shop.image ? (
-              <Image source={{ uri: shop.image }} style={{ height: 400 }} />
-            ) : (
-              <View
-                style={{ height: 400, backgroundColor: colors.lightGrey }}
-              />
-            )}
-            <AdaptiveText
-              style={{
-                fontSize: 22,
-                fontWeight: "700",
-                marginLeft: 10,
-                marginTop: 10,
-                fontFamily: "Poppins-Medium",
-              }}
-            >
-              {shop.name}
+      {place ? (
+        <ScrollView contentContainerStyle={styles.content}>
+          {place.Photo ? (
+            <Image
+              source={{ uri: place.Photo }}
+              style={styles.image}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={styles.imagePlaceholder} />
+          )}
+
+          <View style={styles.section}>
+            <AdaptiveText style={styles.name}>{place.Name}</AdaptiveText>
+            <AdaptiveText style={styles.location}>
+              {formatPlaceLocation(place)}
             </AdaptiveText>
-            <AdaptiveText
-              style={{
-                marginTop: 4,
-                marginLeft: 10,
-                fontFamily: "Poppins-Regular",
-              }}
-            >
-              {shop.location}
+            <AdaptiveText style={styles.description}>
+              {place.Description?.trim()
+                ? place.Description
+                : "No description has been added for this place yet."}
             </AdaptiveText>
-            <AdaptiveText
-              style={{
-                marginTop: 4,
-                marginLeft: 10,
-                fontFamily: "Poppins-Bold",
-              }}
-            >
-              ★ {shop.rating}
-            </AdaptiveText>
-            {shop.description ? (
-              <AdaptiveText
-                style={{ marginTop: 12, fontFamily: "Poppins-Regular" }}
-              >
-                {shop.description}
+          </View>
+
+          <View style={styles.section}>
+            <AdaptiveText style={styles.sectionTitle}>Contact</AdaptiveText>
+
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Address</Text>
+              <AdaptiveText style={styles.metaValue}>
+                {formatPlaceAddress(place) || "Not provided"}
               </AdaptiveText>
-            ) : null}
-
-            <View style={styles.textInputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Reply to user1..."
-                placeholderTextColor={
-                  darkMode ? colors.lightGrey : colors.darkGrey
-                }
-                onFocus={() => setShowFooter?.(false)}
-                onBlur={() => setShowFooter?.(true)}
-                multiline
-              />
-              <Feather
-                name="arrow-right"
-                size={24}
-                color={darkMode ? colors.white : colors.black}
-              />
             </View>
-          </>
-        }
-        renderItem={({ item }) => {
-          return <ReviewPost item={item} />;
-        }}
-      />
+
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Phone</Text>
+              <AdaptiveText style={styles.metaValue}>
+                {place.Phone || "Not provided"}
+              </AdaptiveText>
+            </View>
+
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Email</Text>
+              <AdaptiveText style={styles.metaValue}>
+                {place.Email || "Not provided"}
+              </AdaptiveText>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <AdaptiveText style={styles.sectionTitle}>Reviews</AdaptiveText>
+            <ProfileEmptyState
+              title="No reviews yet"
+              subtitle="Community reviews are not available for this place yet."
+              compact
+              style={styles.reviewEmptyState}
+            />
+          </View>
+        </ScrollView>
+      ) : !isLoading ? (
+        <View style={styles.emptyStateWrap}>
+          <ProfileEmptyState
+            title={key ? "Place unavailable" : "Missing place"}
+            subtitle="We couldn't load the place details right now."
+          />
+        </View>
+      ) : null}
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 }
 
 const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
-    textInputContainer: {
-      flexDirection: "row",
-      justifyContent: "center",
-      alignItems: "center",
-      borderBottomColor: darkMode ? colors.darkGrey : colors.lightGrey,
-      borderBottomWidth: 1,
-      borderTopColor: darkMode ? colors.darkGrey : colors.lightGrey,
-      borderTopWidth: 1,
-      marginTop: 14,
+    container: {
+      flex: 1,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
-    textInput: {
-      width: "80%",
+    content: {
+      paddingBottom: 36,
+    },
+    image: {
+      width: "100%",
+      height: 320,
+    },
+    imagePlaceholder: {
+      width: "100%",
+      height: 320,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    section: {
+      marginHorizontal: 16,
+      marginTop: 18,
+      padding: 18,
+      borderRadius: 20,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    name: {
+      fontSize: 24,
+      fontFamily: "Poppins-SemiBold",
+    },
+    location: {
+      marginTop: 4,
       fontFamily: "Poppins-Regular",
+      opacity: 0.8,
+    },
+    description: {
+      marginTop: 14,
+      fontFamily: "Poppins-Regular",
+      lineHeight: 24,
+    },
+    sectionTitle: {
+      fontFamily: "Poppins-SemiBold",
       fontSize: 18,
-      paddingVertical: 20,
-      color: darkMode ? colors.white : colors.black,
+      marginBottom: 14,
+    },
+    metaRow: {
+      marginBottom: 14,
+      gap: 4,
+    },
+    metaLabel: {
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+      fontFamily: "Poppins-Medium",
+      fontSize: 12,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    metaValue: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 15,
+      lineHeight: 22,
+    },
+    reviewEmptyState: {
+      width: "100%",
+      marginTop: 0,
+      marginBottom: 0,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    },
+    emptyStateWrap: {
+      flex: 1,
+      justifyContent: "center",
     },
   });
 };
