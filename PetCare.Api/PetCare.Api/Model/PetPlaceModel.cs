@@ -18,6 +18,5 @@ public class PetPlaceModel
     public decimal? Longitude { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-    public List<PetPlaceScheduleModel> Schedules { get; set; } = new();
     public List<ConsultationModel> Consultations { get; set; } = new();
 }
