@@ -1,9 +1,8 @@
 import Constants from "expo-constants";
 // import * as Device from "expo-device";
-import { AuthProvider, useAuth } from "@/contexts/AuthProvider";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
-import { Stack, router, usePathname, useRouter, useSegments } from "expo-router";
+import { Stack, router } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 
@@ -56,61 +55,6 @@ async function registerForPushNotificationsAsync() {
   return token;
 }
 
-function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
-  const appRouter = useRouter();
-  const pathname = usePathname();
-  const segments = useSegments();
-  const { isAuthenticated, isHydrating } = useAuth();
-
-  useEffect(() => {
-    if (isHydrating) {
-      return;
-    }
-
-    const firstSegment = segments[0];
-    const isIndexRoute = pathname === "/" && firstSegment !== "(tabs)";
-    const isPublicRoute =
-      firstSegment === "login-screen" || firstSegment === "register-screen";
-
-    if (!isAuthenticated && !isIndexRoute && !isPublicRoute) {
-      appRouter.replace("/login-screen");
-      return;
-    }
-
-    if (isAuthenticated && (isIndexRoute || isPublicRoute)) {
-      appRouter.replace("/(tabs)");
-    }
-  }, [appRouter, isAuthenticated, isHydrating, pathname, segments]);
-
-  if (!fontsLoaded || isHydrating) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
-  return (
-    <Stack initialRouteName="index">
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="login-screen" options={{ headerShown: false }} />
-      <Stack.Screen name="register-screen" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="charities-list-screen"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="individual-charity-screen"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="pet-translator-screen"
-        options={{ headerShown: false }}
-      />
-    </Stack>
-  );
-}
-
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     "PlayfairDisplay-Regular": require("../assets/fonts/PlayfairDisplay-Regular.ttf"),
@@ -149,9 +93,31 @@ export default function RootLayout() {
     };
   }, []);
 
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
-    <AuthProvider>
-      <RootNavigator fontsLoaded={fontsLoaded} />
-    </AuthProvider>
+    <Stack initialRouteName="login-screen">
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login-screen" options={{ headerShown: false }} />
+      <Stack.Screen name="register-screen" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="charities-list-screen"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="individual-charity-screen"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="pet-translator-screen"
+        options={{ headerShown: false }}
+      />
+    </Stack>
   );
 }

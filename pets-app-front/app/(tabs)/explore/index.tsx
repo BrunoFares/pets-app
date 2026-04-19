@@ -1,13 +1,9 @@
-import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { PlaceModel } from "@/data/models";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { fetchPetShops, fetchVets } from "@/lib/discovery-api";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Platform,
   Pressable,
@@ -24,9 +20,54 @@ export default function Explore() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
-  const [vetItems, setVetItems] = useState<PlaceModel[]>([]);
-  const [shopItems, setShopItems] = useState<PlaceModel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const vetItems = [
+    {
+      key: 1,
+      name: "Dr. Abou Breiss",
+      location: "Hamra, Beirut",
+      rating: 3.8,
+      image: "Users/brunofares/Desktop/mourinho.jpeg",
+    },
+    {
+      key: 3,
+      name: "Diddy Kong",
+      location: "New Sehaileh, Mount Lebanon",
+      rating: 5.0,
+      image: "",
+    },
+    {
+      key: 4,
+      name: "Dr. Amara ya amara la totla3i aal shajara",
+      location: "Ajaltoun, Mount Lebanon",
+      rating: 0.3,
+      image: "",
+    },
+  ];
+
+  const shopItems = [
+    {
+      key: 1,
+      name: "Kalinka & Minouche Ta3awouniye",
+      location: "Mansourieh, Mount Lebanon",
+      rating: 4.8,
+      image: "",
+    },
+    {
+      key: 3,
+      name: "Emmak Shop",
+      location: "Borj el Brajneh, Mount Lebanon",
+      rating: 5.0,
+      image: "",
+    },
+    {
+      key: 4,
+      name: "Victor Gyökeres wa shoraka2ihi",
+      location: "Andaket, Akkar",
+      rating: 0.3,
+      image: "",
+    },
+  ];
 
   // Hide header on this screen
   const { translateY } = useHeaderSlide({ showOnFocus: false, height: 200 });
@@ -47,44 +88,11 @@ export default function Explore() {
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadPlaces = async () => {
-        setIsLoading(true);
-
-        try {
-          const [vets, petShops] = await Promise.all([
-            fetchVets(),
-            fetchPetShops(),
-          ]);
-
-          if (!isActive) return;
-
-          setVetItems(vets);
-          setShopItems(petShops);
-        } catch (error) {
-          if (!isActive) return;
-
-          setVetItems([]);
-          setShopItems([]);
-          Alert.alert(
-            "Could not load explore",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
-
-      void loadPlaces();
-
       return () => {
-        isActive = false;
+        // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, [setShowFooter]),
+    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
   );
 
   return (
@@ -148,8 +156,6 @@ export default function Explore() {
           <ExploreTab items={shopItems} title="Pet Shops" />
         </View>
       </Animated.ScrollView>
-
-      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 }
