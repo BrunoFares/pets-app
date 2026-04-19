@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
-import { apiRequest } from "@/lib/api";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { ForumPosts } from "@/data/sample";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
@@ -16,30 +16,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const normalizeForumPost = (post: any): ForumPostsModel => ({
-  Id: post.id ?? post.Id,
-  UserId: post.userId ?? post.UserId,
-  UserName: post.userName ?? post.UserName,
-  Content: post.content ?? post.Content,
-  Attachments: post.attachments ?? post.Attachments ?? [],
-  CreatedAt: post.createdAt ?? post.CreatedAt,
-  UpdatedAt: post.updatedAt ?? post.UpdatedAt ?? null,
-  IsAReply: post.isAReply ?? post.IsAReply ?? false,
-  ReplyingToPost: post.replyingToPost ?? post.ReplyingToPost ?? null,
-  RepliesCount: post.repliesCount ?? post.RepliesCount,
-  IsBookmarked: post.isBookmarked ?? post.IsBookmarked,
-});
-
 const PostScreen = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const { id, payload } = useLocalSearchParams<{
-    id?: string;
-    payload?: string;
-  }>();
-  const { setShowFooter } = useGlobal();
+  const router = useRouter();
+  const { payload } = useLocalSearchParams<{ payload: string }>();
+  const chat: any = payload ? JSON.parse(decodeURIComponent(payload)) : null;
+  const { showFooter, setShowFooter } = useGlobal();
   const [item, setItem] = useState<ForumPostsModel>();
-  const [replies, setReplies] = useState<ForumPostsModel[]>([]);
+  const [liked, setLiked] = useState<boolean>();
+  const [replies, setReplies] = useState<ForumPostsModel[]>();
+  const [bookmarked, setBookmarked] = useState<boolean>();
 
   useFocusEffect(
     useCallback(() => {
@@ -47,58 +34,40 @@ const PostScreen = () => {
         // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, [setShowFooter]),
+    }, [])
   );
 
+  const likePost = () => {
+    setLiked(!liked);
+  };
+
+  const bookmarkPost = () => {
+    setBookmarked(!bookmarked);
+  };
+
   useEffect(() => {
-    let selectedPost: ForumPostsModel | null = null;
+    const displayItem = JSON.parse(payload);
+    const replies = ForumPosts.filter(item => item.ReplyingToPost === displayItem.Id);
 
-    if (payload) {
-      try {
-        selectedPost = normalizeForumPost(JSON.parse(decodeURIComponent(payload)));
-      } catch {
-        try {
-          selectedPost = normalizeForumPost(JSON.parse(payload));
-        } catch {
-          selectedPost = null;
-        }
-      }
-    }
+    setReplies(replies);
+    setItem(displayItem);
+  }, []);
 
-    if (selectedPost) {
-      setItem(selectedPost);
-      setReplies([]);
-      return;
-    }
+  useFocusEffect(
+    useCallback(() => {
+      // This code runs when the screen is focused.
 
-    if (!id) {
-      setItem(undefined);
-      setReplies([]);
-      return;
-    }
-
-    const loadPost = async () => {
-      try {
-        const [post, postReplies] = await Promise.all([
-          apiRequest<any>(`/api/ForumPosts/${id}`),
-          apiRequest<any[]>(`/api/ForumPosts/${id}/replies`),
-        ]);
-
-        setItem(normalizeForumPost(post));
-        setReplies(postReplies.map(normalizeForumPost));
-      } catch {
-        setItem(undefined);
-        setReplies([]);
-      }
-    };
-
-    loadPost();
-  }, [id, payload]);
+      return () => {
+        // This code runs when the screen is unfocused (or unmounted).
+        setShowFooter?.(true);
+      };
+    }, []) // The empty dependency array ensures the effect runs only on focus/unfocus.
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View>
-        <PageHeader title={item?.UserName ?? "Post"} />
+        <PageHeader title={chat && chat.title ? chat.title : "something else"} />
         {item ? (
           <FlatList
             data={replies}
@@ -176,7 +145,7 @@ const createStyles = ({ darkMode }: any) => {
       borderBottomWidth: 1,
     },
     textInput: {
-      width: "80%",
+      width: '80%', 
       fontFamily: "Poppins-Regular",
       fontSize: 18,
       paddingVertical: 20,
