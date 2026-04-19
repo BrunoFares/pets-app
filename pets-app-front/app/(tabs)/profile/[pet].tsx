@@ -7,6 +7,8 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchPetById,
   fetchPetConsultations,
@@ -17,7 +19,6 @@ import { Entypo, Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -59,10 +60,7 @@ const Pet = () => {
         setPet(petResponse);
         setConsultations(consultationResponse);
       } catch (error) {
-        Alert.alert(
-          "Unable to load pet",
-          error instanceof Error ? error.message : "Please try again.",
-        );
+        presentApiError("Unable to load pet", error);
       } finally {
         if (options?.showLoader) {
           setIsInitialLoading(false);
@@ -109,6 +107,15 @@ const Pet = () => {
     }, [loadPetData, petId, setShowFooter]),
   );
 
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      if (petId) {
+        await loadPetData(petId, { showLoader: true });
+      }
+    }, [loadPetData, petId]),
+  );
+  const showLoadingOverlay = isInitialLoading && !isRefreshing;
+
   if (displayedPet) {
     return (
       <SafeAreaView style={styles.container}>
@@ -116,6 +123,8 @@ const Pet = () => {
         <FlatList
           data={consultations}
           keyExtractor={(item) => String(item.Id)}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           ListHeaderComponent={
             <>
               <View style={styles.header}>
@@ -368,7 +377,7 @@ const Pet = () => {
             </>
           }
         />
-        {isInitialLoading && <LoadingOverlay />}
+        {showLoadingOverlay && <LoadingOverlay />}
       </SafeAreaView>
     );
   } else {
@@ -378,7 +387,7 @@ const Pet = () => {
         {isInitialLoading ? (
           <>
             <View style={styles.loadingFallback} />
-            <LoadingOverlay />
+            {showLoadingOverlay && <LoadingOverlay />}
           </>
         ) : (
           <AdaptiveView style={styles.container}>

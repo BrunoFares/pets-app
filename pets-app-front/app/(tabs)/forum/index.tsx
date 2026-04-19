@@ -4,6 +4,7 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { apiRequest } from "@/lib/api";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
@@ -30,51 +31,54 @@ export default function ForumScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const { setShowFooter } = useGlobal();
 
+  const loadPosts = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const forumPosts = await apiRequest<{
+        id: string;
+        userId: number;
+        userName: string;
+        content: string;
+        attachments: string[];
+        createdAt: string;
+        updatedAt?: string | null;
+        isAReply: boolean;
+        replyingToPost?: string | null;
+        repliesCount: number;
+        isBookmarked: boolean;
+      }[]>("/api/ForumPosts");
+
+      setPosts(
+        forumPosts.map((post) => ({
+          Id: post.id,
+          UserId: post.userId,
+          UserName: post.userName,
+          Content: post.content,
+          Attachments: post.attachments ?? [],
+          CreatedAt: post.createdAt,
+          UpdatedAt: post.updatedAt ?? null,
+          IsAReply: post.isAReply,
+          ReplyingToPost: post.replyingToPost ?? null,
+          RepliesCount: post.repliesCount,
+          IsBookmarked: post.isBookmarked,
+        })),
+      );
+    } catch {
+      setPosts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      const loadPosts = async () => {
-        setIsLoading(true);
-
-        try {
-          const forumPosts = await apiRequest<{
-            id: string;
-            userId: number;
-            userName: string;
-            content: string;
-            attachments: string[];
-            createdAt: string;
-            updatedAt?: string | null;
-            isAReply: boolean;
-            replyingToPost?: string | null;
-            repliesCount: number;
-            isBookmarked: boolean;
-          }[]>("/api/ForumPosts");
-
-          setPosts(
-            forumPosts.map((post) => ({
-              Id: post.id,
-              UserId: post.userId,
-              UserName: post.userName,
-              Content: post.content,
-              Attachments: post.attachments ?? [],
-              CreatedAt: post.createdAt,
-              UpdatedAt: post.updatedAt ?? null,
-              IsAReply: post.isAReply,
-              ReplyingToPost: post.replyingToPost ?? null,
-              RepliesCount: post.repliesCount,
-              IsBookmarked: post.isBookmarked,
-            })),
-          );
-        } catch {
-          setPosts([]);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      loadPosts();
-    }, []),
+      void loadPosts();
+    }, [loadPosts]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadPosts);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   useFocusEffect(
     useCallback(() => {
@@ -115,6 +119,8 @@ export default function ForumScreen() {
         {posts ? (
           <FlatList
             data={posts}
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={Keyboard.dismiss}
@@ -143,7 +149,7 @@ export default function ForumScreen() {
         )}
       </View>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }

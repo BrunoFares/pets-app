@@ -8,6 +8,8 @@ import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { BreedModel, Color, Sex, SpeciesModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import {
   fetchBreedOptions,
@@ -25,6 +27,7 @@ import {
   Alert,
   Keyboard,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -106,53 +109,55 @@ const AddPet = () => {
     }, [setShowFooter]),
   );
 
-  useEffect(() => {
-    const loadSpecies = async () => {
-      setIsLoadingSpecies(true);
+  const loadSpecies = useCallback(async () => {
+    setIsLoadingSpecies(true);
 
-      try {
-        const species = await fetchSpeciesOptions();
-        setSpeciesToChoose(species);
-      } catch (error) {
-        Alert.alert(
-          "Unable to load pet details",
-          error instanceof Error ? error.message : "Please try again.",
-        );
-      } finally {
-        setIsLoadingSpecies(false);
-      }
-    };
+    try {
+      const species = await fetchSpeciesOptions();
+      setSpeciesToChoose(species);
+    } catch (error) {
+      presentApiError("Unable to load pet details", error);
+    } finally {
+      setIsLoadingSpecies(false);
+    }
+  }, []);
 
-    void loadSpecies();
+  const loadBreeds = useCallback(async (speciesId?: number | null) => {
+    if (!speciesId) {
+      setBreedsToChoose([]);
+      setSelectedBreed(undefined);
+      setIsLoadingBreeds(false);
+      return;
+    }
+
+    setIsLoadingBreeds(true);
+
+    try {
+      const breeds = await fetchBreedOptions(speciesId);
+      setBreedsToChoose(breeds);
+      setSelectedBreed(undefined);
+    } catch (error) {
+      presentApiError("Unable to load breeds", error);
+    } finally {
+      setIsLoadingBreeds(false);
+    }
   }, []);
 
   useEffect(() => {
-    const loadBreeds = async () => {
-      if (!selectedSpecies?.id) {
-        setBreedsToChoose([]);
-        setSelectedBreed(undefined);
-        setIsLoadingBreeds(false);
-        return;
-      }
+    void loadSpecies();
+  }, [loadSpecies]);
 
-      setIsLoadingBreeds(true);
+  useEffect(() => {
+    void loadBreeds(selectedSpecies?.id ? Number(selectedSpecies.id) : null);
+  }, [loadBreeds, selectedSpecies]);
 
-      try {
-        const breeds = await fetchBreedOptions(Number(selectedSpecies.id));
-        setBreedsToChoose(breeds);
-        setSelectedBreed(undefined);
-      } catch (error) {
-        Alert.alert(
-          "Unable to load breeds",
-          error instanceof Error ? error.message : "Please try again.",
-        );
-      } finally {
-        setIsLoadingBreeds(false);
-      }
-    };
-
-    void loadBreeds();
-  }, [selectedSpecies]);
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      await loadSpecies();
+      await loadBreeds(selectedSpecies?.id ? Number(selectedSpecies.id) : null);
+    }, [loadBreeds, loadSpecies, selectedSpecies]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const handleSave = async () => {
     if (!selectedName.trim()) {
@@ -220,10 +225,10 @@ const AddPet = () => {
       await refreshProfile();
       router.back();
     } catch (error) {
-      Alert.alert(
-        "Unable to save pet",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to save pet", error, {
+        networkMessage:
+          "We couldn't reach the server, so your pet was not saved.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -237,6 +242,9 @@ const AddPet = () => {
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
         contentContainerStyle={{ alignItems: "center", gap: 10 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
       >
         <AdaptiveText style={styles.title}>Add Pet</AdaptiveText>
 
@@ -450,7 +458,7 @@ const AddPet = () => {
         }}
       />
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

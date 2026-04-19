@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PetModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import {
   VetOption,
@@ -20,6 +22,7 @@ import {
   Alert,
   Keyboard,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -70,25 +73,25 @@ const AddConsultation = () => {
     }
   }, [payload]);
 
-  useEffect(() => {
-    const loadVetOptions = async () => {
-      setIsLoadingVets(true);
+  const loadVetOptions = useCallback(async () => {
+    setIsLoadingVets(true);
 
-      try {
-        const vets = await fetchVetOptions();
-        setVetOptions(vets);
-      } catch (error) {
-        Alert.alert(
-          "Unable to load vets",
-          error instanceof Error ? error.message : "Please try again.",
-        );
-      } finally {
-        setIsLoadingVets(false);
-      }
-    };
-
-    void loadVetOptions();
+    try {
+      const vets = await fetchVetOptions();
+      setVetOptions(vets);
+    } catch (error) {
+      presentApiError("Unable to load vets", error);
+    } finally {
+      setIsLoadingVets(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadVetOptions();
+  }, [loadVetOptions]);
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadVetOptions);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const handleSave = async () => {
     if (!pet) {
@@ -118,10 +121,10 @@ const AddConsultation = () => {
 
       router.back();
     } catch (error) {
-      Alert.alert(
-        "Unable to save consultation",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to save consultation", error, {
+        networkMessage:
+          "We couldn't reach the server, so the consultation was not saved.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -135,6 +138,9 @@ const AddConsultation = () => {
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
         contentContainerStyle={{ alignItems: "center", gap: 10 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
       >
         <AdaptiveText style={styles.title}>Add Consultation</AdaptiveText>
 
@@ -216,7 +222,7 @@ const AddConsultation = () => {
         }}
       />
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

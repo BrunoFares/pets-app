@@ -5,13 +5,15 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { AppUsersModel, ForumPostsModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest } from "@/lib/api";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,33 +40,28 @@ const ProfileScreen = () => {
   const [posts, setPosts] = useState<ForumPostsModel[]>();
   const [replies, setReplies] = useState<ForumPostsModel[]>();
   const [isLoading, setIsLoading] = useState(true);
+  const selectedPost = useMemo(() => {
+    if (!payload) {
+      return null;
+    }
 
-  useEffect(() => {
-    let selectedPost: ForumPostsModel | null = null;
-
-    if (payload) {
+    try {
+      return JSON.parse(decodeURIComponent(payload)) as ForumPostsModel;
+    } catch {
       try {
-        selectedPost = JSON.parse(decodeURIComponent(payload));
+        return JSON.parse(payload) as ForumPostsModel;
       } catch {
-        try {
-          selectedPost = JSON.parse(payload);
-        } catch {
-          selectedPost = null;
-        }
+        return null;
       }
     }
-
-    const selectedUserID = selectedPost?.UserId;
-
+  }, [payload]);
+  const selectedUserID = selectedPost?.UserId;
+  const fallbackUser = useMemo<AppUsersModel | undefined>(() => {
     if (!selectedUserID) {
-      setUser(undefined);
-      setPosts([]);
-      setReplies([]);
-      setIsLoading(false);
-      return;
+      return undefined;
     }
 
-    setUser({
+    return {
       Id: selectedUserID,
       Name: selectedPost?.UserName ?? "User",
       FirstName: "",
@@ -77,45 +74,62 @@ const ProfileScreen = () => {
       LastLogin: null,
       Description: "",
       BookmarkedPostID: [],
-    });
+    };
+  }, [selectedPost, selectedUserID]);
+  const displayedUser = user ?? fallbackUser;
+
+  const loadPosts = useCallback(async () => {
+    if (!selectedUserID || !fallbackUser) {
+      setUser(undefined);
+      setPosts([]);
+      setReplies([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setUser(fallbackUser);
     setPosts([]);
     setReplies([]);
     setIsLoading(true);
 
-    const loadPosts = async () => {
-      try {
-        const allPosts = await apiRequest<any[]>("/api/ForumPosts");
-        const normalizedPosts = allPosts.map((item) => ({
-          Id: item.id,
-          UserId: item.userId,
-          UserName: item.userName,
-          Content: item.content,
-          Attachments: item.attachments ?? [],
-          CreatedAt: item.createdAt,
-          UpdatedAt: item.updatedAt ?? null,
-          IsAReply: item.isAReply,
-          ReplyingToPost: item.replyingToPost ?? null,
-          RepliesCount: item.repliesCount,
-          IsBookmarked: item.isBookmarked,
-        }));
+    try {
+      const allPosts = await apiRequest<any[]>("/api/ForumPosts");
+      const normalizedPosts = allPosts.map((item) => ({
+        Id: item.id,
+        UserId: item.userId,
+        UserName: item.userName,
+        Content: item.content,
+        Attachments: item.attachments ?? [],
+        CreatedAt: item.createdAt,
+        UpdatedAt: item.updatedAt ?? null,
+        IsAReply: item.isAReply,
+        ReplyingToPost: item.replyingToPost ?? null,
+        RepliesCount: item.repliesCount,
+        IsBookmarked: item.isBookmarked,
+      }));
 
-        const displayPosts = normalizedPosts.filter(
-          (item) => String(item.UserId) === String(selectedUserID),
-        );
+      const displayPosts = normalizedPosts.filter(
+        (item) => String(item.UserId) === String(selectedUserID),
+      );
 
-        setPosts(displayPosts.filter((item) => !item.IsAReply));
-        setReplies(displayPosts);
-      } catch {
-        setUser(undefined);
-        setPosts([]);
-        setReplies([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setPosts(displayPosts.filter((item) => !item.IsAReply));
+      setReplies(displayPosts);
+      setUser(fallbackUser);
+    } catch {
+      setUser(fallbackUser);
+      setPosts([]);
+      setReplies([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fallbackUser, selectedUserID]);
 
-    loadPosts();
-  }, [payload]);
+  useEffect(() => {
+    void loadPosts();
+  }, [loadPosts]);
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadPosts);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const horizontalScroll = (i: number) => {
     setIndex(i);
@@ -125,10 +139,17 @@ const ProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      {user ? (
-        <ScrollView>
+      {displayedUser ? (
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          }
+        >
           <View style={styles.header}>
-            <CustomImage image={user.Image} customStyles={styles.placeholder} />
+            <CustomImage
+              image={displayedUser.Image}
+              customStyles={styles.placeholder}
+            />
 
             <AdaptiveText
               style={{
@@ -136,7 +157,7 @@ const ProfileScreen = () => {
                 fontSize: 20,
               }}
             >
-              {user.Name}
+              {displayedUser.Name}
             </AdaptiveText>
           </View>
 
@@ -148,7 +169,7 @@ const ProfileScreen = () => {
               marginVertical: 10,
             }}
           >
-            {user.Description}
+            {displayedUser.Description}
           </AdaptiveText>
 
           {/* Header area (sliding) */}
@@ -239,7 +260,7 @@ const ProfileScreen = () => {
         <AdaptiveText>No profile found.</AdaptiveText>
       )}
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

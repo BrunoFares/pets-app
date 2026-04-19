@@ -8,14 +8,17 @@ import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import { goTo } from "@/utils";
 import { Feather, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Alert,
   Animated,
   FlatList,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -44,18 +47,32 @@ export default function Profile() {
 
   const isLoading = isHydrating || isRefreshingProfile;
 
+  const handleReloadProfile = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      await refreshProfile();
+    } catch (error) {
+      presentApiError("Could not load profile", error, {
+        fallbackMessage: "Unable to load your profile.",
+      });
+    }
+  }, [isAuthenticated, refreshProfile]);
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(handleReloadProfile);
+  const showLoadingOverlay = isLoading && !isRefreshing;
+
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(true);
 
       if (isAuthenticated && shouldRefreshProfile()) {
         void refreshProfile().catch((error) => {
-          Alert.alert(
-            "Could not load profile",
-            error instanceof Error
-              ? error.message
-              : "Unable to load your profile.",
-          );
+          presentApiError("Could not load profile", error, {
+            fallbackMessage: "Unable to load your profile.",
+          });
         });
       }
 
@@ -71,6 +88,8 @@ export default function Profile() {
         <FlatList
           data={pets}
           keyExtractor={(item) => String(item.Id)}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           ListHeaderComponent={
             <View>
               <Animated.View style={styles.head}>
@@ -164,7 +183,7 @@ export default function Profile() {
                 flexDirection: "row",
                 alignSelf: "center",
                 gap: 14,
-                marginTop: -10,
+                marginTop: pets.length === 0 ? -10 : 0,
                 backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
               }}
             >
@@ -217,25 +236,30 @@ export default function Profile() {
           }}
         />
 
-        {isLoading && <LoadingOverlay />}
+        {showLoadingOverlay && <LoadingOverlay />}
       </SafeAreaView>
     );
   } else {
     return (
       <SafeAreaView style={styles.container}>
-        {isLoading ? (
-          <View style={styles.loadingFallback} />
-        ) : (
-          <AdaptiveView>
-            <AdaptiveText>
-              {isAuthenticated
-                ? "Unable to load your profile right now."
-                : "You are not logged in."}
-            </AdaptiveText>
-          </AdaptiveView>
-        )}
+        <ScrollView
+          contentContainerStyle={styles.loadingFallback}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          }
+        >
+          {!isLoading ? (
+            <AdaptiveView>
+              <AdaptiveText>
+                {isAuthenticated
+                  ? "Unable to load your profile right now."
+                  : "You are not logged in."}
+              </AdaptiveText>
+            </AdaptiveView>
+          ) : null}
+        </ScrollView>
 
-        {isLoading && <LoadingOverlay />}
+        {showLoadingOverlay && <LoadingOverlay />}
       </SafeAreaView>
     );
   }
@@ -330,6 +354,7 @@ const createStyles = ({ darkMode, translateY }: any) => {
     loadingFallback: {
       flex: 1,
       width: "100%",
+      justifyContent: "center",
     },
   });
 };

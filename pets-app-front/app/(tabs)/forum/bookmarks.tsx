@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { ForumPostsModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest } from "@/lib/api";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -24,45 +25,48 @@ export default function Bookmarks() {
   const [posts, setPosts] = useState<ForumPostsModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadBookmarks = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const forumPosts = await apiRequest<
+        {
+          id: string;
+          content: string;
+          createdAt: string;
+          userName: string;
+        }[]
+      >("/api/Users/bookmarks");
+
+      setPosts(
+        forumPosts.map((post) => ({
+          Id: post.id,
+          UserId: "",
+          UserName: post.userName,
+          Content: post.content,
+          Attachments: [],
+          CreatedAt: post.createdAt,
+          IsAReply: false,
+          ReplyingToPost: null,
+          IsBookmarked: true,
+          RepliesCount: 0,
+        })),
+      );
+    } catch {
+      setPosts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      const loadBookmarks = async () => {
-        setIsLoading(true);
-
-        try {
-          const forumPosts = await apiRequest<
-            {
-              id: string;
-              content: string;
-              createdAt: string;
-              userName: string;
-            }[]
-          >("/api/Users/bookmarks");
-
-          setPosts(
-            forumPosts.map((post) => ({
-              Id: post.id,
-              UserId: "",
-              UserName: post.userName,
-              Content: post.content,
-              Attachments: [],
-              CreatedAt: post.createdAt,
-              IsAReply: false,
-              ReplyingToPost: null,
-              IsBookmarked: true,
-              RepliesCount: 0,
-            })),
-          );
-        } catch {
-          setPosts([]);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      loadBookmarks();
-    }, []),
+      void loadBookmarks();
+    }, [loadBookmarks]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadBookmarks);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const goTo = (item: ForumPostsModel, location: any) => {
     router.push({
@@ -78,6 +82,8 @@ export default function Bookmarks() {
 
         <FlatList
           data={posts}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={Keyboard.dismiss}
@@ -105,7 +111,7 @@ export default function Bookmarks() {
         />
       </View>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }

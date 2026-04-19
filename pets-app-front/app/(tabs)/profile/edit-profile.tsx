@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import { uploadUserAvatar } from "@/lib/profile-api";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -94,10 +95,10 @@ const EditProfile = () => {
       await refreshProfile();
       router.back();
     } catch (error) {
-      Alert.alert(
-        "Unable to update profile",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to update profile", error, {
+        networkMessage:
+          "We couldn't reach the server, so your profile changes were not saved.",
+      });
     } finally {
       setIsSubmitting(false);
     }

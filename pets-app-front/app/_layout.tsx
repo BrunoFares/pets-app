@@ -1,3 +1,4 @@
+import { SoftErrorBanner } from "@/components/SoftErrorBanner";
 import Constants from "expo-constants";
 // import * as Device from "expo-device";
 import { AuthProvider, useAuth } from "@/contexts/AuthProvider";
@@ -152,6 +153,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <RootNavigator fontsLoaded={fontsLoaded} />
+      <SoftErrorBanner />
     </AuthProvider>
   );
 }

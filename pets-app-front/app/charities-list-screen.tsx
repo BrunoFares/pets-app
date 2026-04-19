@@ -6,6 +6,8 @@ import ShopItem from "@/components/ShopItem";
 import SortByModal from "@/components/SortByModal";
 import { colors } from "@/constants/colors";
 import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchCharityOrganisations,
   formatPlaceLocation,
@@ -14,7 +16,6 @@ import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   Keyboard,
   Platform,
@@ -38,45 +39,36 @@ const CharitiesListScreen = () => {
   const [displayedItems, setDisplayedItems] = useState<PlaceModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadCharityOrganisations = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const response = await fetchCharityOrganisations();
+      setCharityOrganisations(response);
+    } catch (error) {
+      setCharityOrganisations([]);
+      presentApiError("Could not load charity organisations", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setDisplayedItems(charityOrganisations);
   }, [charityOrganisations]);
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadCharityOrganisations = async () => {
-        setIsLoading(true);
-
-        try {
-          const response = await fetchCharityOrganisations();
-
-          if (!isActive) return;
-
-          setCharityOrganisations(response);
-        } catch (error) {
-          if (!isActive) return;
-
-          setCharityOrganisations([]);
-          Alert.alert(
-            "Could not load charity organisations",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
-
       void loadCharityOrganisations();
 
-      return () => {
-        isActive = false;
-      };
-    }, []),
+      return () => {};
+    }, [loadCharityOrganisations]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    loadCharityOrganisations,
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const searchItems = (prompt: string) => {
     const normalizedPrompt = prompt.trim().toLowerCase();
@@ -135,7 +127,7 @@ const CharitiesListScreen = () => {
         <TextInput
           onChangeText={searchItems}
           style={styles.textInput}
-          placeholder="Search for charity organisations"
+          placeholder="Search for charity orgs..."
           placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
         />
 
@@ -151,6 +143,8 @@ const CharitiesListScreen = () => {
       <FlatList
         style={styles.list}
         data={displayedItems}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
@@ -187,7 +181,9 @@ const CharitiesListScreen = () => {
           />
         }
         ListFooterComponent={
-          <View style={{ height: Platform.select({ ios: 90, android: 100 }) }} />
+          <View
+            style={{ height: Platform.select({ ios: 90, android: 100 }) }}
+          />
         }
       />
 
@@ -202,7 +198,7 @@ const CharitiesListScreen = () => {
         onDone={(value) => sortItems(value)}
       />
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

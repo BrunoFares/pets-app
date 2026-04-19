@@ -5,6 +5,8 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ChatSessionModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   appendChatMessages,
   fetchChatById,
@@ -14,8 +16,8 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Keyboard,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -36,49 +38,40 @@ const ChatScreen = () => {
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  const loadChat = useCallback(async () => {
+    if (!id) {
+      setChat(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetchChatById(id);
+      setChat(response);
+    } catch (error) {
+      setChat(null);
+      presentApiError("Could not load chat", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
       setShowFooter?.(false);
-
-      const loadChat = async () => {
-        if (!id) {
-          setChat(null);
-          setIsLoading(false);
-          return;
-        }
-
-        setIsLoading(true);
-
-        try {
-          const response = await fetchChatById(id);
-
-          if (!isActive) return;
-
-          setChat(response);
-        } catch (error) {
-          if (!isActive) return;
-
-          setChat(null);
-          Alert.alert(
-            "Could not load chat",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
 
       void loadChat();
 
       return () => {
-        isActive = false;
         setShowFooter?.(true);
       };
-    }, [id, setShowFooter]),
+    }, [loadChat, setShowFooter]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadChat);
+  const showLoadingOverlay = (isLoading && !isRefreshing) || isSending;
 
   useEffect(() => {
     if (!chat?.Discussion.length) {
@@ -108,10 +101,10 @@ const ChatScreen = () => {
       setChat(updatedChat);
       setPrompt("");
     } catch (error) {
-      Alert.alert(
-        "Could not send message",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Could not send message", error, {
+        networkMessage:
+          "We couldn't reach the server, so your message was not sent.",
+      });
     } finally {
       setIsSending(false);
     }
@@ -125,69 +118,75 @@ const ChatScreen = () => {
       <View style={styles.screen}>
         <PageHeader title={getChatSessionTitle(chat)} />
 
-        {chat ? (
-          <ScrollView
-            ref={scrollRef}
-            style={styles.chatbotResponse}
-            contentContainerStyle={styles.chatContent}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={Keyboard.dismiss}
-          >
-            {!hasBotReply && chat.Discussion.length > 0 ? (
-              <AdaptiveText style={styles.systemNote}>
-                Messages are saving to the backend. Assistant replies will show
-                up here as soon as the server returns them.
-              </AdaptiveText>
-            ) : null}
+        <ScrollView
+          ref={scrollRef}
+          style={styles.chatbotResponse}
+          contentContainerStyle={[
+            styles.chatContent,
+            !chat ? styles.emptyStateWrap : null,
+          ]}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          }
+        >
+          {chat ? (
+            <>
+              {!hasBotReply && chat.Discussion.length > 0 ? (
+                <AdaptiveText style={styles.systemNote}>
+                  Messages are saving to the backend. Assistant replies will show
+                  up here as soon as the server returns them.
+                </AdaptiveText>
+              ) : null}
 
-            {chat.Discussion.length ? (
-              chat.Discussion.map((message) => {
-                const isUser = message.Role === "User";
+              {chat.Discussion.length ? (
+                chat.Discussion.map((message) => {
+                  const isUser = message.Role === "User";
 
-                return (
-                  <View
-                    key={message.Id}
-                    style={[
-                      styles.messageRow,
-                      isUser ? styles.messageRowUser : styles.messageRowBot,
-                    ]}
-                  >
+                  return (
                     <View
+                      key={message.Id}
                       style={[
-                        styles.messageBubble,
-                        isUser
-                          ? styles.messageBubbleUser
-                          : styles.messageBubbleBot,
+                        styles.messageRow,
+                        isUser ? styles.messageRowUser : styles.messageRowBot,
                       ]}
                     >
-                      <AdaptiveText
+                      <View
                         style={[
-                          styles.messageText,
-                          isUser ? styles.messageTextUser : styles.messageTextBot,
+                          styles.messageBubble,
+                          isUser
+                            ? styles.messageBubbleUser
+                            : styles.messageBubbleBot,
                         ]}
                       >
-                        {message.Content}
-                      </AdaptiveText>
+                        <AdaptiveText
+                          style={[
+                            styles.messageText,
+                            isUser ? styles.messageTextUser : styles.messageTextBot,
+                          ]}
+                        >
+                          {message.Content}
+                        </AdaptiveText>
+                      </View>
                     </View>
-                  </View>
-                );
-              })
-            ) : (
-              <ProfileEmptyState
-                title="No messages yet"
-                subtitle="Send a message below to start this conversation."
-              />
-            )}
-          </ScrollView>
-        ) : !isLoading ? (
-          <View style={styles.emptyStateWrap}>
+                  );
+                })
+              ) : (
+                <ProfileEmptyState
+                  title="No messages yet"
+                  subtitle="Send a message below to start this conversation."
+                />
+              )}
+            </>
+          ) : !isLoading ? (
             <ProfileEmptyState
               title={id ? "Chat unavailable" : "Missing chat"}
               subtitle="We couldn't load this conversation right now."
             />
-          </View>
-        ) : null}
+          ) : null}
+        </ScrollView>
 
         <View style={styles.txtInputContainer}>
           <TextInput
@@ -216,7 +215,7 @@ const ChatScreen = () => {
         </View>
       </View>
 
-      {(isLoading || isSending) && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

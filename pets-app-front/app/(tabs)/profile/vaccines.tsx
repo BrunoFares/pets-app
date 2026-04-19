@@ -5,6 +5,8 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PetModel, VaccineRecordModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchPetVaccines,
   parseRoutePayload,
@@ -14,7 +16,6 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   StyleSheet,
   TouchableOpacity,
@@ -41,10 +42,7 @@ const VaccinesScreen = () => {
       const response = await fetchPetVaccines(id);
       setVaccines(response);
     } catch (error) {
-      Alert.alert(
-        "Unable to load vaccines",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to load vaccines", error);
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +77,15 @@ const VaccinesScreen = () => {
     }, [loadVaccines, petId, setShowFooter]),
   );
 
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      if (petId) {
+        await loadVaccines(petId);
+      }
+    }, [loadVaccines, petId]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
+
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
@@ -90,6 +97,8 @@ const VaccinesScreen = () => {
       <FlatList
         data={vaccines}
         keyExtractor={(item) => String(item.Id)}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           isLoading ? null : (
@@ -168,7 +177,7 @@ const VaccinesScreen = () => {
         />
       </TouchableOpacity>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

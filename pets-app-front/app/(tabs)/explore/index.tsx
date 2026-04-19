@@ -2,12 +2,13 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { presentApiError } from "@/lib/api-feedback";
 import { fetchPetShops, fetchVets } from "@/lib/discovery-api";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Platform,
   Pressable,
@@ -45,47 +46,38 @@ export default function Explore() {
     scrollRef.current?.scrollTo({ x: i * width, animated: true });
   };
 
+  const loadPlaces = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const [vets, petShops] = await Promise.all([
+        fetchVets(),
+        fetchPetShops(),
+      ]);
+
+      setVetItems(vets);
+      setShopItems(petShops);
+    } catch (error) {
+      setVetItems([]);
+      setShopItems([]);
+      presentApiError("Could not load explore", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadPlaces = async () => {
-        setIsLoading(true);
-
-        try {
-          const [vets, petShops] = await Promise.all([
-            fetchVets(),
-            fetchPetShops(),
-          ]);
-
-          if (!isActive) return;
-
-          setVetItems(vets);
-          setShopItems(petShops);
-        } catch (error) {
-          if (!isActive) return;
-
-          setVetItems([]);
-          setShopItems([]);
-          Alert.alert(
-            "Could not load explore",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
-
       void loadPlaces();
 
       return () => {
-        isActive = false;
         setShowFooter?.(true);
       };
-    }, [setShowFooter]),
+    }, [loadPlaces, setShowFooter]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadPlaces);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,15 +133,25 @@ export default function Explore() {
         )}
       >
         <View style={[styles.page, { width }]}>
-          <ExploreTab items={vetItems} title="Vets" />
+          <ExploreTab
+            items={vetItems}
+            title="Vets"
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+          />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <ExploreTab items={shopItems} title="Pet Shops" />
+          <ExploreTab
+            items={shopItems}
+            title="Pet Shops"
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+          />
         </View>
       </Animated.ScrollView>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }
