@@ -1,224 +1,176 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { AdaptiveView } from "@/components/AdaptiveView";
+import CustomImage from "@/components/CustomImage";
 import { PageHeader } from "@/components/PageHeader";
-import { ProfileEmptyState } from "@/components/ProfileEmptyState";
+import ReviewPost from "@/components/ReviewPost";
 import { colors } from "@/constants/colors";
-import { PlaceModel } from "@/data/models";
+import { useGlobal } from "@/contexts/GlobalProvider";
+import { Feather } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
+import React, { useState } from "react";
 import {
-  fetchPlaceById,
-  formatPlaceAddress,
-  formatPlaceLocation,
-} from "@/lib/discovery-api";
-import { Image } from "expo-image";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useState } from "react";
-import {
-  Alert,
-  ScrollView,
+  FlatList,
+  Keyboard,
   StyleSheet,
   Text,
-  useColorScheme,
-  View,
+  TextInput,
+  TouchableWithoutFeedback,
+  useColorScheme
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+type Shop = {
+  key: string;
+  name: string;
+  location: string;
+  rating: number;
+  image?: string;
+  description?: string;
+};
+
 export default function IndividualCharityScreen() {
-  const { key } = useLocalSearchParams<{ key?: string }>();
+  const { payload } = useLocalSearchParams<{ payload?: string }>();
+  const shop: Shop | null = payload
+    ? JSON.parse(decodeURIComponent(payload))
+    : null;
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const [organisation, setOrganisation] = useState<PlaceModel | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(key));
+  const { setShowFooter } = useGlobal();
 
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
+  const [reviews, setReviews] = useState([
+    {
+      key: 1,
+      title: "rev1",
+      user: "kalinka",
+      body: "reviewbody typeshit",
+    },
+    {
+      key: 2,
+      title: "re 2",
+      user: "minouche",
+      body: "matrix matrix martain garrix",
+    },
+    {
+      key: 3,
+      title: "rev3",
+      user: "serge",
+      body: "oui",
+    },
+    {
+      key: 4,
+      title: "rev4",
+      user: "allah",
+      body: "marhaba kif el chabeb khallik healthy kermela la elsy",
+    },
+    {
+      key: 5,
+      title: "rev5",
+      user: "kalinka",
+      body: "rje3et",
+    },
+  ]);
 
-      const loadOrganisation = async () => {
-        if (!key) {
-          setOrganisation(null);
-          setIsLoading(false);
-          return;
-        }
-
-        setIsLoading(true);
-
-        try {
-          const response = await fetchPlaceById(key);
-
-          if (!isActive) return;
-
-          setOrganisation(response.Type === "Other" ? response : null);
-        } catch (error) {
-          if (!isActive) return;
-
-          setOrganisation(null);
-          Alert.alert(
-            "Could not load charity organisation",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
-
-      void loadOrganisation();
-
-      return () => {
-        isActive = false;
-      };
-    }, [key]),
-  );
+  if (!shop) return <Text style={{ margin: 24 }}>Missing shop data.</Text>;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <PageHeader title="Charity Organisation" />
+    <SafeAreaView
+      style={{ backgroundColor: darkMode ? colors.veryDarkGrey : colors.white }}
+    >
+      <PageHeader title="" />
 
-      {organisation ? (
-        <ScrollView contentContainerStyle={styles.content}>
-          {organisation.Photo ? (
-            <Image
-              source={{ uri: organisation.Photo }}
-              style={styles.image}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={styles.imagePlaceholder} />
-          )}
-
-          <View style={styles.section}>
-            <AdaptiveText style={styles.name}>{organisation.Name}</AdaptiveText>
-            <AdaptiveText style={styles.location}>
-              {formatPlaceLocation(organisation)}
-            </AdaptiveText>
-            <AdaptiveText style={styles.description}>
-              {organisation.Description?.trim()
-                ? organisation.Description
-                : "No description has been added for this charity organisation yet."}
-            </AdaptiveText>
-          </View>
-
-          <View style={styles.section}>
-            <AdaptiveText style={styles.sectionTitle}>Contact</AdaptiveText>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Address</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {formatPlaceAddress(organisation) || "Not provided"}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <FlatList
+          data={reviews}
+          keyExtractor={(item) => String(item.key)}
+          contentContainerStyle={{
+            backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+          }}
+          ListHeaderComponent={
+            <>
+              <CustomImage image={shop.image} customStyles={{ height: 400, width: '100%', backgroundColor: colors.lightGrey }} />
+              <AdaptiveText
+                style={{
+                  fontSize: 22,
+                  fontWeight: "700",
+                  marginLeft: 10,
+                  marginTop: 10,
+                  fontFamily: "Poppins-Medium",
+                }}
+              >
+                {shop.name}
               </AdaptiveText>
-            </View>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Phone</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {organisation.Phone || "Not provided"}
+              <AdaptiveText
+                style={{
+                  marginTop: 4,
+                  marginLeft: 10,
+                  fontFamily: "Poppins-Regular",
+                }}
+              >
+                {shop.location}
               </AdaptiveText>
-            </View>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Email</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {organisation.Email || "Not provided"}
+              <AdaptiveText
+                style={{
+                  marginTop: 4,
+                  marginLeft: 10,
+                  fontFamily: "Poppins-Bold",
+                }}
+              >
+                ★ {shop.rating}
               </AdaptiveText>
-            </View>
-          </View>
+              {shop.description ? (
+                <AdaptiveText
+                  style={{ marginTop: 12, fontFamily: "Poppins-Regular" }}
+                >
+                  {shop.description}
+                </AdaptiveText>
+              ) : null}
 
-          <View style={styles.section}>
-            <AdaptiveText style={styles.sectionTitle}>
-              Community Activity
-            </AdaptiveText>
-            <ProfileEmptyState
-              title="No community posts yet"
-              subtitle="This charity organisation does not have community feedback available right now."
-              compact
-              style={styles.emptyCard}
-            />
-          </View>
-        </ScrollView>
-      ) : !isLoading ? (
-        <View style={styles.emptyStateWrap}>
-          <ProfileEmptyState
-            title={key ? "Charity organisation unavailable" : "Missing charity organisation"}
-            subtitle="We couldn't load this charity organisation right now."
-          />
-        </View>
-      ) : null}
-
-      {isLoading && <LoadingOverlay />}
+              <AdaptiveView style={styles.textInputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Reply to user1..."
+                  placeholderTextColor={
+                    darkMode ? colors.lightGrey : colors.darkGrey
+                  }
+                  onFocus={() => setShowFooter?.(false)}
+                  onBlur={() => setShowFooter?.(true)}
+                  multiline
+                />
+                <Feather
+                  name="arrow-right"
+                  size={24}
+                  color={darkMode ? colors.white : colors.black}
+                />
+              </AdaptiveView>
+            </>
+          }
+          renderItem={({ item }) => {
+            return <ReviewPost item={item} />;
+          }}
+        />
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
 
 const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-    },
-    content: {
-      paddingBottom: 36,
-    },
-    image: {
-      width: "100%",
-      height: 320,
-    },
-    imagePlaceholder: {
-      width: "100%",
-      height: 320,
-      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
-    },
-    section: {
-      marginHorizontal: 16,
-      marginTop: 18,
-      padding: 18,
-      borderRadius: 20,
-      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
-    },
-    name: {
-      fontSize: 24,
-      fontFamily: "Poppins-SemiBold",
-    },
-    location: {
-      marginTop: 4,
-      fontFamily: "Poppins-Regular",
-      opacity: 0.8,
-    },
-    description: {
-      marginTop: 14,
-      fontFamily: "Poppins-Regular",
-      lineHeight: 24,
-    },
-    sectionTitle: {
-      fontFamily: "Poppins-SemiBold",
-      fontSize: 18,
-      marginBottom: 14,
-    },
-    metaRow: {
-      marginBottom: 14,
-      gap: 4,
-    },
-    metaLabel: {
-      color: darkMode ? colors.lightGrey : colors.darkGrey,
-      fontFamily: "Poppins-Medium",
-      fontSize: 12,
-      textTransform: "uppercase",
-      letterSpacing: 0.6,
-    },
-    metaValue: {
-      fontFamily: "Poppins-Regular",
-      fontSize: 15,
-      lineHeight: 22,
-    },
-    emptyCard: {
-      width: "100%",
-      marginTop: 0,
-      marginBottom: 0,
-      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-    },
-    emptyStateWrap: {
-      flex: 1,
+    textInputContainer: {
+      flexDirection: "row",
       justifyContent: "center",
+      alignItems: "center",
+      borderBottomColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      borderBottomWidth: 1,
+      borderTopColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      borderTopWidth: 1,
+      marginTop: 14,
+    },
+    textInput: {
+      width: "80%",
+      fontFamily: "Poppins-Regular",
+      fontSize: 18,
+      paddingVertical: 20,
+      color: darkMode ? colors.white : colors.black,
     },
   });
 };

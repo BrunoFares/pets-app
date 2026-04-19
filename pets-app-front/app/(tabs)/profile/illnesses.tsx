@@ -1,7 +1,5 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
-import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import {
@@ -9,17 +7,12 @@ import {
   MedicationRecordModel,
   PetModel,
 } from "@/data/models";
-import {
-  fetchIllnessMedications,
-  fetchPetIllnesses,
-  parseRoutePayload,
-} from "@/lib/profile-api";
+import { IllnessRecords, MedicationRecords } from "@/data/sample";
 import { datediff, goTo } from "@/utils";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   LayoutAnimation,
   Platform,
@@ -46,67 +39,46 @@ const IllnessesScreen = () => {
   const { payload } = useLocalSearchParams<{ payload?: any }>();
 
   const [pet, setPet] = useState<PetModel>();
-  const [petId, setPetId] = useState<string>();
   const [illnesses, setIllnesses] = useState<IllnessRecordModel[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [medications, setMedications] = useState<
     Record<string, MedicationRecordModel[]>
   >({});
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadIllnesses = useCallback(async (id: string) => {
-    setIsLoading(true);
-
-    try {
-      const illnessResponse = await fetchPetIllnesses(id);
-      setIllnesses(illnessResponse);
-
-      const medicationEntries = await Promise.all(
-        illnessResponse.map(async (illness) => [
-          String(illness.Id),
-          await fetchIllnessMedications(illness.Id),
-        ]),
-      );
-
-      setMedications(Object.fromEntries(medicationEntries));
-    } catch (error) {
-      Alert.alert(
-        "Unable to load illness history",
-        error instanceof Error ? error.message : "Please try again.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
-    const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
-    if (!parsed?.pet) {
-      setPet(undefined);
-      setPetId(undefined);
-      setIllnesses([]);
-      setMedications({});
-      setIsLoading(false);
-      return;
+    if (!payload) return;
+
+    let parsed: any = payload;
+    if (typeof payload === "string") {
+      try {
+        parsed = JSON.parse(decodeURIComponent(payload));
+      } catch {
+        try {
+          parsed = JSON.parse(payload);
+        } catch {
+          parsed = payload;
+        }
+      }
     }
 
     setPet(parsed.pet);
-    setPetId(String(parsed.pet.Id));
-    void loadIllnesses(String(parsed.pet.Id));
-  }, [loadIllnesses, payload]);
+
+    const ill = IllnessRecords.filter((item) => item.petId === parsed.pet.Id);
+    setIllnesses(ill);
+
+    const medMap: Record<string, MedicationRecordModel[]> = {};
+    for (const illness of ill) {
+      medMap[illness.Id] = MedicationRecords.filter(
+        (item: MedicationRecordModel) => item.illnessId === illness.Id,
+      );
+    }
+    setMedications(medMap);
+  }, [payload]);
 
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
-
-      if (petId) {
-        void loadIllnesses(petId);
-      }
-
-      return () => {
-        setShowFooter?.(true);
-      };
-    }, [loadIllnesses, petId, setShowFooter]),
+    }, []),
   );
 
   const toggleMedications = (id: string) => {
@@ -127,7 +99,7 @@ const IllnessesScreen = () => {
     const start = startDate.getTime();
     const now = today.getTime();
 
-    if (datediff(start, now) % interval === 0) return true;
+    if (datediff(start, now) % interval == 0) return true;
     return false;
   };
 
@@ -219,12 +191,14 @@ const IllnessesScreen = () => {
         keyExtractor={(item) => String(item.Id)}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          isLoading ? null : (
-            <ProfileEmptyState
-              title="No illnesses recorded yet"
-              subtitle="Keep track of past and ongoing medical conditions here."
-            />
-          )
+          <View style={styles.emptyState}>
+            <AdaptiveText style={styles.emptyTitle}>
+              No illnesses recorded yet
+            </AdaptiveText>
+            <AdaptiveText style={styles.emptySubtitle}>
+              Keep track of past and ongoing medical conditions here.
+            </AdaptiveText>
+          </View>
         }
         renderItem={({ item }) => {
           const isExpanded = expandedIds.includes(item.Id);
@@ -302,11 +276,7 @@ const IllnessesScreen = () => {
                     activeOpacity={0.85}
                     style={styles.innerActionButton}
                     onPress={() => {
-                      goTo(
-                        { item: { ...item, medications: illnessMeds }, pet },
-                        "/profile/modify-add-illness",
-                        router,
-                      );
+                      goTo({ item }, "/profile/modify-add-illness", router);
                     }}
                   >
                     <AdaptiveText style={styles.innerActionButtonText}>
@@ -332,8 +302,6 @@ const IllnessesScreen = () => {
           color={darkMode ? colors.white : colors.black}
         />
       </TouchableOpacity>
-
-      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
@@ -357,6 +325,24 @@ const createStyles = ({ darkMode }: any) => {
     },
     listContent: {
       paddingBottom: 20,
+    },
+    emptyState: {
+      marginTop: 60,
+      paddingHorizontal: 24,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emptyTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 18,
+      textAlign: "center",
+      marginBottom: 6,
+    },
+    emptySubtitle: {
+      fontFamily: "Poppins-Light",
+      fontSize: 14,
+      opacity: 0.8,
+      textAlign: "center",
     },
     card: {
       alignSelf: "center",
