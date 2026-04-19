@@ -1,6 +1,5 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { PageHeader } from "@/components/PageHeader";
-import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PetModel, VaccineRecordModel } from "@/data/models";
@@ -34,10 +33,10 @@ const VaccinesScreen = () => {
     if (typeof payload === "string") {
       try {
         parsed = JSON.parse(decodeURIComponent(payload));
-      } catch {
+      } catch (e) {
         try {
           parsed = JSON.parse(payload);
-        } catch {
+        } catch (e2) {
           // keep as string if parsing fails
           parsed = payload;
         }
@@ -56,7 +55,7 @@ const VaccinesScreen = () => {
       return () => {
         setShowFooter?.(true);
       };
-    }, [setShowFooter]),
+    }, []),
   );
 
   return (
@@ -64,19 +63,12 @@ const VaccinesScreen = () => {
       <PageHeader title="" />
 
       <AdaptiveText style={styles.title}>
-        {pet?.Name ? `${pet.Name}'s Vaccination Record` : "Vaccination Record"}
+        Kalinka's Vaccination Record
       </AdaptiveText>
 
       <FlatList
         data={vaccines}
         keyExtractor={(item) => String(item.Id)}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <ProfileEmptyState
-            title="No vaccines recorded yet"
-            subtitle="Add vaccinations here so upcoming doses and past records are easy to review."
-          />
-        }
         renderItem={({ item }) => (
           <>
             <TouchableOpacity
@@ -165,9 +157,6 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 10,
       marginBottom: 10,
       textAlign: "center",
-    },
-    listContent: {
-      paddingBottom: 20,
     },
     datesList: {
       fontFamily: "Poppins-Light",

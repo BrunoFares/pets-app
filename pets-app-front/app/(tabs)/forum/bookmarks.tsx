@@ -2,8 +2,10 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import ForumPost from "@/components/ForumPost";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
-import { apiRequest } from "@/lib/api";
+import { ForumPosts } from "@/data/sample";
+import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -21,38 +23,13 @@ export default function Bookmarks() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [posts, setPosts] = useState<ForumPostsModel[]>([]);
+  const { showFooter, setShowFooter } = useGlobal();
 
   useFocusEffect(
     useCallback(() => {
-      const loadBookmarks = async () => {
-        try {
-          const forumPosts = await apiRequest<{
-            id: string;
-            content: string;
-            createdAt: string;
-            userName: string;
-          }[]>("/api/Users/bookmarks");
-
-          setPosts(
-            forumPosts.map((post) => ({
-              Id: post.id,
-              UserId: "",
-              UserName: post.userName,
-              Content: post.content,
-              Attachments: [],
-              CreatedAt: post.createdAt,
-              IsAReply: false,
-              ReplyingToPost: null,
-              IsBookmarked: true,
-              RepliesCount: 0,
-            })),
-          );
-        } catch {
-          setPosts([]);
-        }
-      };
-
-      loadBookmarks();
+      // API all to get the Posts
+      const forumPosts = ForumPosts;
+      setPosts(forumPosts);
     }, [])
   );
 
@@ -60,8 +37,10 @@ export default function Bookmarks() {
     router.push({
       pathname: location,
       params: { id: String(item.Id) },
-    });
-  };
+    })
+  }
+
+  const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,7 +60,7 @@ export default function Bookmarks() {
                 <ForumPost
                   onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")}
                   onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
-                  size="small"
+                  size='small'
                   item={item}
                 />
               );
