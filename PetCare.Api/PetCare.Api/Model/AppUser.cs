@@ -10,6 +10,9 @@ public class AppUser
     public string Email { get; set; } = default!;
     public string PhoneNumber { get; set; } = default!;
     public string PasswordHash { get; set; } = default!;
+    public bool EmailVerified { get; set; }
+    public string? EmailVerificationTokenHash { get; set; }
+    public DateTimeOffset? EmailVerificationTokenExpiresAt { get; set; }
     public string? AvatarUrl { get; set; }
     public string? Description { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

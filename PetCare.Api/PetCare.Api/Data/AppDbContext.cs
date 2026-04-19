@@ -39,6 +39,9 @@ public class AppDbContext : DbContext
             e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
             e.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(50).IsRequired();
             e.Property(x => x.PasswordHash).HasColumnName("password_hash").IsRequired();
+            e.Property(x => x.EmailVerified).HasColumnName("email_verified").IsRequired().HasDefaultValue(false);
+            e.Property(x => x.EmailVerificationTokenHash).HasColumnName("email_verification_token_hash");
+            e.Property(x => x.EmailVerificationTokenExpiresAt).HasColumnName("email_verification_token_expires_at");
             e.Property(x => x.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(1024);
             e.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000);
             e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
