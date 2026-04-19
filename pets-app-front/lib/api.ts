@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppUsersModel, PetModel } from "@/data/models";
+import { showSoftErrorNotice } from "@/lib/soft-error-notice";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
@@ -256,6 +257,7 @@ export async function apiRequest<T>(
       method: init.method ?? "GET",
       error,
     });
+    showSoftErrorNotice();
     throw new ApiRequestError(
       `Network request failed while calling ${url}.${localhostHint}`,
       {

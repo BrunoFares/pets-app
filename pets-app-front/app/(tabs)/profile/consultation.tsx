@@ -5,6 +5,8 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ConsultationModel, PetModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchConsultationById,
   parseRoutePayload,
@@ -12,7 +14,7 @@ import {
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   useColorScheme,
@@ -36,10 +38,7 @@ const Consultation = () => {
       const response = await fetchConsultationById(id);
       setConsultation(response);
     } catch (error) {
-      Alert.alert(
-        "Unable to load consultation",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to load consultation", error);
     } finally {
       setIsLoading(false);
     }
@@ -89,41 +88,60 @@ const Consultation = () => {
     }, [consultationId, loadConsultation, setShowFooter]),
   );
 
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      if (consultationId) {
+        await loadConsultation(consultationId);
+      }
+    }, [consultationId, loadConsultation]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
+
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      {consultation ? (
-        <ScrollView contentContainerStyle={styles.container}>
-          <AdaptiveText style={styles.title}>
-            {`${pet?.Name ?? ""}'s Consultation`}
-          </AdaptiveText>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          !consultation ? styles.emptyStateWrap : null,
+        ]}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+      >
+        {consultation ? (
+          <>
+            <AdaptiveText style={styles.title}>
+              {`${pet?.Name ?? ""}'s Consultation`}
+            </AdaptiveText>
 
-          <AdaptiveText
-            style={{
-              fontFamily: "Poppins-Light",
-              alignSelf: "center",
-              top: -10,
-            }}
-          >
-            {consultation.Date.toDateString()}
-          </AdaptiveText>
+            <AdaptiveText
+              style={{
+                fontFamily: "Poppins-Light",
+                alignSelf: "center",
+                top: -10,
+              }}
+            >
+              {consultation.Date.toDateString()}
+            </AdaptiveText>
 
-          <AdaptiveText style={styles.sectionTitle}>
-            Details provided by{" "}
-            {consultation.VetName || consultation.VetId || "your vet"}:
-          </AdaptiveText>
-          <AdaptiveText style={{ marginHorizontal: "7%", fontSize: 17 }}>
-            {consultation.Details}
-          </AdaptiveText>
-        </ScrollView>
-      ) : (
-        <ProfileEmptyState
-          title="No consultation details available"
-          subtitle="This consultation could not be found or has not been registered yet."
-        />
-      )}
+            <AdaptiveText style={styles.sectionTitle}>
+              Details provided by{" "}
+              {consultation.VetName || consultation.VetId || "your vet"}:
+            </AdaptiveText>
+            <AdaptiveText style={{ marginHorizontal: "7%", fontSize: 17 }}>
+              {consultation.Details}
+            </AdaptiveText>
+          </>
+        ) : (
+          <ProfileEmptyState
+            title="No consultation details available"
+            subtitle="This consultation could not be found or has not been registered yet."
+          />
+        )}
+      </ScrollView>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
@@ -146,6 +164,10 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-SemiBold",
       fontSize: 18,
       marginHorizontal: "7%",
+    },
+    emptyStateWrap: {
+      flexGrow: 1,
+      justifyContent: "center",
     },
   });
 };

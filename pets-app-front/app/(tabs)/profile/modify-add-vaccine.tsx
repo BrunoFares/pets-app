@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PetModel, VaccineRecordModel } from "@/data/models";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import { parseRoutePayload, toApiVaccineStatus } from "@/lib/profile-api";
 import { AntDesign } from "@expo/vector-icons";
@@ -155,10 +156,10 @@ const ModifyAddVaccine = () => {
 
       router.back();
     } catch (error) {
-      Alert.alert(
-        "Unable to save vaccine",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to save vaccine", error, {
+        networkMessage:
+          "We couldn't reach the server, so the vaccine details were not saved.",
+      });
     } finally {
       setIsSubmitting(false);
     }

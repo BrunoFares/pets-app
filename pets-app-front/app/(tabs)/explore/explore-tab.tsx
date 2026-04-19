@@ -3,6 +3,7 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import ShopItem from "@/components/ShopItem";
 import SortByModal from "@/components/SortByModal";
 import { colors } from "@/constants/colors";
+import { useGlobal } from "@/contexts/GlobalProvider";
 import { PlaceModel } from "@/data/models";
 import { formatPlaceLocation } from "@/lib/discovery-api";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
@@ -22,21 +23,33 @@ import {
 const ExploreTab = ({
   items,
   title,
+  refreshing = false,
+  onRefresh,
 }: {
   items: PlaceModel[];
   title: string;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const router = useRouter();
+  const { setShowFooter } = useGlobal();
   const [sortByModal, setSortByModal] = useState(false);
   const [filterByModal, setFilterByModal] = useState(false);
   const [displayedItems, setDisplayedItems] = useState(items);
-  const placeholderText = "Search for " + title;
+  const placeholderText =
+    "Search for " + (title === "Pet Shops" ? "pet shops..." : "vet clinics...");
 
   useEffect(() => {
     setDisplayedItems(items);
   }, [items]);
+
+  useEffect(() => {
+    return () => {
+      setShowFooter?.(true);
+    };
+  }, [setShowFooter]);
 
   const searchItems = (prompt: string) => {
     const display = items.filter((item) => {
@@ -95,6 +108,8 @@ const ExploreTab = ({
           style={styles.textInput}
           placeholder={placeholderText}
           placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+          onFocus={() => setShowFooter?.(false)}
+          onBlur={() => setShowFooter?.(true)}
         />
 
         <TouchableOpacity>
@@ -109,6 +124,8 @@ const ExploreTab = ({
       <FlatList
         style={styles.list}
         data={displayedItems}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
@@ -145,7 +162,9 @@ const ExploreTab = ({
           />
         }
         ListFooterComponent={
-          <View style={{ height: Platform.select({ ios: 90, android: 100 }) }} />
+          <View
+            style={{ height: Platform.select({ ios: 90, android: 100 }) }}
+          />
         }
       />
 

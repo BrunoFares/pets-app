@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchPlaceById,
   formatPlaceAddress,
@@ -13,7 +15,7 @@ import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -35,121 +37,118 @@ export default function PlaceDetails() {
   const [place, setPlace] = useState<PlaceModel | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(key));
 
+  const loadPlace = useCallback(async () => {
+    if (!key) {
+      setPlace(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetchPlaceById(key);
+      setPlace(response);
+    } catch (error) {
+      setPlace(null);
+      presentApiError("Could not load place", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [key]);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadPlace = async () => {
-        if (!key) {
-          setPlace(null);
-          setIsLoading(false);
-          return;
-        }
-
-        setIsLoading(true);
-
-        try {
-          const response = await fetchPlaceById(key);
-
-          if (!isActive) return;
-
-          setPlace(response);
-        } catch (error) {
-          if (!isActive) return;
-
-          setPlace(null);
-          Alert.alert(
-            "Could not load place",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
-
       void loadPlace();
 
-      return () => {
-        isActive = false;
-      };
-    }, [key]),
+      return undefined;
+    }, [loadPlace]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadPlace);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title={getPlaceDetailsTitle(place)} />
 
-      {place ? (
-        <ScrollView contentContainerStyle={styles.content}>
-          {place.Photo ? (
-            <Image
-              source={{ uri: place.Photo }}
-              style={styles.image}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={styles.imagePlaceholder} />
-          )}
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          !place ? styles.emptyStateWrap : null,
+        ]}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+      >
+        {place ? (
+          <>
+            {place.Photo ? (
+              <Image
+                source={{ uri: place.Photo }}
+                style={styles.image}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.imagePlaceholder} />
+            )}
 
-          <View style={styles.section}>
-            <AdaptiveText style={styles.name}>{place.Name}</AdaptiveText>
-            <AdaptiveText style={styles.location}>
-              {formatPlaceLocation(place)}
-            </AdaptiveText>
-            <AdaptiveText style={styles.description}>
-              {place.Description?.trim()
-                ? place.Description
-                : "No description has been added for this place yet."}
-            </AdaptiveText>
-          </View>
-
-          <View style={styles.section}>
-            <AdaptiveText style={styles.sectionTitle}>Contact</AdaptiveText>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Address</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {formatPlaceAddress(place) || "Not provided"}
+            <View style={styles.section}>
+              <AdaptiveText style={styles.name}>{place.Name}</AdaptiveText>
+              <AdaptiveText style={styles.location}>
+                {formatPlaceLocation(place)}
+              </AdaptiveText>
+              <AdaptiveText style={styles.description}>
+                {place.Description?.trim()
+                  ? place.Description
+                  : "No description has been added for this place yet."}
               </AdaptiveText>
             </View>
 
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Phone</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {place.Phone || "Not provided"}
-              </AdaptiveText>
+            <View style={styles.section}>
+              <AdaptiveText style={styles.sectionTitle}>Contact</AdaptiveText>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Address</Text>
+                <AdaptiveText style={styles.metaValue}>
+                  {formatPlaceAddress(place) || "Not provided"}
+                </AdaptiveText>
+              </View>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Phone</Text>
+                <AdaptiveText style={styles.metaValue}>
+                  {place.Phone || "Not provided"}
+                </AdaptiveText>
+              </View>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Email</Text>
+                <AdaptiveText style={styles.metaValue}>
+                  {place.Email || "Not provided"}
+                </AdaptiveText>
+              </View>
             </View>
 
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Email</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {place.Email || "Not provided"}
-              </AdaptiveText>
+            <View style={styles.section}>
+              <AdaptiveText style={styles.sectionTitle}>Reviews</AdaptiveText>
+              <ProfileEmptyState
+                title="No reviews yet"
+                subtitle="Community reviews are not available for this place yet."
+                compact
+                style={styles.reviewEmptyState}
+              />
             </View>
-          </View>
-
-          <View style={styles.section}>
-            <AdaptiveText style={styles.sectionTitle}>Reviews</AdaptiveText>
-            <ProfileEmptyState
-              title="No reviews yet"
-              subtitle="Community reviews are not available for this place yet."
-              compact
-              style={styles.reviewEmptyState}
-            />
-          </View>
-        </ScrollView>
-      ) : !isLoading ? (
-        <View style={styles.emptyStateWrap}>
+          </>
+        ) : !isLoading ? (
           <ProfileEmptyState
             title={key ? "Place unavailable" : "Missing place"}
             subtitle="We couldn't load the place details right now."
           />
-        </View>
-      ) : null}
+        ) : null}
+      </ScrollView>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }

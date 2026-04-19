@@ -4,7 +4,9 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ChatSessionModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   createChat,
   fetchChats,
@@ -16,7 +18,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Alert,
   Animated,
   FlatList,
   Keyboard,
@@ -38,48 +39,39 @@ export default function ChatbotScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { setShowFooter } = useGlobal();
 
+  const loadChats = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const response = await fetchChats();
+
+      const sortedChats = [...response].sort((a, b) => {
+        const aTimestamp = new Date(a.UpdatedAt ?? a.CreatedAt).getTime();
+        const bTimestamp = new Date(b.UpdatedAt ?? b.CreatedAt).getTime();
+        return bTimestamp - aTimestamp;
+      });
+
+      setChats(sortedChats);
+    } catch (error) {
+      setChats([]);
+      presentApiError("Could not load chats", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadChats = async () => {
-        setIsLoading(true);
-
-        try {
-          const response = await fetchChats();
-
-          if (!isActive) return;
-
-          const sortedChats = [...response].sort((a, b) => {
-            const aTimestamp = new Date(a.UpdatedAt ?? a.CreatedAt).getTime();
-            const bTimestamp = new Date(b.UpdatedAt ?? b.CreatedAt).getTime();
-            return bTimestamp - aTimestamp;
-          });
-
-          setChats(sortedChats);
-        } catch (error) {
-          if (!isActive) return;
-
-          setChats([]);
-          Alert.alert(
-            "Could not load chats",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
-
       void loadChats();
 
       return () => {
-        isActive = false;
         setShowFooter?.(true);
       };
-    }, [setShowFooter]),
+    }, [loadChats, setShowFooter]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadChats);
+  const showLoadingOverlay = (isLoading && !isRefreshing) || isSubmitting;
 
   const { translateY } = useHeaderSlide({ height: 200, duration: 250 });
 
@@ -102,10 +94,10 @@ export default function ChatbotScreen() {
         params: { id },
       });
     } catch (error) {
-      Alert.alert(
-        "Could not start chat",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Could not start chat", error, {
+        networkMessage:
+          "We couldn't reach the server, so your new chat was not started.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -164,6 +156,8 @@ export default function ChatbotScreen() {
         <FlatList
           style={styles.chatList}
           data={chats}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={Keyboard.dismiss}
@@ -171,7 +165,7 @@ export default function ChatbotScreen() {
             alignSelf: "center",
             width: "90%",
             paddingBottom: 100,
-            marginTop: 0,
+            marginTop: 20,
             paddingTop: 0,
             flexGrow: chats.length === 0 ? 1 : 0,
             justifyContent: "flex-start",
@@ -207,7 +201,7 @@ export default function ChatbotScreen() {
           ItemSeparatorComponent={() => <View style={{ height: 15 }} />}
           ListEmptyComponent={
             <ProfileEmptyState
-              style={{ width: "98%" }}
+              style={{ width: "98%", marginTop: 0 }}
               title="No conversations yet"
               subtitle="Start a new prompt above and your saved chats will appear here."
             />
@@ -215,7 +209,7 @@ export default function ChatbotScreen() {
         />
       </View>
 
-      {(isLoading || isSubmitting) && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }

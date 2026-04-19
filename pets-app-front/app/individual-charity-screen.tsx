@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchPlaceById,
   formatPlaceAddress,
@@ -13,7 +15,7 @@ import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,123 +31,120 @@ export default function IndividualCharityScreen() {
   const [organisation, setOrganisation] = useState<PlaceModel | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(key));
 
+  const loadOrganisation = useCallback(async () => {
+    if (!key) {
+      setOrganisation(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetchPlaceById(key);
+      setOrganisation(response.Type === "Other" ? response : null);
+    } catch (error) {
+      setOrganisation(null);
+      presentApiError("Could not load charity organisation", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [key]);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadOrganisation = async () => {
-        if (!key) {
-          setOrganisation(null);
-          setIsLoading(false);
-          return;
-        }
-
-        setIsLoading(true);
-
-        try {
-          const response = await fetchPlaceById(key);
-
-          if (!isActive) return;
-
-          setOrganisation(response.Type === "Other" ? response : null);
-        } catch (error) {
-          if (!isActive) return;
-
-          setOrganisation(null);
-          Alert.alert(
-            "Could not load charity organisation",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        }
-      };
-
       void loadOrganisation();
 
-      return () => {
-        isActive = false;
-      };
-    }, [key]),
+      return undefined;
+    }, [loadOrganisation]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadOrganisation);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="Charity Organisation" />
 
-      {organisation ? (
-        <ScrollView contentContainerStyle={styles.content}>
-          {organisation.Photo ? (
-            <Image
-              source={{ uri: organisation.Photo }}
-              style={styles.image}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={styles.imagePlaceholder} />
-          )}
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          !organisation ? styles.emptyStateWrap : null,
+        ]}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+      >
+        {organisation ? (
+          <>
+            {organisation.Photo ? (
+              <Image
+                source={{ uri: organisation.Photo }}
+                style={styles.image}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.imagePlaceholder} />
+            )}
 
-          <View style={styles.section}>
-            <AdaptiveText style={styles.name}>{organisation.Name}</AdaptiveText>
-            <AdaptiveText style={styles.location}>
-              {formatPlaceLocation(organisation)}
-            </AdaptiveText>
-            <AdaptiveText style={styles.description}>
-              {organisation.Description?.trim()
-                ? organisation.Description
-                : "No description has been added for this charity organisation yet."}
-            </AdaptiveText>
-          </View>
-
-          <View style={styles.section}>
-            <AdaptiveText style={styles.sectionTitle}>Contact</AdaptiveText>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Address</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {formatPlaceAddress(organisation) || "Not provided"}
+            <View style={styles.section}>
+              <AdaptiveText style={styles.name}>{organisation.Name}</AdaptiveText>
+              <AdaptiveText style={styles.location}>
+                {formatPlaceLocation(organisation)}
+              </AdaptiveText>
+              <AdaptiveText style={styles.description}>
+                {organisation.Description?.trim()
+                  ? organisation.Description
+                  : "No description has been added for this charity organisation yet."}
               </AdaptiveText>
             </View>
 
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Phone</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {organisation.Phone || "Not provided"}
-              </AdaptiveText>
+            <View style={styles.section}>
+              <AdaptiveText style={styles.sectionTitle}>Contact</AdaptiveText>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Address</Text>
+                <AdaptiveText style={styles.metaValue}>
+                  {formatPlaceAddress(organisation) || "Not provided"}
+                </AdaptiveText>
+              </View>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Phone</Text>
+                <AdaptiveText style={styles.metaValue}>
+                  {organisation.Phone || "Not provided"}
+                </AdaptiveText>
+              </View>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Email</Text>
+                <AdaptiveText style={styles.metaValue}>
+                  {organisation.Email || "Not provided"}
+                </AdaptiveText>
+              </View>
             </View>
 
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Email</Text>
-              <AdaptiveText style={styles.metaValue}>
-                {organisation.Email || "Not provided"}
+            <View style={styles.section}>
+              <AdaptiveText style={styles.sectionTitle}>
+                Community Activity
               </AdaptiveText>
+              <ProfileEmptyState
+                title="No community posts yet"
+                subtitle="This charity organisation does not have community feedback available right now."
+                compact
+                style={styles.emptyCard}
+              />
             </View>
-          </View>
-
-          <View style={styles.section}>
-            <AdaptiveText style={styles.sectionTitle}>
-              Community Activity
-            </AdaptiveText>
-            <ProfileEmptyState
-              title="No community posts yet"
-              subtitle="This charity organisation does not have community feedback available right now."
-              compact
-              style={styles.emptyCard}
-            />
-          </View>
-        </ScrollView>
-      ) : !isLoading ? (
-        <View style={styles.emptyStateWrap}>
+          </>
+        ) : !isLoading ? (
           <ProfileEmptyState
             title={key ? "Charity organisation unavailable" : "Missing charity organisation"}
             subtitle="We couldn't load this charity organisation right now."
           />
-        </View>
-      ) : null}
+        ) : null}
+      </ScrollView>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }

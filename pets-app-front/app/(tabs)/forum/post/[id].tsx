@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest } from "@/lib/api";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -42,6 +43,25 @@ const PostScreen = () => {
   const [item, setItem] = useState<ForumPostsModel>();
   const [replies, setReplies] = useState<ForumPostsModel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const loadPost = useCallback(async (postId: string) => {
+    setIsLoading(true);
+
+    try {
+      const [post, postReplies] = await Promise.all([
+        apiRequest<any>(`/api/ForumPosts/${postId}`),
+        apiRequest<any[]>(`/api/ForumPosts/${postId}/replies`),
+      ]);
+
+      setItem(normalizeForumPost(post));
+      setReplies(postReplies.map(normalizeForumPost));
+    } catch {
+      setItem(undefined);
+      setReplies([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,64 +101,61 @@ const PostScreen = () => {
       return;
     }
 
-    const loadPost = async () => {
-      setIsLoading(true);
+    void loadPost(id);
+  }, [id, loadPost, payload]);
 
-      try {
-        const [post, postReplies] = await Promise.all([
-          apiRequest<any>(`/api/ForumPosts/${id}`),
-          apiRequest<any[]>(`/api/ForumPosts/${id}/replies`),
-        ]);
-
-        setItem(normalizeForumPost(post));
-        setReplies(postReplies.map(normalizeForumPost));
-      } catch {
-        setItem(undefined);
-        setReplies([]);
-      } finally {
-        setIsLoading(false);
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      if (id) {
+        await loadPost(id);
       }
-    };
-
-    loadPost();
-  }, [id, payload]);
+    }, [id, loadPost]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   return (
     <SafeAreaView style={styles.container}>
       <View>
         <PageHeader title={item?.UserName ?? "Post"} />
-        {item ? (
-          <FlatList
-            data={replies}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={Keyboard.dismiss}
-            contentContainerStyle={{ alignSelf: "center", width: "100%" }}
-            keyExtractor={(item) => String(item.Id)}
-            ListHeaderComponent={<ForumPost size="big" item={item} />}
-            renderItem={({ item }) => {
-              if (replies && replies.length !== 0) {
-                return <ForumPost size="small" item={item} />;
-              } else {
-                return <AdaptiveText>This post has no replies.</AdaptiveText>;
-              }
-            }}
-            ListFooterComponent={<View style={{ height: 140 }} />}
-          />
-        ) : (
-          <AdaptiveText
-            style={{
-              alignSelf: "center",
-              fontFamily: "Poppins-SemiBold",
-              marginTop: 250,
-            }}
-          >
-            No items found.
-          </AdaptiveText>
-        )}
+        <FlatList
+          data={item ? replies : []}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+          contentContainerStyle={{ alignSelf: "center", width: "100%", flexGrow: 1 }}
+          keyExtractor={(item) => String(item.Id)}
+          ListHeaderComponent={item ? <ForumPost size="big" item={item} /> : null}
+          ListEmptyComponent={
+            isLoading ? null : item ? (
+              <AdaptiveText
+                style={{
+                  alignSelf: "center",
+                  fontFamily: "Poppins-SemiBold",
+                  marginTop: 40,
+                }}
+              >
+                This post has no replies.
+              </AdaptiveText>
+            ) : (
+              <AdaptiveText
+                style={{
+                  alignSelf: "center",
+                  fontFamily: "Poppins-SemiBold",
+                  marginTop: 250,
+                }}
+              >
+                No items found.
+              </AdaptiveText>
+            )
+          }
+          renderItem={({ item }) => <ForumPost size="small" item={item} />}
+          ListFooterComponent={<View style={{ height: 140 }} />}
+        />
       </View>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

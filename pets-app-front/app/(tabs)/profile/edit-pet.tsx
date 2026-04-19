@@ -8,6 +8,8 @@ import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { BreedModel, Color, PetModel, Sex, SpeciesModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import {
   fetchBreedOptions,
@@ -27,6 +29,7 @@ import {
   Alert,
   Keyboard,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -119,10 +122,7 @@ const EditPet = () => {
         }
       }
     } catch (error) {
-      Alert.alert(
-        "Unable to load pet",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to load pet", error);
     } finally {
       setIsLoadingPet(false);
     }
@@ -142,25 +142,22 @@ const EditPet = () => {
     }, [loadPet, petId, setShowFooter]),
   );
 
-  useEffect(() => {
-    const loadSpecies = async () => {
-      setIsLoadingSpecies(true);
+  const loadSpecies = useCallback(async () => {
+    setIsLoadingSpecies(true);
 
-      try {
-        const species = await fetchSpeciesOptions();
-        setSpeciesToChoose(species);
-      } catch (error) {
-        Alert.alert(
-          "Unable to load pet details",
-          error instanceof Error ? error.message : "Please try again.",
-        );
-      } finally {
-        setIsLoadingSpecies(false);
-      }
-    };
-
-    void loadSpecies();
+    try {
+      const species = await fetchSpeciesOptions();
+      setSpeciesToChoose(species);
+    } catch (error) {
+      presentApiError("Unable to load pet details", error);
+    } finally {
+      setIsLoadingSpecies(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSpecies();
+  }, [loadSpecies]);
 
   useEffect(() => {
     const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
@@ -207,44 +204,52 @@ const EditPet = () => {
     }
   }, [payload, speciesToChoose]);
 
-  useEffect(() => {
-    const loadBreeds = async () => {
-      if (!selectedSpecies?.id) {
-        setBreedsToChoose([]);
-        setSelectedBreed(undefined);
-        setIsLoadingBreeds(false);
-        return;
-      }
+  const loadBreeds = useCallback(async (speciesId?: number | null) => {
+    if (!speciesId) {
+      setBreedsToChoose([]);
+      setSelectedBreed(undefined);
+      setIsLoadingBreeds(false);
+      return;
+    }
 
-      setIsLoadingBreeds(true);
+    setIsLoadingBreeds(true);
 
-      try {
-        const breeds = await fetchBreedOptions(Number(selectedSpecies.id));
-        setBreedsToChoose(breeds);
+    try {
+      const breeds = await fetchBreedOptions(speciesId);
+      setBreedsToChoose(breeds);
 
-        const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
-        const currentBreedId = parsed?.pet?.BreedId;
+      const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
+      const currentBreedId = parsed?.pet?.BreedId;
 
-        if (currentBreedId) {
-          const matchingBreed = breeds.find(
-            (item) => Number(item.id) === Number(currentBreedId),
-          );
-          setSelectedBreed(matchingBreed);
-        } else {
-          setSelectedBreed(undefined);
-        }
-      } catch (error) {
-        Alert.alert(
-          "Unable to load breeds",
-          error instanceof Error ? error.message : "Please try again.",
+      if (currentBreedId) {
+        const matchingBreed = breeds.find(
+          (item) => Number(item.id) === Number(currentBreedId),
         );
-      } finally {
-        setIsLoadingBreeds(false);
+        setSelectedBreed(matchingBreed);
+      } else {
+        setSelectedBreed(undefined);
       }
-    };
+    } catch (error) {
+      presentApiError("Unable to load breeds", error);
+    } finally {
+      setIsLoadingBreeds(false);
+    }
+  }, [payload]);
 
-    void loadBreeds();
-  }, [payload, selectedSpecies]);
+  useEffect(() => {
+    void loadBreeds(selectedSpecies?.id ? Number(selectedSpecies.id) : null);
+  }, [loadBreeds, selectedSpecies]);
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      await Promise.all([
+        loadSpecies(),
+        petId ? loadPet(petId) : Promise.resolve(),
+      ]);
+      await loadBreeds(selectedSpecies?.id ? Number(selectedSpecies.id) : null);
+    }, [loadBreeds, loadPet, loadSpecies, petId, selectedSpecies]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const handleSave = async () => {
     if (!petId) {
@@ -317,10 +322,10 @@ const EditPet = () => {
       await refreshProfile();
       router.back();
     } catch (error) {
-      Alert.alert(
-        "Unable to update pet",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to update pet", error, {
+        networkMessage:
+          "We couldn't reach the server, so your pet changes were not saved.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -334,6 +339,9 @@ const EditPet = () => {
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
         contentContainerStyle={{ alignItems: "center", gap: 10 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
       >
         <AdaptiveText style={styles.title}>Edit pet details</AdaptiveText>
 
@@ -548,7 +556,7 @@ const EditPet = () => {
         }}
       />
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

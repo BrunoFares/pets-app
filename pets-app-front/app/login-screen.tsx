@@ -3,6 +3,7 @@ import CustomInput from "@/components/CustomInput";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest, ApiRequestError } from "@/lib/api";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -111,6 +112,14 @@ export default function LoginScreen() {
       router.replace("/(tabs)");
     } catch (error) {
       console.error("[login] Login request failed", error);
+      if (error instanceof ApiRequestError && error.status === 0) {
+        presentApiError("Login failed", error, {
+          networkMessage:
+            "We couldn't reach the server, so login was not completed.",
+        });
+        return;
+      }
+
       Alert.alert("Login failed", getLoginErrorMessage(error));
     } finally {
       setIsSubmitting(false);

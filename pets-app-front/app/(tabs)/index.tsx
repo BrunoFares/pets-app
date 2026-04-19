@@ -7,7 +7,9 @@ import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { presentApiError } from "@/lib/api-feedback";
 import { fetchCharityOrganisations } from "@/lib/discovery-api";
 import {
   fetchDueVaccines,
@@ -33,9 +35,9 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Alert,
   Animated,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -113,121 +115,105 @@ export default function HomeScreen() {
     }, [pets]),
   );
 
+  const loadDashboard = useCallback(async (options?: { skipProfileRefresh?: boolean }) => {
+    if (!options?.skipProfileRefresh && shouldRefreshProfile()) {
+      try {
+        await refreshProfile();
+      } catch (error) {
+        presentApiError("Could not load home", error, {
+          fallbackMessage: "Unable to load your dashboard.",
+        });
+      } finally {
+        setIsLoadingDashboard(false);
+      }
+
+      return;
+    }
+
+    if (!user) {
+      setReminderBoardItems([]);
+      setIsLoadingDashboard(false);
+      return;
+    }
+
+    setIsLoadingDashboard(true);
+
+    try {
+      const [consultations, illnessRecords, medicationRecords, vaccineRecords] =
+        await Promise.all([
+          fetchUpcomingConsultations(),
+          fetchOngoingIllnesses(),
+          fetchMedicationReminders(),
+          fetchDueVaccines(),
+        ]);
+
+      setReminderBoardItems(
+        buildReminderBoardItems({
+          consultations,
+          illnessRecords,
+          medicationRecords,
+          pets,
+          vaccineRecords,
+        }),
+      );
+    } catch (error) {
+      setReminderBoardItems([]);
+      presentApiError("Could not load reminders", error);
+    } finally {
+      setIsLoadingDashboard(false);
+    }
+  }, [pets, refreshProfile, shouldRefreshProfile, user]);
+
+  const loadCharityOrganisations = useCallback(async () => {
+    setIsLoadingCharities(true);
+
+    try {
+      const response = await fetchCharityOrganisations();
+      setCharityOrganisations(response);
+    } catch (error) {
+      setCharityOrganisations([]);
+      presentApiError("Could not load charity organisations", error);
+    } finally {
+      setIsLoadingCharities(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadDashboard = async () => {
-        if (shouldRefreshProfile()) {
-          try {
-            await refreshProfile();
-          } catch (error) {
-            if (isActive) {
-              Alert.alert(
-                "Could not load home",
-                error instanceof Error
-                  ? error.message
-                  : "Unable to load your dashboard.",
-              );
-            }
-          } finally {
-            if (isActive) {
-              setIsLoadingDashboard(false);
-            }
-          }
-
-          return;
-        }
-
-        if (!user) {
-          if (isActive) {
-            setReminderBoardItems([]);
-            setIsLoadingDashboard(false);
-          }
-          return;
-        }
-
-        setIsLoadingDashboard(true);
-
-        try {
-          const [consultations, illnessRecords, medicationRecords, vaccineRecords] =
-            await Promise.all([
-              fetchUpcomingConsultations(),
-              fetchOngoingIllnesses(),
-              fetchMedicationReminders(),
-              fetchDueVaccines(),
-            ]);
-
-          if (!isActive) return;
-
-          setReminderBoardItems(
-            buildReminderBoardItems({
-              consultations,
-              illnessRecords,
-              medicationRecords,
-              pets,
-              vaccineRecords,
-            }),
-          );
-        } catch (error) {
-          if (!isActive) return;
-
-          setReminderBoardItems([]);
-          Alert.alert(
-            "Could not load reminders",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoadingDashboard(false);
-          }
-        }
-      };
-
       void loadDashboard();
 
       return () => {
-        isActive = false;
         setShowFooter?.(true);
       };
-    }, [pets, refreshProfile, setShowFooter, shouldRefreshProfile, user]),
+    }, [loadDashboard, setShowFooter]),
   );
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const loadCharityOrganisations = async () => {
-        setIsLoadingCharities(true);
-
-        try {
-          const response = await fetchCharityOrganisations();
-
-          if (!isActive) return;
-
-          setCharityOrganisations(response);
-        } catch (error) {
-          if (!isActive) return;
-
-          setCharityOrganisations([]);
-          Alert.alert(
-            "Could not load charity organisations",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        } finally {
-          if (isActive) {
-            setIsLoadingCharities(false);
-          }
-        }
-      };
-
       void loadCharityOrganisations();
 
       return () => {
-        isActive = false;
       };
-    }, []),
+    }, [loadCharityOrganisations]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      try {
+        await refreshProfile();
+      } catch (error) {
+        presentApiError("Could not load home", error, {
+          fallbackMessage: "Unable to load your dashboard.",
+        });
+      }
+
+      await Promise.all([
+        loadDashboard({ skipProfileRefresh: true }),
+        loadCharityOrganisations(),
+      ]);
+    }, [loadCharityOrganisations, loadDashboard, refreshProfile]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const { translateY } = useHeaderSlide({ height: 200 });
   const displayName = user?.Name ?? "there";
@@ -237,6 +223,9 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
       >
         <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
           <AdaptiveText
@@ -521,7 +510,7 @@ export default function HomeScreen() {
         </AdaptiveView>
       </ScrollView>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }

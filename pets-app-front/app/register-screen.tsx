@@ -5,6 +5,7 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -75,10 +76,11 @@ const RegisterScreen = () => {
       await signIn(response);
       router.replace("/(tabs)");
     } catch (error) {
-      Alert.alert(
-        "Registration failed",
-        error instanceof Error ? error.message : "Unable to register.",
-      );
+      presentApiError("Registration failed", error, {
+        fallbackMessage: "Unable to register.",
+        networkMessage:
+          "We couldn't reach the server, so your account was not created yet.",
+      });
     } finally {
       setIsSubmitting(false);
     }

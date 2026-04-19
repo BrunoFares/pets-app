@@ -9,6 +9,8 @@ import {
   MedicationRecordModel,
   PetModel,
 } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchIllnessMedications,
   fetchPetIllnesses,
@@ -19,7 +21,6 @@ import { AntDesign, Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   LayoutAnimation,
   Platform,
@@ -70,10 +71,7 @@ const IllnessesScreen = () => {
 
       setMedications(Object.fromEntries(medicationEntries));
     } catch (error) {
-      Alert.alert(
-        "Unable to load illness history",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to load illness history", error);
     } finally {
       setIsLoading(false);
     }
@@ -108,6 +106,15 @@ const IllnessesScreen = () => {
       };
     }, [loadIllnesses, petId, setShowFooter]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      if (petId) {
+        await loadIllnesses(petId);
+      }
+    }, [loadIllnesses, petId]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const toggleMedications = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -217,6 +224,8 @@ const IllnessesScreen = () => {
       <FlatList
         data={illnesses}
         keyExtractor={(item) => String(item.Id)}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           isLoading ? null : (
@@ -333,7 +342,7 @@ const IllnessesScreen = () => {
         />
       </TouchableOpacity>
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };

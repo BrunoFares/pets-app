@@ -10,6 +10,8 @@ import {
   MedicationRecordModel,
   PetModel,
 } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import {
   fetchIllnessMedications,
@@ -24,6 +26,7 @@ import {
   Alert,
   Keyboard,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -131,34 +134,34 @@ const ModifyAddIllness = () => {
     }
   }, [payload]);
 
-  useEffect(() => {
-    const loadMedications = async () => {
-      if (!illness || medications.some((item) => item.apiId)) {
-        setIsLoadingMedications(false);
-        return;
+  const loadMedications = useCallback(async (force = false) => {
+    if (!illness || (!force && medications.some((item) => item.apiId))) {
+      setIsLoadingMedications(false);
+      return;
+    }
+
+    setIsLoadingMedications(true);
+
+    try {
+      const response = await fetchIllnessMedications(illness.Id);
+      if (response.length > 0) {
+        setInitialMedicationIds(response.map((item) => String(item.Id)));
+        setMedications(
+          response.map((medication, index) =>
+            createMedicationForm(medication, index),
+          ),
+        );
       }
-
-      setIsLoadingMedications(true);
-
-      try {
-        const response = await fetchIllnessMedications(illness.Id);
-        if (response.length > 0) {
-          setInitialMedicationIds(response.map((item) => String(item.Id)));
-          setMedications(
-            response.map((medication, index) =>
-              createMedicationForm(medication, index),
-            ),
-          );
-        }
-      } catch (error) {
-        console.error("[illness] Failed to load medications", error);
-      } finally {
-        setIsLoadingMedications(false);
-      }
-    };
-
-    void loadMedications();
+    } catch (error) {
+      console.error("[illness] Failed to load medications", error);
+    } finally {
+      setIsLoadingMedications(false);
+    }
   }, [illness, medications]);
+
+  useEffect(() => {
+    void loadMedications();
+  }, [loadMedications]);
 
   const onChangeDiagnosis = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
@@ -201,6 +204,13 @@ const ModifyAddIllness = () => {
       };
     }, [setShowFooter]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      await loadMedications(true);
+    }, [loadMedications]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const handleSave = async () => {
     if (!pet) {
@@ -334,10 +344,10 @@ const ModifyAddIllness = () => {
 
       router.back();
     } catch (error) {
-      Alert.alert(
-        "Unable to save illness",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      presentApiError("Unable to save illness", error, {
+        networkMessage:
+          "We couldn't reach the server, so the illness details were not saved.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -351,6 +361,9 @@ const ModifyAddIllness = () => {
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
         contentContainerStyle={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
       >
         <AdaptiveText style={styles.title}>
           {illness ? "Modify" : "Add"} Illness
@@ -556,7 +569,7 @@ const ModifyAddIllness = () => {
         }}
       />
 
-      {isLoading && <LoadingOverlay />}
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
