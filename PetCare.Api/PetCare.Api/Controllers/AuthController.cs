@@ -27,9 +27,7 @@ public class AuthController : ControllerBase
 
     public record RegisterRequest(
         [Required] string Username,
-        string? Name,
         [Required, EmailAddress] string Email,
-        [Required] string PhoneNumber,
         [Required] string FirstName,
         [Required] string LastName,
         [Required, StringLength(64, MinimumLength = 8)] string Password
@@ -68,9 +66,7 @@ public class AuthController : ControllerBase
         var user = new AppUser
         {
             Username = username,
-            Name = string.IsNullOrWhiteSpace(req.Name) ? null : req.Name.Trim(),
             Email = email,
-            PhoneNumber = req.PhoneNumber.Trim(),
             FirstName = req.FirstName.Trim(),
             LastName = req.LastName.Trim(),
             PasswordHash = PasswordHasher.Hash(req.Password)
@@ -189,7 +185,7 @@ public class AuthController : ControllerBase
         var verificationLink =
             $"{verificationBaseUrl}{separator}email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(rawToken)}";
 
-        var recipientName = user.Name ?? $"{user.FirstName} {user.LastName}".Trim();
+        var recipientName = $"{user.FirstName} {user.LastName}".Trim();
         await _emailSender.SendVerificationEmailAsync(user.Email, recipientName, verificationLink);
     }
 }
