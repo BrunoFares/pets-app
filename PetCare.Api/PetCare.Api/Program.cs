@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using PetCare.Api.Data;
 using PetCare.Api.Model;            // PetSex
+using PetCare.Api.Services.Email;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,8 @@ var dataSource = dsb.Build();
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(dataSource)        // 👈 use the mapped data source
 );
+builder.Services.Configure<EmailSenderOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
 // Controllers + Swagger (+ JSON enum converter + JWT scheme)
 builder.Services.AddControllers()
