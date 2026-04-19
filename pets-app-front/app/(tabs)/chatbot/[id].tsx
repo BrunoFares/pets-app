@@ -1,12 +1,23 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { ChatSessionModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
+import {
+  appendChatMessages,
+  fetchChatById,
+  getChatSessionTitle,
+} from "@/lib/chat-api";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Keyboard,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -19,115 +30,192 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const ChatScreen = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const { payload } = useLocalSearchParams<{ payload?: string }>();
-  const chat: any = payload ? JSON.parse(decodeURIComponent(payload)) : null;
-  const { showFooter, setShowFooter } = useGlobal();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { setShowFooter } = useGlobal();
+  const [chat, setChat] = useState<ChatSessionModel | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [isLoading, setIsLoading] = useState(Boolean(id));
+  const [isSending, setIsSending] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const loadChat = useCallback(async () => {
+    if (!id) {
+      setChat(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetchChatById(id);
+      setChat(response);
+    } catch (error) {
+      setChat(null);
+      presentApiError("Could not load chat", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
 
   useFocusEffect(
     useCallback(() => {
-      // This code runs when the screen is focused.
       setShowFooter?.(false);
 
+      void loadChat();
+
       return () => {
-        // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, [loadChat, setShowFooter]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadChat);
+  const showLoadingOverlay = (isLoading && !isRefreshing) || isSending;
+
+  useEffect(() => {
+    if (!chat?.Discussion.length) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [chat?.Discussion.length]);
+
+  const handleSend = async () => {
+    const content = prompt.trim();
+
+    if (!id || !chat || !content || isSending) {
+      return;
+    }
+
+    Keyboard.dismiss();
+    setIsSending(true);
+
+    try {
+      await appendChatMessages(id, [{ role: "User", content }]);
+      const updatedChat = await fetchChatById(id);
+      setChat(updatedChat);
+      setPrompt("");
+    } catch (error) {
+      presentApiError("Could not send message", error, {
+        networkMessage:
+          "We couldn't reach the server, so your message was not sent.",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const hasBotReply =
+    chat?.Discussion.some((message) => message.Role === "Bot") ?? false;
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ height: "100%" }}>
-        <PageHeader title={chat && chat.title ? chat.title : "something else"} />
+      <View style={styles.screen}>
+        <PageHeader title={getChatSessionTitle(chat)} />
+
         <ScrollView
+          ref={scrollRef}
           style={styles.chatbotResponse}
+          contentContainerStyle={[
+            styles.chatContent,
+            !chat ? styles.emptyStateWrap : null,
+          ]}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={Keyboard.dismiss}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          }
         >
-          <AdaptiveText
-            style={[
-              styles.chatbotText,
-              showFooter !== undefined && !showFooter && { marginBottom: 70 },
-            ]}
-          >
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Commodi
-            omnis itaque recusandae explicabo ex reprehenderit. Ullam alias
-            ducimus deleniti facere, ad aliquid dolores tempore. Impedit
-            repellendus placeat recusandae rerum adipisci molestiae unde.
-            Maiores, culpa, fuga mollitia delectus asperiores optio, sit
-            incidunt molestiae ratione doloremque recusandae omnis. Sequi
-            facilis corrupti ab nihil at, ipsum veniam doloremque adipisci
-            magnam cupiditate. Quod et laboriosam itaque odio, iusto at
-            incidunt rem impedit, accusamus saepe, cumque voluptas ea
-            cupiditate culpa officia beatae dicta? Soluta fuga assumenda nobis
-            incidunt molestias facilis ipsum tenetur perferendis reiciendis
-            repellat. Voluptatem officia porro vel vero quaerat ab, nesciunt
-            quis eveniet mollitia, ipsa iste numquam. Provident ab distinctio
-            assumenda deserunt sed itaque perspiciatis, quia natus aliquam
-            modi! Animi iure laboriosam rerum cum necessitatibus, voluptates
-            eligendi illo! Deleniti debitis nobis praesentium nesciunt vero?
-            Repudiandae illo corrupti odit sequi voluptatem, eum totam vel quia
-            itaque tenetur illum esse nihil architecto possimus provident odio
-            at quae maiores ut delectus dolorum aliquid enim exercitationem
-            animi? Repudiandae, sapiente eligendi voluptatem laborum quos
-            incidunt atque ducimus, temporibus vel cum perspiciatis tenetur
-            voluptas officiis ratione corrupti error non placeat rem nisi sit
-            vitae accusamus debitis! Quam libero sequi vitae officiis eius rem
-            exercitationem veritatis eligendi obcaecati. Eveniet ratione eius
-            saepe, veniam nobis at assumenda laboriosam soluta accusantium
-            dignissimos! Officia incidunt accusamus expedita minima, autem, ad
-            est quam neque debitis tenetur, quas sed velit porro aliquid
-            exercitationem! Vel facilis modi voluptate? Exercitationem quae
-            architecto cum suscipit! Aspernatur deserunt accusamus minus
-            quibusdam? Quis iure ipsum distinctio eaque illum fugiat corrupti
-            nisi sequi incidunt beatae laudantium, ab consectetur suscipit
-            dolorum quae necessitatibus tempore sunt quo! Eius corrupti iusto
-            placeat deserunt esse vel corporis ipsam labore quia expedita!
-            Ducimus autem voluptas quibusdam enim iusto quis voluptatem a, unde
-            maiores, ut blanditiis libero laboriosam provident, vero corporis
-            explicabo? Earum, sit velit. Debitis voluptates eaque expedita
-            eveniet laudantium praesentium magni ratione, voluptatem ut at
-            veniam, a quo totam ducimus, suscipit accusamus corporis sed. Omnis
-            quos aut mollitia eaque delectus quis itaque ad consequatur quia
-            quisquam iste error aspernatur nihil, nobis praesentium quae dolorem
-            cumque placeat exercitationem voluptatem laudantium aliquid nulla?
-            Dolorum sunt asperiores inventore natus fugit, magnam dicta fugiat
-            expedita, cupiditate ducimus voluptate, labore incidunt recusandae.
-            Ullam, qui cum fugiat dignissimos illo accusantium quasi alias
-            repellendus, cupiditate labore quas, illum laudantium perspiciatis
-            unde quidem deserunt aut. Debitis reprehenderit neque autem minus
-            sed officiis ea voluptatibus et sapiente aliquid nam dignissimos
-            inventore cupiditate, voluptatem omnis ullam quaerat nobis? Amet
-            reprehenderit officiis odit magnam cumque totam accusantium incidunt
-            delectus facilis at illum quis, natus, nulla numquam adipisci animi
-            atque temporibus, debitis neque similique mollitia. Eius nostrum
-            soluta et, porro deleniti aliquam iure officiis perspiciatis quia
-            possimus rerum veniam reprehenderit minus non excepturi, voluptatibus
-            quas maiores ut at! Quos ipsam ullam ab nesciunt odio provident.
-            Amet voluptatem cupiditate exercitationem cumque eveniet,
-            reiciendis aut praesentium unde molestias veritatis dolorem quaerat
-            mollitia architecto aliquam quo possimus? Similique sit blanditiis
-            recusandae rerum iusto. Optio officia qui quae eveniet veniam,
-            itaque temporibus, minus repellat, eum voluptatum explicabo
-            accusantium atque illo unde?
-          </AdaptiveText>
+          {chat ? (
+            <>
+              {!hasBotReply && chat.Discussion.length > 0 ? (
+                <AdaptiveText style={styles.systemNote}>
+                  Messages are saving to the backend. Assistant replies will show
+                  up here as soon as the server returns them.
+                </AdaptiveText>
+              ) : null}
+
+              {chat.Discussion.length ? (
+                chat.Discussion.map((message) => {
+                  const isUser = message.Role === "User";
+
+                  return (
+                    <View
+                      key={message.Id}
+                      style={[
+                        styles.messageRow,
+                        isUser ? styles.messageRowUser : styles.messageRowBot,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.messageBubble,
+                          isUser
+                            ? styles.messageBubbleUser
+                            : styles.messageBubbleBot,
+                        ]}
+                      >
+                        <AdaptiveText
+                          style={[
+                            styles.messageText,
+                            isUser ? styles.messageTextUser : styles.messageTextBot,
+                          ]}
+                        >
+                          {message.Content}
+                        </AdaptiveText>
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <ProfileEmptyState
+                  title="No messages yet"
+                  subtitle="Send a message below to start this conversation."
+                />
+              )}
+            </>
+          ) : !isLoading ? (
+            <ProfileEmptyState
+              title={id ? "Chat unavailable" : "Missing chat"}
+              subtitle="We couldn't load this conversation right now."
+            />
+          ) : null}
         </ScrollView>
-        <View style={[styles.txtInputContainer]}>
+
+        <View style={styles.txtInputContainer}>
           <TextInput
             placeholder="Enter a new prompt..."
             placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
             style={styles.txtInput}
+            value={prompt}
+            onChangeText={setPrompt}
           />
-          <TouchableOpacity>
+          <TouchableOpacity
+            disabled={!chat || !prompt.trim() || isSending}
+            onPress={() => void handleSend()}
+          >
             <Feather
               name="arrow-up"
               size={24}
-              color={darkMode ? colors.white : colors.black}
+              color={
+                prompt.trim()
+                  ? darkMode
+                    ? colors.white
+                    : colors.black
+                  : colors.darkGrey
+              }
             />
           </TouchableOpacity>
         </View>
       </View>
+
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
@@ -140,13 +228,54 @@ const createStyles = ({ darkMode }: any) => {
       flex: 1,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
+    screen: {
+      height: "100%",
+    },
     chatbotResponse: {
       marginHorizontal: 20,
     },
-    chatbotText: {
+    chatContent: {
+      paddingBottom: 140,
+      gap: 12,
+    },
+    systemNote: {
       fontFamily: "Poppins-Regular",
-      fontSize: 18,
-      marginBottom: 150,
+      fontSize: 14,
+      textAlign: "center",
+      opacity: 0.8,
+      marginBottom: 8,
+    },
+    messageRow: {
+      width: "100%",
+    },
+    messageRowUser: {
+      alignItems: "flex-end",
+    },
+    messageRowBot: {
+      alignItems: "flex-start",
+    },
+    messageBubble: {
+      maxWidth: "85%",
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    messageBubbleUser: {
+      backgroundColor: darkMode ? colors.green : colors.darkGreen,
+    },
+    messageBubbleBot: {
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    messageText: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 15,
+      lineHeight: 22,
+    },
+    messageTextUser: {
+      color: colors.white,
+    },
+    messageTextBot: {
+      color: darkMode ? colors.white : colors.black,
     },
     txtInputContainer: {
       flexDirection: "row",
@@ -158,7 +287,6 @@ const createStyles = ({ darkMode }: any) => {
       borderRadius: 24,
       alignItems: "center",
 
-      // shadow
       shadowColor: colors.black,
       shadowOffset: { width: 0, height: 10 },
       shadowRadius: 10,
@@ -174,6 +302,10 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: 24,
+    },
+    emptyStateWrap: {
+      flex: 1,
+      justifyContent: "center",
     },
   });
 };

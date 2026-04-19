@@ -1,17 +1,19 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
-import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
 import ForumPost from "@/components/ForumPost";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { AppUsersModel, ForumPostsModel } from "@/data/models";
-import { AppUsers, ForumPosts } from "@/data/sample";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { apiRequest } from "@/lib/api";
+import { useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,7 +25,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const ProfileScreen = () => {
   const { payload } = useLocalSearchParams<{ payload?: any }>();
-  const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [user, setUser] = useState<AppUsersModel>();
@@ -38,149 +39,228 @@ const ProfileScreen = () => {
 
   const [posts, setPosts] = useState<ForumPostsModel[]>();
   const [replies, setReplies] = useState<ForumPostsModel[]>();
+  const [isLoading, setIsLoading] = useState(true);
+  const selectedPost = useMemo(() => {
+    if (!payload) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(decodeURIComponent(payload)) as ForumPostsModel;
+    } catch {
+      try {
+        return JSON.parse(payload) as ForumPostsModel;
+      } catch {
+        return null;
+      }
+    }
+  }, [payload]);
+  const selectedUserID = selectedPost?.UserId;
+  const fallbackUser = useMemo<AppUsersModel | undefined>(() => {
+    if (!selectedUserID) {
+      return undefined;
+    }
+
+    return {
+      Id: selectedUserID,
+      Name: selectedPost?.UserName ?? "User",
+      FirstName: "",
+      LastName: "",
+      Email: "",
+      PhoneNumber: "",
+      PasswordHash: "",
+      Image: "",
+      CreatedAt: "",
+      LastLogin: null,
+      Description: "",
+      BookmarkedPostID: [],
+    };
+  }, [selectedPost, selectedUserID]);
+  const displayedUser = user ?? fallbackUser;
+
+  const loadPosts = useCallback(async () => {
+    if (!selectedUserID || !fallbackUser) {
+      setUser(undefined);
+      setPosts([]);
+      setReplies([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setUser(fallbackUser);
+    setPosts([]);
+    setReplies([]);
+    setIsLoading(true);
+
+    try {
+      const allPosts = await apiRequest<any[]>("/api/ForumPosts");
+      const normalizedPosts = allPosts.map((item) => ({
+        Id: item.id,
+        UserId: item.userId,
+        UserName: item.userName,
+        Content: item.content,
+        Attachments: item.attachments ?? [],
+        CreatedAt: item.createdAt,
+        UpdatedAt: item.updatedAt ?? null,
+        IsAReply: item.isAReply,
+        ReplyingToPost: item.replyingToPost ?? null,
+        RepliesCount: item.repliesCount,
+        IsBookmarked: item.isBookmarked,
+      }));
+
+      const displayPosts = normalizedPosts.filter(
+        (item) => String(item.UserId) === String(selectedUserID),
+      );
+
+      setPosts(displayPosts.filter((item) => !item.IsAReply));
+      setReplies(displayPosts);
+      setUser(fallbackUser);
+    } catch {
+      setUser(fallbackUser);
+      setPosts([]);
+      setReplies([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fallbackUser, selectedUserID]);
 
   useEffect(() => {
-    const selectedUserID = JSON.parse(payload)['UserId'];
-    const selectedUser = AppUsers.find(item => item.Id === selectedUserID);
-    setUser(selectedUser);
+    void loadPosts();
+  }, [loadPosts]);
 
-    const displayPosts = ForumPosts.filter(item => item.UserId === selectedUserID);
-    setPosts(displayPosts);
-    setReplies(displayPosts);
-  }, [])
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadPosts);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const horizontalScroll = (i: number) => {
     setIndex(i);
     scrollRef.current?.scrollTo({ x: i * width, animated: true });
   };
 
-  const goTo = (item: any, location: any) => {
-    const payload = encodeURIComponent(JSON.stringify(item));
-    router.push({
-      pathname: location,
-      params: { id: String(item.key), payload },
-    })
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
-      {user ?
-      <ScrollView>
-        <AdaptiveView style={styles.header}>
-          <CustomImage image={user.Image} customStyles={styles.placeholder} />
+      {displayedUser ? (
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={styles.header}>
+            <CustomImage
+              image={displayedUser.Image}
+              customStyles={styles.placeholder}
+            />
+
+            <AdaptiveText
+              style={{
+                fontFamily: "Poppins-SemiBold",
+                fontSize: 20,
+              }}
+            >
+              {displayedUser.Name}
+            </AdaptiveText>
+          </View>
 
           <AdaptiveText
             style={{
-              fontFamily: "Poppins-SemiBold",
-              fontSize: 20,
+              fontFamily: "Poppins-Regular",
+              fontSize: 14,
+              marginHorizontal: 20,
+              marginVertical: 10,
             }}
           >
-            {user.Name}
+            {displayedUser.Description}
           </AdaptiveText>
-        </AdaptiveView>
 
-        <AdaptiveText
-          style={{
-            fontFamily: "Poppins-Regular",
-            fontSize: 14,
-            marginHorizontal: 20,
-            marginVertical: 10,
-          }}
-        >
-          {user.Description}
-        </AdaptiveText>
+          {/* Header area (sliding) */}
+          <View style={styles.tabs}>
+            {labels.map((label, i) => (
+              <Pressable
+                key={label}
+                onPress={() => horizontalScroll(i)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: index === i }}
+                style={styles.tabBtn}
+              >
+                <Text style={[styles.text, index === i && styles.textActive]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
 
-        {/* Header area (sliding) */}
-        <View style={styles.tabs}>
-          {labels.map((label, i) => (
-            <Pressable
-              key={label}
-              onPress={() => horizontalScroll(i)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: index === i }}
-              style={styles.tabBtn}
-            >
-              <Text style={[styles.text, index === i && styles.textActive]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-
-          {/* Indicator */}
-          <Animated.View
-            style={[
-              styles.indicator,
-              {
-                width: tabWidth,
-                transform: [
-                  {
-                    translateX: Animated.multiply(scrollX, tabWidth / width),
-                  },
-                ],
-              },
-            ]}
-          />
-        </View>
-
-        <Animated.ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          bounces={false}
-          showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onMomentumScrollEnd={(e) => {
-            const i = Math.round(e.nativeEvent.contentOffset.x / width);
-            setIndex(i);
-          }}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-            { useNativeDriver: true }
-          )}
-        >
-          <View style={[styles.page, { width }]}>
-            {posts ? <FlatList
-              data={posts}
-              scrollEnabled={false}
-              keyExtractor={(item) => String(item.Id)}
-              renderItem={({ item }) => {
-                return (
-                  <ForumPost
-                    size="small"
-                    item={item}
-                  />
-                );
-              }}
+            {/* Indicator */}
+            <Animated.View
+              style={[
+                styles.indicator,
+                {
+                  width: tabWidth,
+                  transform: [
+                    {
+                      translateX: Animated.multiply(scrollX, tabWidth / width),
+                    },
+                  ],
+                },
+              ]}
             />
-              :
-              <AdaptiveText style={styles.noPosts}>No posts available.</AdaptiveText>
-            }
           </View>
 
-          <View style={[styles.page, { width }]}>
-            {replies ? <FlatList
-              data={replies}
-              scrollEnabled={false}
-              keyExtractor={(item) => String(item.Id)}
-              contentContainerStyle={{ width: 370 }}
-              renderItem={({ item }) => {
-                return (
-                  <ForumPost
-                    size="small"
-                    item={item}
-                  />
-                );
-              }}
-            />
-            :
-              <AdaptiveText style={styles.noPosts}>No replies available.</AdaptiveText>
-            }
-          </View>
-        </Animated.ScrollView>
-      </ScrollView> : 
-      <AdaptiveText>No profile found.</AdaptiveText>
-      }
+          <Animated.ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onMomentumScrollEnd={(e) => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / width);
+              setIndex(i);
+            }}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: true },
+            )}
+          >
+            <View style={[styles.page, { width }]}>
+              {posts ? (
+                <FlatList
+                  data={posts}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => String(item.Id)}
+                  renderItem={({ item }) => {
+                    return <ForumPost size="small" item={item} />;
+                  }}
+                />
+              ) : (
+                <AdaptiveText style={styles.noPosts}>
+                  No posts available.
+                </AdaptiveText>
+              )}
+            </View>
+
+            <View style={[styles.page, { width }]}>
+              {replies ? (
+                <FlatList
+                  data={replies}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => String(item.Id)}
+                  contentContainerStyle={{ width: 370 }}
+                  renderItem={({ item }) => {
+                    return <ForumPost size="small" item={item} />;
+                  }}
+                />
+              ) : (
+                <AdaptiveText style={styles.noPosts}>
+                  No replies available.
+                </AdaptiveText>
+              )}
+            </View>
+          </Animated.ScrollView>
+        </ScrollView>
+      ) : (
+        <AdaptiveText>No profile found.</AdaptiveText>
+      )}
+
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
@@ -246,7 +326,7 @@ const createStyles = ({ darkMode }: any) => {
     noPosts: {
       marginTop: 20,
       fontFamily: "Poppins-Regular",
-      alignSelf: 'center'
-    }
+      alignSelf: "center",
+    },
   });
 };

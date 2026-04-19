@@ -1,16 +1,25 @@
 import FilterByModal from "@/components/FilterByModal";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import ShopItem from "@/components/ShopItem";
 import SortByModal from "@/components/SortByModal";
 import { colors } from "@/constants/colors";
+import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { presentApiError } from "@/lib/api-feedback";
+import {
+  fetchCharityOrganisations,
+  formatPlaceLocation,
+} from "@/lib/discovery-api";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
+  Keyboard,
   Platform,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   useColorScheme,
@@ -18,69 +27,85 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const CharitiesListScreen = ({ items }: any) => {
+const CharitiesListScreen = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const router = useRouter();
   const [sortByModal, setSortByModal] = useState(false);
   const [filterByModal, setFilterByModal] = useState(false);
+  const [charityOrganisations, setCharityOrganisations] = useState<
+    PlaceModel[]
+  >([]);
+  const [displayedItems, setDisplayedItems] = useState<PlaceModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  items = [
-    {
-      key: 1,
-      name: 'BETA',
-      location: 'Hazmieh, Mount Lebanon',
-      rating: 3.8,
-      image: 'Users/brunofares/Desktop/mourinho.jpeg'
-    },
-    {
-      key: 3,
-      name: 'Bruno Fares albo kbir',
-      location: 'Mansourieh, Mount Lebanon',
-      rating: 5.0,
-      image: ''
-    },
-    {
-      key: 4,
-      name: 'Whatever man',
-      location: 'Ain Hircha, Beqaa',
-      rating: 0.3,
-      image: ''
-    },
-  ]
+  const loadCharityOrganisations = useCallback(async () => {
+    setIsLoading(true);
 
+    try {
+      const response = await fetchCharityOrganisations();
+      setCharityOrganisations(response);
+    } catch (error) {
+      setCharityOrganisations([]);
+      presentApiError("Could not load charity organisations", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const [displayedItems, setDisplayedItems] = useState(items);
+  useEffect(() => {
+    setDisplayedItems(charityOrganisations);
+  }, [charityOrganisations]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadCharityOrganisations();
+
+      return () => {};
+    }, [loadCharityOrganisations]),
+  );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    loadCharityOrganisations,
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   const searchItems = (prompt: string) => {
-    const display = items.filter((item: any) => {
-      return item.name.toLowerCase().includes(prompt.toLowerCase());
-    });
-    setDisplayedItems(display);
+    const normalizedPrompt = prompt.trim().toLowerCase();
+
+    if (!normalizedPrompt) {
+      setDisplayedItems(charityOrganisations);
+      return;
+    }
+
+    setDisplayedItems(
+      charityOrganisations.filter((item) =>
+        item.Name.toLowerCase().includes(normalizedPrompt),
+      ),
+    );
   };
 
-  const filterItems = (filters: string[]) => {};
+  const filterItems = (_filters: string[]) => {};
 
   const sortItems = (order: string) => {
+    const nextItems = [...displayedItems];
+
     switch (order) {
-      case "popular":
-        displayedItems.sort((a: any, b: any) => b.rating - a.rating);
-        break;
       case "atoz":
-        displayedItems.sort((a: any, b: any) => a.name.localeCompare(b.name));
+        nextItems.sort((a, b) => a.Name.localeCompare(b.Name));
         break;
       case "ztoa":
-        displayedItems.sort((a: any, b: any) => b.name.localeCompare(a.name));
+        nextItems.sort((a, b) => b.Name.localeCompare(a.Name));
         break;
       default:
         break;
     }
+
+    setDisplayedItems(nextItems);
   };
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, alignItems: "center", backgroundColor: darkMode ? colors.veryDarkGrey : colors.white }}
-    >
+    <SafeAreaView style={styles.container}>
       <PageHeader title="Charity Organisations" />
       <View style={styles.utilityBar}>
         <TouchableOpacity onPress={() => setFilterByModal(!filterByModal)}>
@@ -102,7 +127,7 @@ const CharitiesListScreen = ({ items }: any) => {
         <TextInput
           onChangeText={searchItems}
           style={styles.textInput}
-          placeholder="Search for charity"
+          placeholder="Search for charity orgs..."
           placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
         />
 
@@ -115,50 +140,52 @@ const CharitiesListScreen = ({ items }: any) => {
         </TouchableOpacity>
       </View>
 
-      {displayedItems ? (
-        <FlatList
-          data={displayedItems}
-          keyExtractor={(item) => String(item.key)}
-          contentContainerStyle={{ width: 370 }}
-          renderItem={({ item }) => {
-            const payload = encodeURIComponent(JSON.stringify(item));
-            return (
-              <TouchableOpacity
-                onPress={() =>
-                  router.push({
-                    pathname: "/individual-charity-screen",
-                    params: { key: String(item.key), payload },
-                  })
-                }
-              >
-                <ShopItem
-                  name={item.name}
-                  location={item.location}
-                  rating={item.rating}
-                  image={item.image}
-                />
-              </TouchableOpacity>
-            );
-          }}
-          ItemSeparatorComponent={() => <View style={{ height: 15 }} />} // spacing between cards
-          ListFooterComponent={
-            <View
-              style={{ height: Platform.select({ ios: 90, android: 100 }) }}
-            />
-          } // bottom padding
-        />
-      ) : (
-        <Text
-          style={{
-            color: darkMode ? colors.white : colors.black,
-            alignSelf: "center",
-            fontFamily: "Poppins-SemiBold",
-            marginTop: 250,
-          }}
-        >
-          No items found.
-        </Text>
-      )}
+      <FlatList
+        style={styles.list}
+        data={displayedItems}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
+        keyExtractor={(item) => item.Id}
+        contentContainerStyle={{
+          width: 370,
+          flexGrow: displayedItems.length === 0 ? 1 : 0,
+          justifyContent: displayedItems.length === 0 ? "center" : "flex-start",
+        }}
+        renderItem={({ item }) => {
+          return (
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/individual-charity-screen",
+                  params: { key: item.Id },
+                })
+              }
+            >
+              <ShopItem
+                name={item.Name}
+                location={formatPlaceLocation(item)}
+                image={item.Photo}
+              />
+            </TouchableOpacity>
+          );
+        }}
+        ItemSeparatorComponent={() => <View style={{ height: 15 }} />}
+        ListEmptyComponent={
+          <ProfileEmptyState
+            title="No charity organisations found"
+            subtitle="Try another search term or check back later."
+            style={{ width: 370, marginTop: 0 }}
+          />
+        }
+        ListFooterComponent={
+          <View
+            style={{ height: Platform.select({ ios: 90, android: 100 }) }}
+          />
+        }
+      />
 
       <FilterByModal
         visible={filterByModal}
@@ -170,12 +197,19 @@ const CharitiesListScreen = ({ items }: any) => {
         onClose={() => setSortByModal(false)}
         onDone={(value) => sortItems(value)}
       />
+
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
 
 const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: "center",
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    },
     utilityBar: {
       flexDirection: "row",
       marginVertical: 15,
@@ -191,6 +225,9 @@ const createStyles = ({ darkMode }: any) => {
       color: darkMode ? colors.white : colors.black,
       borderRadius: 30,
       paddingLeft: 20,
+    },
+    list: {
+      flex: 1,
     },
   });
 };

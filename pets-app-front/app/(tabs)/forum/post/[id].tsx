@@ -1,11 +1,13 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import ForumPost from "@/components/ForumPost";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
-import { ForumPosts } from "@/data/sample";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { apiRequest } from "@/lib/api";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
@@ -16,88 +18,144 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const normalizeForumPost = (post: any): ForumPostsModel => ({
+  Id: post.id ?? post.Id,
+  UserId: post.userId ?? post.UserId,
+  UserName: post.userName ?? post.UserName,
+  Content: post.content ?? post.Content,
+  Attachments: post.attachments ?? post.Attachments ?? [],
+  CreatedAt: post.createdAt ?? post.CreatedAt,
+  UpdatedAt: post.updatedAt ?? post.UpdatedAt ?? null,
+  IsAReply: post.isAReply ?? post.IsAReply ?? false,
+  ReplyingToPost: post.replyingToPost ?? post.ReplyingToPost ?? null,
+  RepliesCount: post.repliesCount ?? post.RepliesCount,
+  IsBookmarked: post.isBookmarked ?? post.IsBookmarked,
+});
+
 const PostScreen = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
-  const router = useRouter();
-  const { payload } = useLocalSearchParams<{ payload: string }>();
-  const chat: any = payload ? JSON.parse(decodeURIComponent(payload)) : null;
-  const { showFooter, setShowFooter } = useGlobal();
+  const { id, payload } = useLocalSearchParams<{
+    id?: string;
+    payload?: string;
+  }>();
+  const { setShowFooter } = useGlobal();
   const [item, setItem] = useState<ForumPostsModel>();
-  const [liked, setLiked] = useState<boolean>();
-  const [replies, setReplies] = useState<ForumPostsModel[]>();
-  const [bookmarked, setBookmarked] = useState<boolean>();
+  const [replies, setReplies] = useState<ForumPostsModel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        // This code runs when the screen is unfocused (or unmounted).
-        setShowFooter?.(true);
-      };
-    }, [])
-  );
+  const loadPost = useCallback(async (postId: string) => {
+    setIsLoading(true);
 
-  const likePost = () => {
-    setLiked(!liked);
-  };
+    try {
+      const [post, postReplies] = await Promise.all([
+        apiRequest<any>(`/api/ForumPosts/${postId}`),
+        apiRequest<any[]>(`/api/ForumPosts/${postId}/replies`),
+      ]);
 
-  const bookmarkPost = () => {
-    setBookmarked(!bookmarked);
-  };
-
-  useEffect(() => {
-    const displayItem = JSON.parse(payload);
-    const replies = ForumPosts.filter(item => item.ReplyingToPost === displayItem.Id);
-
-    setReplies(replies);
-    setItem(displayItem);
+      setItem(normalizeForumPost(post));
+      setReplies(postReplies.map(normalizeForumPost));
+    } catch {
+      setItem(undefined);
+      setReplies([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      // This code runs when the screen is focused.
-
       return () => {
         // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, []) // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, [setShowFooter]),
   );
+
+  useEffect(() => {
+    let selectedPost: ForumPostsModel | null = null;
+
+    if (payload) {
+      try {
+        selectedPost = normalizeForumPost(JSON.parse(decodeURIComponent(payload)));
+      } catch {
+        try {
+          selectedPost = normalizeForumPost(JSON.parse(payload));
+        } catch {
+          selectedPost = null;
+        }
+      }
+    }
+
+    if (selectedPost) {
+      setItem(selectedPost);
+      setReplies([]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!id) {
+      setItem(undefined);
+      setReplies([]);
+      setIsLoading(false);
+      return;
+    }
+
+    void loadPost(id);
+  }, [id, loadPost, payload]);
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      if (id) {
+        await loadPost(id);
+      }
+    }, [id, loadPost]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   return (
     <SafeAreaView style={styles.container}>
       <View>
-        <PageHeader title={chat && chat.title ? chat.title : "something else"} />
-        {item ? (
-          <FlatList
-            data={replies}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={Keyboard.dismiss}
-            contentContainerStyle={{ alignSelf: "center", width: "100%" }}
-            keyExtractor={(item) => String(item.Id)}
-            ListHeaderComponent={<ForumPost size="big" item={item} />}
-            renderItem={({ item }) => {
-              if (replies && replies.length !== 0) {
-                return <ForumPost size="small" item={item} />;
-              } else {
-                return <AdaptiveText>This post has no replies.</AdaptiveText>;
-              }
-            }}
-            ListFooterComponent={<View style={{ height: 140 }} />}
-          />
-        ) : (
-          <AdaptiveText
-            style={{
-              alignSelf: "center",
-              fontFamily: "Poppins-SemiBold",
-              marginTop: 250,
-            }}
-          >
-            No items found.
-          </AdaptiveText>
-        )}
+        <PageHeader title={item?.UserName ?? "Post"} />
+        <FlatList
+          data={item ? replies : []}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+          contentContainerStyle={{ alignSelf: "center", width: "100%", flexGrow: 1 }}
+          keyExtractor={(item) => String(item.Id)}
+          ListHeaderComponent={item ? <ForumPost size="big" item={item} /> : null}
+          ListEmptyComponent={
+            isLoading ? null : item ? (
+              <AdaptiveText
+                style={{
+                  alignSelf: "center",
+                  fontFamily: "Poppins-SemiBold",
+                  marginTop: 40,
+                }}
+              >
+                This post has no replies.
+              </AdaptiveText>
+            ) : (
+              <AdaptiveText
+                style={{
+                  alignSelf: "center",
+                  fontFamily: "Poppins-SemiBold",
+                  marginTop: 250,
+                }}
+              >
+                No items found.
+              </AdaptiveText>
+            )
+          }
+          renderItem={({ item }) => <ForumPost size="small" item={item} />}
+          ListFooterComponent={<View style={{ height: 140 }} />}
+        />
       </View>
+
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
@@ -145,7 +203,7 @@ const createStyles = ({ darkMode }: any) => {
       borderBottomWidth: 1,
     },
     textInput: {
-      width: '80%', 
+      width: "80%",
       fontFamily: "Poppins-Regular",
       fontSize: 18,
       paddingVertical: 20,

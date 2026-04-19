@@ -16,11 +16,9 @@ public class AppDbContext : DbContext
     public DbSet<ForumPostModel> ForumPosts => Set<ForumPostModel>();
     public DbSet<ForumPostAttachmentModel> ForumPostAttachments => Set<ForumPostAttachmentModel>();
     public DbSet<ForumPostBookmarkModel> ForumPostBookmarks => Set<ForumPostBookmarkModel>();
-    public DbSet<ForumPostLikeModel> ForumPostLikes => Set<ForumPostLikeModel>();
     public DbSet<ChatSessionModel> ChatSessions => Set<ChatSessionModel>();
     public DbSet<ChatMessageModel> ChatMessages => Set<ChatMessageModel>();
     public DbSet<PetPlaceModel> PetPlaces => Set<PetPlaceModel>();
-    public DbSet<PetPlaceScheduleModel> PetPlaceSchedules => Set<PetPlaceScheduleModel>();
     public DbSet<VaccineRecordModel> VaccineRecords => Set<VaccineRecordModel>();
     public DbSet<IllnessRecordModel> IllnessRecords => Set<IllnessRecordModel>();
     public DbSet<MedicationRecordModel> MedicationRecords => Set<MedicationRecordModel>();
@@ -35,13 +33,12 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.Username).HasColumnName("username").HasMaxLength(100).IsRequired();
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
             e.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
+            e.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(50).IsRequired();
             e.Property(x => x.PasswordHash).HasColumnName("password_hash").IsRequired();
-            e.Property(x => x.EmailVerified).HasColumnName("email_verified").IsRequired().HasDefaultValue(false);
-            e.Property(x => x.EmailVerificationTokenHash).HasColumnName("email_verification_token_hash");
-            e.Property(x => x.EmailVerificationTokenExpiresAt).HasColumnName("email_verification_token_expires_at");
             e.Property(x => x.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(1024);
             e.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000);
             e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
@@ -133,27 +130,6 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.City, x.Country });
         });
 
-        b.Entity<PetPlaceScheduleModel>(e =>
-        {
-            e.ToTable("pet_place_schedules", "public");
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasColumnName("id");
-            e.Property(x => x.PetPlaceId).HasColumnName("pet_place_id");
-            e.Property(x => x.DayOfWeek).HasColumnName("day_of_week").HasConversion<string>().HasMaxLength(20).IsRequired();
-            e.Property(x => x.IsClosed).HasColumnName("is_closed").IsRequired();
-            e.Property(x => x.OpenTime).HasColumnName("open_time").HasColumnType("time without time zone");
-            e.Property(x => x.CloseTime).HasColumnName("close_time").HasColumnType("time without time zone");
-            e.Property(x => x.BreakStartTime).HasColumnName("break_start_time").HasColumnType("time without time zone");
-            e.Property(x => x.BreakEndTime).HasColumnName("break_end_time").HasColumnType("time without time zone");
-
-            e.HasOne(x => x.PetPlace)
-                .WithMany(x => x.Schedules)
-                .HasForeignKey(x => x.PetPlaceId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            e.HasIndex(x => new { x.PetPlaceId, x.DayOfWeek }).IsUnique();
-        });
-
         b.Entity<ConsultationModel>(e =>
         {
             e.ToTable("consultations", "public");
@@ -219,18 +195,6 @@ public class AppDbContext : DbContext
 
             e.HasOne(x => x.User).WithMany(u => u.BookmarkedPosts).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.ForumPost).WithMany(p => p.Bookmarks).HasForeignKey(x => x.ForumPostId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        b.Entity<ForumPostLikeModel>(e =>
-        {
-            e.ToTable("forum_post_likes", "public");
-            e.HasKey(x => new { x.UserId, x.ForumPostId });
-            e.Property(x => x.UserId).HasColumnName("user_id");
-            e.Property(x => x.ForumPostId).HasColumnName("forum_post_id");
-            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-
-            e.HasOne(x => x.User).WithMany(u => u.LikedPosts).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.ForumPost).WithMany(p => p.Likes).HasForeignKey(x => x.ForumPostId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<ChatSessionModel>(e =>
