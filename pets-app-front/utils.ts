@@ -24,9 +24,19 @@ const DAY_MS = 1000 * 60 * 60 * 24;
 
 export function goTo(item: any, location: any, router: Router) {
   const payload = encodeURIComponent(JSON.stringify(item));
+  const routeId =
+    item?.key ??
+    item?.Id ??
+    item?.id ??
+    item?.pet?.Id ??
+    item?.pet?.id ??
+    item?.item?.Id ??
+    item?.item?.id ??
+    "";
+
   router.push({
     pathname: location,
-    params: { id: String(item.key), payload },
+    params: { id: String(routeId), payload },
   });
 }
 

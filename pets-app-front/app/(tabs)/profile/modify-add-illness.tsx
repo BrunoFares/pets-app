@@ -1,14 +1,27 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import {
+  IllnessRecordModel,
+  MedicationRecordModel,
+  PetModel,
+} from "@/data/models";
+import { apiRequest } from "@/lib/api";
+import {
+  fetchIllnessMedications,
+  parseRoutePayload,
+  toApiIllnessStatus,
+} from "@/lib/profile-api";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Keyboard,
   Platform,
   ScrollView,
@@ -21,91 +34,140 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type MedicationForm = {
-  id: number;
-  name: string;
+  apiId?: string;
   dosage: string;
   frequency: string;
+  id: number;
+  instructions: string;
+  name: string;
 };
+
+const createMedicationForm = (
+  medication?: MedicationRecordModel,
+  index = 0,
+): MedicationForm => ({
+  id: Date.now() + index,
+  apiId: medication ? String(medication.Id) : undefined,
+  name: medication?.medicationName ?? "",
+  dosage: medication?.dosage ?? "",
+  frequency: medication ? String(medication.frequencyInDays) : "",
+  instructions: medication?.instructions ?? "",
+});
 
 const ModifyAddIllness = () => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
   const { payload } = useLocalSearchParams<{ payload?: any }>();
+  const router = useRouter();
 
   const [showDiagnosisDatePicker, setShowDiagnosisDatePicker] = useState(false);
   const [showCuredDatePicker, setShowCuredDatePicker] = useState(false);
-
-  const [illnessAvailable, setIllnessAvailable] = useState<boolean>();
-  const [selectedName, setSelectedName] = useState<string>();
-  const [selectedStatus, setSelectedStatus] = useState<string>();
-  const [diagnosisDate, setDiagnosisDate] = useState<Date>(
-    new Date(1598051730000),
-  );
-  const [curedDate, setCuredDate] = useState<Date>(new Date(1598051730000));
-  const [selectedNotes, setSelectedNotes] = useState<string>();
-  const [selectedDescription, setSelectedDescription] = useState<string>();
-
+  const [pet, setPet] = useState<PetModel>();
+  const [illness, setIllness] = useState<IllnessRecordModel>();
+  const [selectedName, setSelectedName] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [diagnosisDate, setDiagnosisDate] = useState<Date>(new Date());
+  const [curedDate, setCuredDate] = useState<Date>(new Date());
+  const [selectedNotes, setSelectedNotes] = useState("");
+  const [selectedDescription, setSelectedDescription] = useState("");
   const [statusModal, setStatusModal] = useState(false);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingMedications, setIsLoadingMedications] = useState(false);
+  const [initialMedicationIds, setInitialMedicationIds] = useState<string[]>([]);
   const [medications, setMedications] = useState<MedicationForm[]>([
-    { id: Date.now(), name: "", dosage: "", frequency: "" },
+    createMedicationForm(),
   ]);
+  const isLoading = isSubmitting || isLoadingMedications;
 
-  const statusToChoose = [
-    { id: 1, Name: "Ongoing" },
-    { id: 2, Name: "Resolved" },
-  ];
+  const statusToChoose = useMemo(
+    () => [
+      { id: 1, Name: "Ongoing" },
+      { id: 2, Name: "Resolved" },
+    ],
+    [],
+  );
 
   useEffect(() => {
-    if (!payload) return;
+    const parsed = parseRoutePayload<{
+      item?: IllnessRecordModel & { medications?: MedicationRecordModel[] };
+      pet?: PetModel;
+    }>(payload);
 
-    let parsed: any = payload;
-    if (typeof payload === "string") {
-      try {
-        parsed = JSON.parse(decodeURIComponent(payload));
-      } catch (e) {
-        try {
-          parsed = JSON.parse(payload);
-        } catch (e2) {
-          parsed = payload;
-        }
-      }
-    }
+    if (!parsed) return;
 
-    if (!parsed) {
-      setIllnessAvailable(false);
+    setPet(parsed.pet);
+
+    if (!parsed.item) {
+      setIllness(undefined);
+      setInitialMedicationIds([]);
       return;
     }
 
-    setIllnessAvailable(true);
-    setSelectedName(parsed.item.illnessName);
-    setSelectedStatus(parsed.item.status);
-    setDiagnosisDate(new Date(parsed.item.diagnosisDate));
-    setCuredDate(new Date(parsed.item.curedDate));
-    setSelectedDescription(parsed.item.description);
-    setSelectedNotes(parsed.item.notes);
+    setIllness(parsed.item);
+    setSelectedName(parsed.item.illnessName ?? "");
+    setSelectedStatus(parsed.item.status ?? "");
+    setDiagnosisDate(
+      parsed.item.diagnosisDate
+        ? new Date(parsed.item.diagnosisDate)
+        : new Date(),
+    );
+    setCuredDate(
+      parsed.item.curedDate ? new Date(parsed.item.curedDate) : new Date(),
+    );
+    setSelectedDescription(parsed.item.description ?? "");
+    setSelectedNotes(parsed.item.notes ?? "");
 
-    if (parsed.item.medications && Array.isArray(parsed.item.medications)) {
+    if (parsed.item.medications?.length) {
+      setInitialMedicationIds(parsed.item.medications.map((item) => String(item.Id)));
       setMedications(
-        parsed.item.medications.map((med: any, index: number) => ({
-          id: med.id ?? Date.now() + index,
-          name: med.name ?? "",
-          dosage: med.dosage ?? "",
-          frequency: med.frequency ?? "",
-        })),
+        parsed.item.medications.map((medication, index) =>
+          createMedicationForm(medication, index),
+        ),
       );
+    } else {
+      setInitialMedicationIds([]);
+      setMedications([createMedicationForm()]);
     }
   }, [payload]);
 
-  const onChangeDiagnosis = (event: any, selectedDate: any) => {
+  useEffect(() => {
+    const loadMedications = async () => {
+      if (!illness || medications.some((item) => item.apiId)) {
+        setIsLoadingMedications(false);
+        return;
+      }
+
+      setIsLoadingMedications(true);
+
+      try {
+        const response = await fetchIllnessMedications(illness.Id);
+        if (response.length > 0) {
+          setInitialMedicationIds(response.map((item) => String(item.Id)));
+          setMedications(
+            response.map((medication, index) =>
+              createMedicationForm(medication, index),
+            ),
+          );
+        }
+      } catch (error) {
+        console.error("[illness] Failed to load medications", error);
+      } finally {
+        setIsLoadingMedications(false);
+      }
+    };
+
+    void loadMedications();
+  }, [illness, medications]);
+
+  const onChangeDiagnosis = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setDiagnosisDate(selectedDate);
     }
     setShowDiagnosisDatePicker(false);
   };
 
-  const onChangeCure = (event: any, selectedDate: any) => {
+  const onChangeCure = (_event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setCuredDate(selectedDate);
     }
@@ -113,15 +175,7 @@ const ModifyAddIllness = () => {
   };
 
   const addMedication = () => {
-    setMedications((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name: "",
-        dosage: "",
-        frequency: "",
-      },
-    ]);
+    setMedications((prev) => [...prev, createMedicationForm(undefined, prev.length)]);
   };
 
   const removeMedication = (id: number) => {
@@ -145,8 +199,149 @@ const ModifyAddIllness = () => {
       return () => {
         setShowFooter?.(true);
       };
-    }, []),
+    }, [setShowFooter]),
   );
+
+  const handleSave = async () => {
+    if (!pet) {
+      Alert.alert("Pet unavailable", "We couldn't determine which pet to use.");
+      return;
+    }
+
+    if (!selectedName.trim()) {
+      Alert.alert("Missing information", "Please enter the illness name.");
+      return;
+    }
+
+    if (!selectedStatus) {
+      Alert.alert("Missing information", "Please select the illness status.");
+      return;
+    }
+
+    const filledMedications = medications.filter(
+      (medication) =>
+        medication.name.trim() ||
+        medication.dosage.trim() ||
+        medication.frequency.trim() ||
+        medication.instructions.trim(),
+    );
+
+    for (const medication of filledMedications) {
+      if (!medication.name.trim()) {
+        Alert.alert(
+          "Medication information missing",
+          "Each medication entry needs a medication name.",
+        );
+        return;
+      }
+
+      const frequency = Number(medication.frequency);
+      if (!Number.isInteger(frequency) || frequency < 1) {
+        Alert.alert(
+          "Invalid medication frequency",
+          "Medication frequency must be a whole number of days.",
+        );
+        return;
+      }
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      let illnessId = illness ? Number(illness.Id) : null;
+
+      if (illnessId) {
+        await apiRequest(`/api/Illnesses/${illnessId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            illnessName: selectedName.trim(),
+            diagnosisDate: diagnosisDate.toISOString(),
+            status: toApiIllnessStatus(selectedStatus),
+            description: selectedDescription.trim() || null,
+            notes: selectedNotes.trim() || null,
+            curedDate:
+              selectedStatus === "Resolved" ? curedDate.toISOString() : null,
+          }),
+        });
+      } else {
+        const created = await apiRequest<{ id: number }>("/api/Illnesses", {
+          method: "POST",
+          body: JSON.stringify({
+            petId: pet.Id,
+            illnessName: selectedName.trim(),
+            diagnosisDate: diagnosisDate.toISOString(),
+            status: toApiIllnessStatus(selectedStatus),
+            description: selectedDescription.trim() || null,
+            notes: selectedNotes.trim() || null,
+            curedDate:
+              selectedStatus === "Resolved" ? curedDate.toISOString() : null,
+          }),
+        });
+        illnessId = created.id;
+      }
+
+      if (!illnessId) {
+        throw new Error("Illness could not be saved.");
+      }
+
+      const initialMedicationIdsSet = new Set(initialMedicationIds);
+
+      const currentMedicationIds = new Set(
+        filledMedications
+          .map((medication) => medication.apiId)
+          .filter((value): value is string => !!value),
+      );
+
+      const medicationIdsToDelete = [...initialMedicationIdsSet].filter(
+        (id) => !currentMedicationIds.has(id),
+      );
+
+      await Promise.all(
+        medicationIdsToDelete.map((id) =>
+          apiRequest(`/api/Medications/${id}`, { method: "DELETE" }),
+        ),
+      );
+
+      for (const medication of filledMedications) {
+        const medicationBody = {
+          medicationName: medication.name.trim(),
+          dosage: medication.dosage.trim() || null,
+          instructions: medication.instructions.trim() || null,
+          startDate: diagnosisDate.toISOString(),
+          endDate:
+            selectedStatus === "Resolved" ? curedDate.toISOString() : null,
+          frequencyInDays: Number(medication.frequency),
+          times: [],
+          reminderEnabled: false,
+          isActive: selectedStatus === "Ongoing",
+        };
+
+        if (medication.apiId) {
+          await apiRequest(`/api/Medications/${medication.apiId}`, {
+            method: "PUT",
+            body: JSON.stringify(medicationBody),
+          });
+        } else {
+          await apiRequest("/api/Medications", {
+            method: "POST",
+            body: JSON.stringify({
+              illnessId,
+              ...medicationBody,
+            }),
+          });
+        }
+      }
+
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        "Unable to save illness",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -158,7 +353,7 @@ const ModifyAddIllness = () => {
         contentContainerStyle={styles.scrollContainer}
       >
         <AdaptiveText style={styles.title}>
-          {illnessAvailable ? "Modify" : "Add"} Illness
+          {illness ? "Modify" : "Add"} Illness
         </AdaptiveText>
 
         <AdaptiveText style={styles.label}>Name</AdaptiveText>
@@ -178,9 +373,7 @@ const ModifyAddIllness = () => {
               borderWidth: 1,
             },
           ]}
-          onPress={() => {
-            setStatusModal(true);
-          }}
+          onPress={() => setStatusModal(true)}
         >
           <AdaptiveText style={styles.textPicker}>
             {selectedStatus || "Select Status..."}
@@ -265,6 +458,8 @@ const ModifyAddIllness = () => {
           style={styles.bigInput}
           value={selectedDescription}
           onChangeText={setSelectedDescription}
+          multiline
+          textAlignVertical="top"
         />
 
         <AdaptiveText style={styles.label}>Notes</AdaptiveText>
@@ -272,18 +467,15 @@ const ModifyAddIllness = () => {
           style={styles.bigInput}
           value={selectedNotes}
           onChangeText={setSelectedNotes}
+          multiline
+          textAlignVertical="top"
         />
 
         <View style={styles.medicationsHeaderRow}>
-          <AdaptiveText
-            style={{ fontFamily: "Poppins-SemiBold", fontSize: 20 }}
-          >
+          <AdaptiveText style={{ fontFamily: "Poppins-SemiBold", fontSize: 20 }}>
             Medications
           </AdaptiveText>
-          <TouchableOpacity
-            style={styles.addMedicationBtn}
-            onPress={addMedication}
-          >
+          <TouchableOpacity style={styles.addMedicationBtn} onPress={addMedication}>
             <Feather
               name="plus"
               size={16}
@@ -307,32 +499,36 @@ const ModifyAddIllness = () => {
               )}
             </View>
 
-            <AdaptiveText style={styles.labelInner}>
-              Medication Name
-            </AdaptiveText>
+            <AdaptiveText style={styles.labelInner}>Medication Name</AdaptiveText>
             <CustomInput
               value={med.name}
-              onChangeText={(text: string) =>
-                updateMedication(med.id, "name", text)
-              }
+              onChangeText={(text) => updateMedication(med.id, "name", text)}
               style={styles.medInput}
             />
 
             <AdaptiveText style={styles.labelInner}>Dosage</AdaptiveText>
             <CustomInput
               value={med.dosage}
-              onChangeText={(text: string) =>
-                updateMedication(med.id, "dosage", text)
+              onChangeText={(text) => updateMedication(med.id, "dosage", text)}
+              style={styles.medInput}
+            />
+
+            <AdaptiveText style={styles.labelInner}>Instructions</AdaptiveText>
+            <CustomInput
+              value={med.instructions}
+              onChangeText={(text) =>
+                updateMedication(med.id, "instructions", text)
               }
               style={styles.medInput}
             />
 
-            <AdaptiveText style={styles.labelInner}>Frequency</AdaptiveText>
+            <AdaptiveText style={styles.labelInner}>Frequency (days)</AdaptiveText>
             <CustomInput
               value={med.frequency}
-              onChangeText={(text: string) =>
+              onChangeText={(text) =>
                 updateMedication(med.id, "frequency", text)
               }
+              keyboardType="number-pad"
               style={styles.medInput}
             />
           </View>
@@ -340,36 +536,27 @@ const ModifyAddIllness = () => {
 
         <TouchableOpacity
           style={styles.buttonSave}
-          onPress={() => {
-            const illnessData = {
-              illnessName: selectedName,
-              status: selectedStatus,
-              diagnosisDate,
-              curedDate: selectedStatus === "Resolved" ? curedDate : null,
-              description: selectedDescription,
-              notes: selectedNotes,
-              medications,
-            };
-
-            console.log("Saving illness:", illnessData);
-          }}
+          disabled={isSubmitting}
+          onPress={handleSave}
         >
-          <Text style={styles.btnTextSave}>Save changes</Text>
+          <Text style={styles.btnTextSave}>
+            {isSubmitting ? "Saving..." : "Save changes"}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
       <ListWithoutConfirmationModal
-        title={"Select the status of the illness"}
+        title="Select the status of the illness"
         listElements={statusToChoose}
         visible={statusModal}
-        onClose={() => {
-          setStatusModal(false);
-        }}
-        onDone={(val: any) => {
+        onClose={() => setStatusModal(false)}
+        onDone={(val: { Name: string }) => {
           setStatusModal(false);
           setSelectedStatus(val.Name);
         }}
       />
+
+      {isLoading && <LoadingOverlay />}
     </SafeAreaView>
   );
 };
@@ -419,7 +606,7 @@ const createStyles = ({ darkMode }: any) => {
       width: "84%",
     },
     bigInput: {
-      height: 200,
+      minHeight: 140,
       width: "84%",
     },
     medicationsHeaderRow: {
