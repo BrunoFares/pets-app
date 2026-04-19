@@ -1,30 +1,44 @@
 import { colors } from "@/constants/colors";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Platform,
+  StyleProp,
   StyleSheet,
   TextInput,
+  TextInputProps,
+  TextStyle,
   useColorScheme,
   View,
   ViewStyle,
 } from "react-native";
 
+type CustomInputProps = Omit<TextInputProps, "style"> & {
+  label?: string;
+  style?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<TextStyle>;
+};
+
 const CustomInput = ({
   label,
   style,
-}: {
-  label?: string;
-  style?: ViewStyle;
-}) => {
+  inputStyle,
+  value: controlledValue,
+  onChangeText,
+  ...textInputProps
+}: CustomInputProps) => {
   const darkMode = useColorScheme() === "dark";
   const inputRef = useRef<TextInput>(null);
   const styles = createStyles({ darkMode });
-  const [value, setValue] = useState("");
+  const [uncontrolledValue, setUncontrolledValue] = useState(
+    controlledValue ?? "",
+  );
   const [textInputFocus, setTextInputFocus] = useState(false);
-  const labelAnim = useRef(new Animated.Value(0)).current; // 0: inside, 1: floated
+  const value = controlledValue ?? uncontrolledValue;
+  const labelAnim = useRef(
+    new Animated.Value(controlledValue ? 1 : 0),
+  ).current;
 
-  // Animate label when focus or has value
   const animateLabel = (toValue: number) => {
     Animated.timing(labelAnim, {
       toValue,
@@ -33,19 +47,18 @@ const CustomInput = ({
     }).start();
   };
 
-  const handleFocus = () => {
-    setTextInputFocus(true);
-    animateLabel(1);
-  };
-  const handleBlur = () => {
-    setTextInputFocus(false);
-    if (!value) animateLabel(0);
-  };
+  useEffect(() => {
+    animateLabel(textInputFocus || !!value ? 1 : 0);
+  }, [labelAnim, textInputFocus, value]);
+
+  const handleFocus = () => setTextInputFocus(true);
+  const handleBlur = () => setTextInputFocus(false);
+
   const handleChangeText = (text: string) => {
-    // onChangeText?.(text);
-    setValue(text);
-    if (text && !textInputFocus) animateLabel(1);
-    if (!text && !textInputFocus) animateLabel(0);
+    onChangeText?.(text);
+    if (controlledValue === undefined) {
+      setUncontrolledValue(text);
+    }
   };
 
   const labelStyle = {
@@ -97,7 +110,8 @@ const CustomInput = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onChangeText={handleChangeText}
-        style={styles.txtInput}
+        style={[styles.txtInput, inputStyle]}
+        {...textInputProps}
       />
     </View>
   );

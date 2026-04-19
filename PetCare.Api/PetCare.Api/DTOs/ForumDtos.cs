@@ -14,12 +14,6 @@ public record ReplyToForumPostRequest(
 
 public record UpdateForumPostRequest([Required, MaxLength(5000)] string Content);
 
-public record ForumPostLikeStatusResponse(
-    Guid ForumPostId,
-    int LikesCount,
-    bool IsLikedByCurrentUser
-);
-
 public record ForumPostResponse(
     Guid Id,
     long UserId,
@@ -31,7 +25,5 @@ public record ForumPostResponse(
     bool IsAReply,
     Guid? ReplyingToPost,
     int RepliesCount,
-    bool IsBookmarked,
-    int LikesCount,
-    bool IsLikedByCurrentUser
+    bool IsBookmarked
 );

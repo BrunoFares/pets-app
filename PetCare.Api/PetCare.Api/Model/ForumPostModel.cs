@@ -15,5 +15,4 @@ public class ForumPostModel
     public List<ForumPostModel> Replies { get; set; } = new();
     public List<ForumPostAttachmentModel> Attachments { get; set; } = new();
     public List<ForumPostBookmarkModel> Bookmarks { get; set; } = new();
-    public List<ForumPostLikeModel> Likes { get; set; } = new();
 }

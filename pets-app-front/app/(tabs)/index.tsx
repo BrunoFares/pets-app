@@ -1,17 +1,22 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import CustomImage from "@/components/CustomImage";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import {
-  AppUsers,
-  Consultations,
-  IllnessRecords,
-  MedicationRecords,
-  Pets,
-  VaccineRecords,
-} from "@/data/sample";
+import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { presentApiError } from "@/lib/api-feedback";
+import { fetchCharityOrganisations } from "@/lib/discovery-api";
+import {
+  fetchDueVaccines,
+  fetchMedicationReminders,
+  fetchOngoingIllnesses,
+  fetchUpcomingConsultations,
+} from "@/lib/profile-api";
 import {
   buildReminderBoardItems,
   formatReminderDate,
@@ -19,6 +24,7 @@ import {
   getRelativeDueLabel,
   getReminderTypeLabel,
   goTo,
+  ReminderBoardItem,
   ReminderUrgency,
 } from "@/utils";
 import {
@@ -31,6 +37,7 @@ import { useCallback, useState } from "react";
 import {
   Animated,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -48,7 +55,7 @@ function getReminderAccent(
 ): string {
   if (urgency === "overdue") return colors.red;
   if (urgency === "today") return colors.lightOrange;
-  return darkMode ? colors.lightGreen : colors.green;
+  return darkMode ? colors.lightGreen : (colors.green ?? colors.darkGreen);
 }
 
 export default function HomeScreen() {
@@ -58,18 +65,31 @@ export default function HomeScreen() {
   const router = useRouter();
   const styles = createStyles({ darkMode, componentWidth, width });
   const [tipOfTheDay, setTipOfTheDay] = useState<string>();
+  const [reminderBoardItems, setReminderBoardItems] = useState<
+    ReminderBoardItem[]
+  >([]);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const [charityOrganisations, setCharityOrganisations] = useState<
+    PlaceModel[]
+  >([]);
+  const [isLoadingCharities, setIsLoadingCharities] = useState(true);
   const { setShowFooter } = useGlobal();
-  const user = AppUsers[0];
-  const userPets = Pets.filter((pet) => pet.UserId === user.Id);
-  const reminderBoardItems = buildReminderBoardItems({
-    consultations: Consultations,
-    illnessRecords: IllnessRecords,
-    medicationRecords: MedicationRecords,
-    pets: userPets,
-    vaccineRecords: VaccineRecords,
-  });
+  const {
+    user,
+    pets,
+    isHydrating,
+    isRefreshingProfile,
+    refreshProfile,
+    shouldRefreshProfile,
+  } = useAuth();
 
   const visibleReminders = reminderBoardItems.slice(0, 6);
+  const visibleCharityOrganisations = charityOrganisations.slice(0, 3);
+  const isLoading =
+    isHydrating ||
+    isRefreshingProfile ||
+    isLoadingDashboard ||
+    isLoadingCharities;
   const reminderCounts = {
     medication: reminderBoardItems.filter((item) => item.type === "medication")
       .length,
@@ -81,57 +101,131 @@ export default function HomeScreen() {
     ).length,
   };
 
-  const items = [
-    {
-      key: 1,
-      name: "BETA",
-      location: "Hazmieh, Mount Lebanon",
-      rating: 3.8,
-      image: "Users/brunofares/Desktop/mourinho.jpeg",
-    },
-    {
-      key: 3,
-      name: "Bruno Fares albo kbir",
-      location: "Mansourieh, Mount Lebanon",
-      rating: 5.0,
-      image: "",
-    },
-    {
-      key: 4,
-      name: "Whatever man",
-      location: "Ain Hircha, Beqaa",
-      rating: 0.3,
-      image: "",
-    },
-  ];
-
   useFocusEffect(
     useCallback(() => {
-      const tipIndex = getRandomIntegerInclusive(1, 50);
-
-      // will have to check whether or not to separate cat tips and dog tips
-      // if the decision is to separate them, we will have to implement a mechanism for checking
-      // the species of the user's pet(s)
-      const tip = tipsOfTheDay.catTips[tipIndex].tip;
+      const tipSource = pets.some((pet) => pet.Species?.toLowerCase() === "dog")
+        ? tipsOfTheDay.dogTips
+        : tipsOfTheDay.catTips;
+      const tipIndex = getRandomIntegerInclusive(
+        0,
+        Math.max(tipSource.length - 1, 0),
+      );
+      const tip = tipSource[tipIndex]?.tip;
       setTipOfTheDay(tip);
-    }, []),
+    }, [pets]),
   );
 
+  const loadDashboard = useCallback(async (options?: { skipProfileRefresh?: boolean }) => {
+    if (!options?.skipProfileRefresh && shouldRefreshProfile()) {
+      try {
+        await refreshProfile();
+      } catch (error) {
+        presentApiError("Could not load home", error, {
+          fallbackMessage: "Unable to load your dashboard.",
+        });
+      } finally {
+        setIsLoadingDashboard(false);
+      }
+
+      return;
+    }
+
+    if (!user) {
+      setReminderBoardItems([]);
+      setIsLoadingDashboard(false);
+      return;
+    }
+
+    setIsLoadingDashboard(true);
+
+    try {
+      const [consultations, illnessRecords, medicationRecords, vaccineRecords] =
+        await Promise.all([
+          fetchUpcomingConsultations(),
+          fetchOngoingIllnesses(),
+          fetchMedicationReminders(),
+          fetchDueVaccines(),
+        ]);
+
+      setReminderBoardItems(
+        buildReminderBoardItems({
+          consultations,
+          illnessRecords,
+          medicationRecords,
+          pets,
+          vaccineRecords,
+        }),
+      );
+    } catch (error) {
+      setReminderBoardItems([]);
+      presentApiError("Could not load reminders", error);
+    } finally {
+      setIsLoadingDashboard(false);
+    }
+  }, [pets, refreshProfile, shouldRefreshProfile, user]);
+
+  const loadCharityOrganisations = useCallback(async () => {
+    setIsLoadingCharities(true);
+
+    try {
+      const response = await fetchCharityOrganisations();
+      setCharityOrganisations(response);
+    } catch (error) {
+      setCharityOrganisations([]);
+      presentApiError("Could not load charity organisations", error);
+    } finally {
+      setIsLoadingCharities(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
+      void loadDashboard();
+
       return () => {
         setShowFooter?.(true);
       };
-    }, [setShowFooter]),
+    }, [loadDashboard, setShowFooter]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      void loadCharityOrganisations();
+
+      return () => {
+      };
+    }, [loadCharityOrganisations]),
+  );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(
+    useCallback(async () => {
+      try {
+        await refreshProfile();
+      } catch (error) {
+        presentApiError("Could not load home", error, {
+          fallbackMessage: "Unable to load your dashboard.",
+        });
+      }
+
+      await Promise.all([
+        loadDashboard({ skipProfileRefresh: true }),
+        loadCharityOrganisations(),
+      ]);
+    }, [loadCharityOrganisations, loadDashboard, refreshProfile]),
+  );
+  const showLoadingOverlay = isLoading && !isRefreshing;
+
   const { translateY } = useHeaderSlide({ height: 200 });
+  const displayName = user?.Name ?? "there";
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
       >
         <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
           <AdaptiveText
@@ -142,7 +236,7 @@ export default function HomeScreen() {
           >
             Welcome back,{" "}
             <Text style={{ color: darkMode ? colors.white : colors.green }}>
-              {user.Name}
+              {displayName}
             </Text>
             !
           </AdaptiveText>
@@ -305,67 +399,42 @@ export default function HomeScreen() {
               color={darkMode ? colors.white : colors.green}
             />
             <AdaptiveText style={styles.divisionTitle}>
-              Donate to charity
+              Charity organisations
             </AdaptiveText>
           </AdaptiveView>
 
-          <AdaptiveView
-            style={{
-              flexDirection: "row",
-              gap: 10,
-            }}
-          >
-            <TouchableOpacity
-              onLayout={(event) => {
-                const { width } = event.nativeEvent.layout;
-                setComponentWidth(width);
-              }}
-              style={{ flex: 1 }}
-              onPress={() => {
-                const payload = encodeURIComponent(JSON.stringify(items[0]));
-                router.push({
-                  pathname: "/individual-charity-screen",
-                  params: { key: String(items[0].key), payload },
-                });
-              }}
-            >
-              <CustomImage image={user.Image} customStyles={styles.pfp} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onLayout={(event) => {
-                const { width } = event.nativeEvent.layout;
-                setComponentWidth(width);
-              }}
-              style={{ flex: 1 }}
-              onPress={() => {
-                const payload = encodeURIComponent(JSON.stringify(items[1]));
-                router.push({
-                  pathname: "/individual-charity-screen",
-                  params: { key: String(items[1].key), payload },
-                });
-              }}
-            >
-              <CustomImage image={user.Image} customStyles={styles.pfp} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onLayout={(event) => {
-                const { width } = event.nativeEvent.layout;
-                setComponentWidth(width);
-              }}
-              style={{ flex: 1 }}
-              onPress={() => {
-                const payload = encodeURIComponent(JSON.stringify(items[2]));
-                router.push({
-                  pathname: "/individual-charity-screen",
-                  params: { key: String(items[2].key), payload },
-                });
-              }}
-            >
-              <CustomImage image={user.Image} customStyles={styles.pfp} />
-            </TouchableOpacity>
-          </AdaptiveView>
+          {visibleCharityOrganisations.length ? (
+            <AdaptiveView style={styles.charityGrid}>
+              {visibleCharityOrganisations.map((organisation) => (
+                <TouchableOpacity
+                  key={organisation.Id}
+                  onLayout={(event) => {
+                    const { width } = event.nativeEvent.layout;
+                    setComponentWidth(width);
+                  }}
+                  style={styles.charityCard}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/individual-charity-screen",
+                      params: { key: organisation.Id },
+                    })
+                  }
+                >
+                  <CustomImage
+                    image={organisation.Photo}
+                    customStyles={styles.pfp}
+                  />
+                </TouchableOpacity>
+              ))}
+            </AdaptiveView>
+          ) : (
+            <ProfileEmptyState
+              title="No charity organisations available"
+              subtitle="When organisations are added to the database, they’ll appear here."
+              compact
+              style={styles.charityEmptyState}
+            />
+          )}
 
           <TouchableOpacity
             style={{ alignSelf: "flex-end" }}
@@ -440,6 +509,8 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </AdaptiveView>
       </ScrollView>
+
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }
@@ -600,6 +671,18 @@ const createStyles = ({ darkMode, componentWidth, width }: any) => {
       width: "100%",
       borderRadius: 30,
       backgroundColor: colors.lightGrey,
+    },
+    charityGrid: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    charityCard: {
+      flex: 1,
+    },
+    charityEmptyState: {
+      width: "100%",
+      marginTop: 0,
+      marginBottom: 0,
     },
     translatorPreviewRow: {
       flexDirection: "row",

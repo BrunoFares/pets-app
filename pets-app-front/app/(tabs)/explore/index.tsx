@@ -1,6 +1,11 @@
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
+import { PlaceModel } from "@/data/models";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { presentApiError } from "@/lib/api-feedback";
+import { fetchPetShops, fetchVets } from "@/lib/discovery-api";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
@@ -20,54 +25,9 @@ export default function Explore() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
-
-  const vetItems = [
-    {
-      key: 1,
-      name: "Dr. Abou Breiss",
-      location: "Hamra, Beirut",
-      rating: 3.8,
-      image: "Users/brunofares/Desktop/mourinho.jpeg",
-    },
-    {
-      key: 3,
-      name: "Diddy Kong",
-      location: "New Sehaileh, Mount Lebanon",
-      rating: 5.0,
-      image: "",
-    },
-    {
-      key: 4,
-      name: "Dr. Amara ya amara la totla3i aal shajara",
-      location: "Ajaltoun, Mount Lebanon",
-      rating: 0.3,
-      image: "",
-    },
-  ];
-
-  const shopItems = [
-    {
-      key: 1,
-      name: "Kalinka & Minouche Ta3awouniye",
-      location: "Mansourieh, Mount Lebanon",
-      rating: 4.8,
-      image: "",
-    },
-    {
-      key: 3,
-      name: "Emmak Shop",
-      location: "Borj el Brajneh, Mount Lebanon",
-      rating: 5.0,
-      image: "",
-    },
-    {
-      key: 4,
-      name: "Victor Gyökeres wa shoraka2ihi",
-      location: "Andaket, Akkar",
-      rating: 0.3,
-      image: "",
-    },
-  ];
+  const [vetItems, setVetItems] = useState<PlaceModel[]>([]);
+  const [shopItems, setShopItems] = useState<PlaceModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Hide header on this screen
   const { translateY } = useHeaderSlide({ showOnFocus: false, height: 200 });
@@ -86,14 +46,38 @@ export default function Explore() {
     scrollRef.current?.scrollTo({ x: i * width, animated: true });
   };
 
+  const loadPlaces = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const [vets, petShops] = await Promise.all([
+        fetchVets(),
+        fetchPetShops(),
+      ]);
+
+      setVetItems(vets);
+      setShopItems(petShops);
+    } catch (error) {
+      setVetItems([]);
+      setShopItems([]);
+      presentApiError("Could not load explore", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
+      void loadPlaces();
+
       return () => {
-        // This code runs when the screen is unfocused (or unmounted).
         setShowFooter?.(true);
       };
-    }, []), // The empty dependency array ensures the effect runs only on focus/unfocus.
+    }, [loadPlaces, setShowFooter]),
   );
+
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadPlaces);
+  const showLoadingOverlay = isLoading && !isRefreshing;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -149,13 +133,25 @@ export default function Explore() {
         )}
       >
         <View style={[styles.page, { width }]}>
-          <ExploreTab items={vetItems} title="Vets" />
+          <ExploreTab
+            items={vetItems}
+            title="Vets"
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+          />
         </View>
 
         <View style={[styles.page, { width }]}>
-          <ExploreTab items={shopItems} title="Pet Shops" />
+          <ExploreTab
+            items={shopItems}
+            title="Pet Shops"
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+          />
         </View>
       </Animated.ScrollView>
+
+      {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
 }
