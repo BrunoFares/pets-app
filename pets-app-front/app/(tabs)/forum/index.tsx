@@ -4,10 +4,10 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
-import { apiRequest } from "@/lib/api";
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { apiRequest, resolveApiUrl } from "@/lib/api";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -35,25 +35,29 @@ export default function ForumScreen() {
     setIsLoading(true);
 
     try {
-      const forumPosts = await apiRequest<{
-        id: string;
-        userId: number;
-        userName: string;
-        content: string;
-        attachments: string[];
-        createdAt: string;
-        updatedAt?: string | null;
-        isAReply: boolean;
-        replyingToPost?: string | null;
-        repliesCount: number;
-        isBookmarked: boolean;
-      }[]>("/api/ForumPosts");
+      const forumPosts = await apiRequest<
+        {
+          id: string;
+          userId: number;
+          userName: string;
+          userImage?: string | null;
+          content: string;
+          attachments: string[];
+          createdAt: string;
+          updatedAt?: string | null;
+          isAReply: boolean;
+          replyingToPost?: string | null;
+          repliesCount: number;
+          isBookmarked: boolean;
+        }[]
+      >("/api/ForumPosts");
 
       setPosts(
         forumPosts.map((post) => ({
           Id: post.id,
           UserId: post.userId,
           UserName: post.userName,
+          UserImage: resolveApiUrl(post.userImage ?? null),
           Content: post.content,
           Attachments: post.attachments ?? [],
           CreatedAt: post.createdAt,
@@ -95,7 +99,10 @@ export default function ForumScreen() {
     <SafeAreaView style={styles.container}>
       <View>
         <Animated.View style={[styles.header, { transform: [{ translateY }] }]}>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/forum/bookmarks")}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => router.push("/(tabs)/forum/bookmarks")}
+          >
             <Ionicons
               name="bookmark"
               size={24}
@@ -107,9 +114,20 @@ export default function ForumScreen() {
             source={require("@/assets/images/petsapp-logo-light.png")}
             style={{ height: 64, width: 64 }}
           />
-          <TouchableOpacity>
-            <FontAwesome
-              name="search"
+          <TouchableOpacity
+            style={[
+              styles.headerButton,
+              {
+                backgroundColor: colors.green,
+                borderRadius: 16,
+                width: 40,
+                height: 40,
+              },
+            ]}
+            onPress={() => router.push("/(tabs)/forum/create")}
+          >
+            <Ionicons
+              name="add"
               size={24}
               color={darkMode ? colors.white : colors.black}
             />
@@ -127,12 +145,7 @@ export default function ForumScreen() {
             contentContainerStyle={{ alignSelf: "center", width: "100%" }}
             keyExtractor={(item) => String(item.Id)}
             renderItem={({ item }) => {
-              return (
-                <ForumPost
-                  size="small"
-                  item={item}
-                />
-              );
+              return <ForumPost size="small" item={item} />;
             }}
             ListFooterComponent={<View style={{ height: 180 }} />}
           />
@@ -170,6 +183,12 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 20,
       borderBottomColor: darkMode ? colors.darkGrey : colors.lightGrey,
       borderBottomWidth: 1,
+    },
+    headerButton: {
+      width: 24,
+      height: 24,
+      alignItems: "center",
+      justifyContent: "center",
     },
   });
 };

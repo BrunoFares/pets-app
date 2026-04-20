@@ -21,6 +21,7 @@ export interface ForumPostsModel {
   Id: string;
   UserId: string | number;
   UserName: string;
+  UserImage?: string | null;
   Content: string;
   Attachments: string[];
   CreatedAt: number | string;

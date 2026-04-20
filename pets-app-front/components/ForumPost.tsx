@@ -1,11 +1,14 @@
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
+import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
+  Keyboard,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -17,16 +20,44 @@ import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
 import CustomImage from "./CustomImage";
 
+function formatPostTimestamp(
+  createdAt: ForumPostsModel["CreatedAt"],
+  variant: "compact" | "detailed",
+) {
+  const parsedDate = new Date(createdAt);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  const timeLabel = parsedDate.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  const dateLabel = parsedDate.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    ...(variant === "detailed" ? { year: "numeric" } : {}),
+  });
+
+  return variant === "detailed"
+    ? `${timeLabel} · ${dateLabel}`
+    : `${dateLabel} · ${timeLabel}`;
+}
+
 const ForumPost = ({
   item,
   size,
   onClickPost,
   onClickProfile,
+  onReplySubmitted,
 }: {
   item: ForumPostsModel;
   size?: "big" | "small";
   onClickPost?: () => void;
   onClickProfile?: () => void;
+  onReplySubmitted?: () => void | Promise<void>;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
@@ -35,11 +66,26 @@ const ForumPost = ({
   const [bookmarked, setBookmarked] = useState<boolean>(
     item.IsBookmarked ?? false,
   );
+  const [replyContent, setReplyContent] = useState("");
+  const [isReplySubmitting, setIsReplySubmitting] = useState(false);
   const { setShowFooter } = useGlobal();
+  const compactTimestamp = formatPostTimestamp(item.CreatedAt, "compact");
+  const detailedTimestamp = formatPostTimestamp(item.CreatedAt, "detailed");
   const handlePostPress =
     onClickPost ?? (() => goTo(item, "/(tabs)/forum/post/[id]", router));
   const handleProfilePress =
-    onClickProfile ?? (() => goTo(item, "/(tabs)/forum/profile/[id]", router));
+    onClickProfile ??
+    (() => {
+      const payload = encodeURIComponent(JSON.stringify(item));
+
+      router.push({
+        pathname: "/(tabs)/forum/profile/[id]",
+        params: {
+          id: String(item.UserId),
+          payload,
+        },
+      });
+    });
 
   const syncBookmark = async (nextBookmarked: boolean) => {
     if (nextBookmarked) {
@@ -71,6 +117,38 @@ const ForumPost = ({
     }
   };
 
+  const handleReply = async () => {
+    const trimmedReply = replyContent.trim();
+
+    if (!trimmedReply) {
+      Alert.alert("Missing content", "Please write a reply before sending.");
+      return;
+    }
+
+    try {
+      setIsReplySubmitting(true);
+      await apiRequest(`/api/ForumPosts/${item.Id}/reply`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: trimmedReply,
+          attachments: [],
+        }),
+      });
+
+      setReplyContent("");
+      Keyboard.dismiss();
+      setShowFooter?.(true);
+      await onReplySubmitted?.();
+    } catch (error) {
+      presentApiError("Unable to reply", error, {
+        networkMessage:
+          "We couldn't reach the server, so your reply was not published.",
+      });
+    } finally {
+      setIsReplySubmitting(false);
+    }
+  };
+
   if (size === "small") {
     return (
       <TouchableOpacity onPress={handlePostPress} style={styles.post}>
@@ -81,14 +159,24 @@ const ForumPost = ({
             ) : (
               <View style={styles.placeholder} />
             )} */}
-            <CustomImage customStyles={styles.placeholder} />
+            <CustomImage
+              image={item.UserImage}
+              customStyles={styles.placeholder}
+            />
           </TouchableOpacity>
 
           <AdaptiveView style={styles.inner}>
             <TouchableOpacity onPress={handleProfilePress}>
-              <AdaptiveText style={styles.postTitle}>
-                {item.UserName}
-              </AdaptiveText>
+              <AdaptiveView style={styles.postHeaderText}>
+                <AdaptiveText style={styles.postTitle}>
+                  {item.UserName}
+                </AdaptiveText>
+                {compactTimestamp ? (
+                  <AdaptiveText style={styles.postTimestamp}>
+                    {compactTimestamp}
+                  </AdaptiveText>
+                ) : null}
+              </AdaptiveView>
             </TouchableOpacity>
 
             {item.IsAReply && (
@@ -159,12 +247,22 @@ const ForumPost = ({
               marginVertical: 16,
               alignSelf: "flex-start",
             }}
-            onPress={() => goTo(item, "/(tabs)/forum/profile/[id]", router)}
+            onPress={handleProfilePress}
           >
-            <CustomImage customStyles={styles.placeholder} />
-            <AdaptiveText style={styles.postTitle}>
-              {item.UserName}
-            </AdaptiveText>
+            <CustomImage
+              image={item.UserImage}
+              customStyles={styles.placeholder}
+            />
+            <AdaptiveView style={styles.postHeaderText}>
+              <AdaptiveText style={styles.postTitle}>
+                {item.UserName}
+              </AdaptiveText>
+              {detailedTimestamp ? (
+                <AdaptiveText style={styles.postTimestamp}>
+                  {detailedTimestamp}
+                </AdaptiveText>
+              ) : null}
+            </AdaptiveView>
           </TouchableOpacity>
           <AdaptiveText style={styles.postBody}>{item.Content}</AdaptiveText>
         </View>
@@ -214,17 +312,34 @@ const ForumPost = ({
         <View style={styles.textInputContainer}>
           <TextInput
             style={styles.textInput}
-            placeholder="Reply to user1..."
+            value={replyContent}
+            onChangeText={setReplyContent}
+            placeholder={`Reply to ${item.UserName}...`}
             placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
             onFocus={() => setShowFooter?.(false)}
             onBlur={() => setShowFooter?.(true)}
+            editable={!isReplySubmitting}
             multiline
           />
-          <Feather
-            name="arrow-right"
-            size={24}
-            color={darkMode ? colors.white : colors.black}
-          />
+          <TouchableOpacity
+            style={styles.replyButton}
+            disabled={isReplySubmitting}
+            onPress={handleReply}
+          >
+            <Feather
+              name="arrow-right"
+              size={24}
+              color={
+                isReplySubmitting
+                  ? darkMode
+                    ? colors.lightGrey
+                    : colors.darkGrey
+                  : darkMode
+                    ? colors.white
+                    : colors.black
+              }
+            />
+          </TouchableOpacity>
         </View>
       </>
     );
@@ -252,8 +367,17 @@ const createStyles = ({ darkMode }: any) => {
     },
     postTitle: {
       fontFamily: "Poppins-SemiBold",
-      marginLeft: 10,
       fontSize: 18,
+    },
+    postHeaderText: {
+      marginLeft: 10,
+      flexShrink: 1,
+    },
+    postTimestamp: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 12,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+      marginTop: 2,
     },
     postContent: {
       fontFamily: "Poppins-Light",
@@ -292,6 +416,9 @@ const createStyles = ({ darkMode }: any) => {
       fontSize: 18,
       paddingVertical: 20,
       color: darkMode ? colors.white : colors.black,
+    },
+    replyButton: {
+      padding: 10,
     },
     postBody: {
       fontFamily: "Poppins-Regular",

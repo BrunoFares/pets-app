@@ -134,6 +134,8 @@ const IllnessesScreen = () => {
     const start = startDate.getTime();
     const now = today.getTime();
 
+    if (interval <= 0 || now < start) return false;
+
     if (datediff(start, now) % interval === 0) return true;
     return false;
   };
@@ -147,67 +149,106 @@ const IllnessesScreen = () => {
     return date.toDateString();
   };
 
+  const formatMedicationFrequency = (days: number) => {
+    if (days <= 1) {
+      return "Every day";
+    }
+
+    return `Every ${days} days`;
+  };
+
+  const formatMedicationTimes = (times: string[]) => {
+    const cleanedTimes = times.map((time) => time.trim()).filter(Boolean);
+
+    if (cleanedTimes.length === 0) {
+      return "No reminder times added";
+    }
+
+    return cleanedTimes.join(" • ");
+  };
+
+  const getMedicationCourseLabel = (med: MedicationRecordModel) => {
+    const startLabel = formatDate(med.startDate);
+    const endLabel = med.endDate
+      ? formatDate(med.endDate)
+      : med.isActive
+        ? "Ongoing"
+        : "No end date";
+
+    return `${startLabel} to ${endLabel}`;
+  };
+
   const isIllnessOngoing = (item: IllnessRecordModel) => !item.curedDate;
 
   const renderMedicationRecordModel = (med: MedicationRecordModel) => {
-    const formattedTime = med.times;
+    const isDueToday =
+      med.isActive && isMedicationDay(med.startDate, med.frequencyInDays, new Date());
+    const medicationStatusLabel = isDueToday
+      ? "Due today"
+      : med.isActive
+        ? "Active"
+        : "Inactive";
 
     return (
       <View key={med.Id} style={styles.medicationCard}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            width: "100%",
-          }}
-        >
+        <View style={styles.medicationHeader}>
           <AdaptiveText style={styles.medicationName}>
             {med.medicationName}
           </AdaptiveText>
 
-          {!!formattedTime && (
-            <AdaptiveText
-              style={{
-                fontFamily: "Poppins-Light",
-                fontSize: 14,
-                marginTop: 2,
-              }}
-            >
-              Next Due:{" "}
-              {isMedicationDay(med.startDate, med.frequencyInDays, new Date())
-                ? "Today, " + formattedTime[0]
-                : ""}
+          <View
+            style={[
+              styles.medicationStatusBadge,
+              isDueToday
+                ? styles.medicationStatusDueToday
+                : med.isActive
+                  ? styles.medicationStatusActive
+                  : styles.medicationStatusInactive,
+            ]}
+          >
+            <AdaptiveText style={styles.medicationStatusText}>
+              {medicationStatusLabel}
             </AdaptiveText>
-          )}
+          </View>
         </View>
-        <View style={{ flexDirection: "row" }}>
-          <View style={styles.medicationTextContainer}>
-            {!!med.dosage && (
-              <AdaptiveText style={styles.medicationMeta}>
-                Dosage: {med.dosage}
-              </AdaptiveText>
-            )}
 
-            {!!med.instructions && (
-              <AdaptiveText style={styles.medicationMeta}>
-                {med.instructions}
-              </AdaptiveText>
-            )}
+        <View style={styles.medicationDetails}>
+          <View style={styles.medicationDetailRow}>
+            <AdaptiveText style={styles.medicationDetailLabel}>Dosage</AdaptiveText>
+            <AdaptiveText style={styles.medicationDetailValue}>
+              {med.dosage?.trim() || "Not recorded"}
+            </AdaptiveText>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.takenButton}
-            onPress={() => {
-              // Later:
-              // 1. mark med as taken for today
-              // 2. cancel remaining reminders for this dose
-              // 3. save confirmation state
-            }}
-          >
-            <AdaptiveText style={styles.takenButtonText}>Taken</AdaptiveText>
-          </TouchableOpacity>
+          <View style={styles.medicationDetailRow}>
+            <AdaptiveText style={styles.medicationDetailLabel}>Schedule</AdaptiveText>
+            <AdaptiveText style={styles.medicationDetailValue}>
+              {formatMedicationFrequency(med.frequencyInDays)}
+            </AdaptiveText>
+          </View>
+
+          <View style={styles.medicationDetailRow}>
+            <AdaptiveText style={styles.medicationDetailLabel}>Times</AdaptiveText>
+            <AdaptiveText style={styles.medicationDetailValue}>
+              {formatMedicationTimes(med.times)}
+            </AdaptiveText>
+          </View>
+
+          <View style={styles.medicationDetailRow}>
+            <AdaptiveText style={styles.medicationDetailLabel}>Course</AdaptiveText>
+            <AdaptiveText style={styles.medicationDetailValue}>
+              {getMedicationCourseLabel(med)}
+            </AdaptiveText>
+          </View>
+
+          <View style={styles.medicationInstructionBlock}>
+            <AdaptiveText style={styles.medicationDetailLabel}>
+              How to take it
+            </AdaptiveText>
+            <AdaptiveText style={styles.medicationInstructionValue}>
+              {med.instructions?.trim() || "No special instructions recorded yet."}
+            </AdaptiveText>
+          </View>
         </View>
       </View>
     );
@@ -285,8 +326,9 @@ const IllnessesScreen = () => {
 
                 <View style={styles.summaryRow}>
                   <AdaptiveText style={styles.summaryText}>
-                    {illnessMeds.length} medication
-                    {illnessMeds.length !== 1 ? "s" : ""}
+                    {illnessMeds.length > 0
+                      ? `${illnessMeds.length} medication${illnessMeds.length !== 1 ? "s" : ""}`
+                      : "No medications added yet"}
                   </AdaptiveText>
 
                   <AntDesign
@@ -299,6 +341,13 @@ const IllnessesScreen = () => {
 
               {isExpanded && (
                 <View style={styles.medicationsContent}>
+                  <AdaptiveText style={styles.medicationsHeading}>
+                    Medication plan
+                  </AdaptiveText>
+                  <AdaptiveText style={styles.medicationsSubheading}>
+                    Dose, schedule, times, and instructions at a glance.
+                  </AdaptiveText>
+
                   {illnessMeds.length > 0 ? (
                     illnessMeds.map(renderMedicationRecordModel)
                   ) : (
@@ -353,36 +402,39 @@ const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-      gap: 10,
+      backgroundColor: darkMode ? colors.veryDarkGrey : "#f7f4ee",
+      gap: 8,
     },
     title: {
       fontSize: 26,
       alignSelf: "center",
       fontFamily: "Poppins-SemiBold",
       paddingHorizontal: 10,
-      marginBottom: 10,
+      marginBottom: 12,
       textAlign: "center",
     },
     listContent: {
-      paddingBottom: 20,
+      paddingBottom: 28,
     },
     card: {
       alignSelf: "center",
-      width: "90%",
-      borderColor: colors.darkGrey,
-      borderWidth: 1,
-      borderRadius: 14,
-      marginBottom: 12,
+      width: "92%",
+      borderRadius: 20,
+      marginBottom: 16,
       overflow: "hidden",
-      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+      backgroundColor: darkMode ? colors.averageDarkGrey : "#fcfbf7",
+      shadowColor: colors.black,
+      shadowOpacity: darkMode ? 0 : 0.05,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: darkMode ? 0 : 1,
     },
     cardHeaderRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingTop: 12,
-      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingHorizontal: 18,
       gap: 12,
     },
     illnessTitle: {
@@ -396,10 +448,10 @@ const createStyles = ({ darkMode }: any) => {
       borderRadius: 999,
     },
     ongoingBadge: {
-      backgroundColor: "rgba(0, 180, 80, 0.18)",
+      backgroundColor: "rgba(7, 125, 39, 0.12)",
     },
     resolvedBadge: {
-      backgroundColor: "rgba(160, 160, 160, 0.18)",
+      backgroundColor: "rgba(140, 140, 140, 0.12)",
     },
     statusText: {
       fontSize: 11,
@@ -409,9 +461,9 @@ const createStyles = ({ darkMode }: any) => {
     infoRow: {
       flexDirection: "row",
       justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingTop: 10,
-      paddingBottom: 12,
+      paddingHorizontal: 18,
+      paddingTop: 12,
+      paddingBottom: 10,
       gap: 12,
     },
     rightInfoBlock: {
@@ -430,87 +482,117 @@ const createStyles = ({ darkMode }: any) => {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingHorizontal: 20,
-      paddingBottom: 14,
+      paddingHorizontal: 18,
+      paddingBottom: 16,
     },
     summaryText: {
       fontFamily: "Poppins-Light",
       fontSize: 12,
-      opacity: 0.8,
+      opacity: 0.72,
     },
     medicationsContent: {
-      paddingHorizontal: 20,
-      paddingTop: 10,
-      paddingBottom: 16,
-      backgroundColor: darkMode ? colors.darkGrey : "#f7f7f7",
-      borderTopWidth: darkMode ? 1 : 0,
-      borderTopColor: colors.darkGrey,
+      paddingHorizontal: 18,
+      paddingTop: 4,
+      paddingBottom: 18,
+      backgroundColor: darkMode ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.55)",
     },
-    medicationCard: {
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: 12,
-      paddingVertical: 2,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.darkGrey,
+    medicationsHeading: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 15,
+      marginBottom: 1,
     },
-    medicationTextContainer: {
-      flex: 1,
-    },
-    medicationName: {
-      fontFamily: "Poppins-Medium",
-      fontSize: 14,
-    },
-    medicationMeta: {
+    medicationsSubheading: {
       fontFamily: "Poppins-Light",
       fontSize: 12,
-      marginTop: 2,
+      lineHeight: 17,
+      opacity: 0.72,
+      marginBottom: 10,
     },
-    reminderText: {
-      fontFamily: "Poppins-Light",
+    medicationCard: {
+      gap: 10,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      marginBottom: 10,
+      borderRadius: 16,
+      backgroundColor: darkMode ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.76)",
+    },
+    medicationDetails: {
+      gap: 10,
+    },
+    medicationHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: 10,
+    },
+    medicationStatusBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    medicationStatusDueToday: {
+      backgroundColor: "rgba(7, 125, 39, 0.16)",
+    },
+    medicationStatusActive: {
+      backgroundColor: darkMode
+        ? "rgba(255,255,255,0.08)"
+        : "rgba(29,29,29,0.06)",
+    },
+    medicationStatusInactive: {
+      backgroundColor: "rgba(140, 140, 140, 0.12)",
+    },
+    medicationStatusText: {
+      fontFamily: "Poppins-Medium",
       fontSize: 11,
-      marginTop: 4,
-      opacity: 0.75,
+      color: darkMode ? colors.white : colors.veryDarkGrey,
+    },
+    medicationDetailRow: {
+      flexDirection: "column",
+      alignItems: "flex-start",
+      gap: 4,
+    },
+    medicationDetailLabel: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 11,
+      opacity: 0.56,
+    },
+    medicationDetailValue: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      lineHeight: 19,
+      opacity: 0.95,
+    },
+    medicationInstructionBlock: {
+      gap: 4,
+    },
+    medicationInstructionValue: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      lineHeight: 19,
+      opacity: 0.92,
+    },
+    medicationName: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 15,
+      flex: 1,
     },
     noMedicationsText: {
       fontFamily: "Poppins-Light",
       fontSize: 12,
       opacity: 0.7,
-    },
-    takenButton: {
-      backgroundColor: colors.green,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 10,
-      alignSelf: "center",
-    },
-    takenButtonText: {
-      fontFamily: "Poppins-Medium",
-      fontSize: 12,
-      color: colors.white,
+      marginTop: 2,
+      marginBottom: 4,
     },
     innerActionButton: {
-      marginTop: 14,
+      marginTop: 8,
       backgroundColor: colors.green,
-      paddingVertical: 10,
-      borderRadius: 10,
+      paddingVertical: 12,
+      borderRadius: 14,
       alignItems: "center",
     },
     innerActionButtonText: {
       fontFamily: "Poppins-Medium",
       color: colors.white,
-    },
-    innerSecondaryButton: {
-      marginTop: 8,
-      paddingVertical: 10,
-      borderRadius: 10,
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: colors.darkGrey,
-    },
-    innerSecondaryButtonText: {
-      fontFamily: "Poppins-Medium",
-      color: darkMode ? colors.white : colors.veryDarkGrey,
     },
     addButton: {
       alignSelf: "center",

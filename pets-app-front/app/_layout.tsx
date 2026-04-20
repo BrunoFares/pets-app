@@ -1,12 +1,16 @@
 import { SoftErrorBanner } from "@/components/SoftErrorBanner";
-import Constants from "expo-constants";
 // import * as Device from "expo-device";
 import { AuthProvider, useAuth } from "@/contexts/AuthProvider";
 import { useFonts } from "expo-font";
+import {
+  clearMedicationReminderNotifications,
+  registerForPushNotificationsAsync,
+  syncMedicationReminderNotifications,
+} from "@/lib/notifications";
 import * as Notifications from "expo-notifications";
 import { Stack, router, usePathname, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, Platform, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -16,46 +20,6 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
-
-async function registerForPushNotificationsAsync() {
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.MAX,
-    });
-  }
-
-  // if (!Device.isDevice) {
-  //   console.log("Push notifications require a real device");
-  //   return null;
-  // }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== "granted") {
-    console.log("Notification permission not granted");
-    return null;
-  }
-
-  const projectId =
-    Constants?.expoConfig?.extra?.eas?.projectId ??
-    Constants?.easConfig?.projectId;
-
-  if (!projectId) {
-    console.log("Project ID not found");
-    return null;
-  }
-
-  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  console.log("Expo Push Token:", token);
-  return token;
-}
 
 function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
   const appRouter = useRouter();
@@ -82,6 +46,22 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
       appRouter.replace("/(tabs)");
     }
   }, [appRouter, isAuthenticated, isHydrating, pathname, segments]);
+
+  useEffect(() => {
+    if (isHydrating) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      void clearMedicationReminderNotifications();
+      return;
+    }
+
+    void (async () => {
+      await registerForPushNotificationsAsync();
+      await syncMedicationReminderNotifications();
+    })();
+  }, [isAuthenticated, isHydrating]);
 
   if (!fontsLoaded || isHydrating) {
     return (
