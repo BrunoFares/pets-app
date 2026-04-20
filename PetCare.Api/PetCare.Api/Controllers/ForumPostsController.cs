@@ -30,6 +30,7 @@ public class ForumPostsController : ControllerBase
             .Include(p => p.Attachments)
             .Include(p => p.Replies)
             .Include(p => p.Bookmarks)
+            .Include(p => p.Likes)
             .Where(p => !p.IsAReply)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
@@ -47,6 +48,7 @@ public class ForumPostsController : ControllerBase
             .Include(p => p.Attachments)
             .Include(p => p.Replies)
             .Include(p => p.Bookmarks)
+            .Include(p => p.Likes)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         return post is null ? NotFound() : Ok(ToResponse(post, me));
@@ -61,11 +63,34 @@ public class ForumPostsController : ControllerBase
             .Include(p => p.User)
             .Include(p => p.Attachments)
             .Include(p => p.Bookmarks)
+            .Include(p => p.Likes)
             .Where(p => p.ReplyingToPostId == id)
             .OrderBy(p => p.CreatedAt)
             .ToListAsync();
 
         return Ok(replies.Select(r => ToResponse(r, me)));
+    }
+
+    [HttpGet("liked")]
+    public async Task<IActionResult> GetLikedPosts()
+    {
+        var me = User.GetUserId();
+        var likes = await _db.ForumPostLikes
+            .Where(l => l.UserId == me)
+            .OrderByDescending(l => l.CreatedAt)
+            .Include(l => l.ForumPost)
+                .ThenInclude(p => p.User)
+            .Include(l => l.ForumPost)
+                .ThenInclude(p => p.Attachments)
+            .Include(l => l.ForumPost)
+                .ThenInclude(p => p.Replies)
+            .Include(l => l.ForumPost)
+                .ThenInclude(p => p.Bookmarks)
+            .Include(l => l.ForumPost)
+                .ThenInclude(p => p.Likes)
+            .ToListAsync();
+
+        return Ok(likes.Select(l => ToResponse(l.ForumPost, me)));
     }
 
     [HttpPost]
@@ -145,6 +170,53 @@ public class ForumPostsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/like")]
+    public async Task<IActionResult> Like(Guid id)
+    {
+        var me = User.GetUserId();
+        var post = await _db.ForumPosts
+            .Include(p => p.Likes)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        if (post is null) return NotFound(new { message = "Post not found." });
+
+        var alreadyLiked = post.Likes.Any(l => l.UserId == me);
+        if (!alreadyLiked)
+        {
+            post.Likes.Add(new ForumPostLikeModel
+            {
+                UserId = me,
+                ForumPostId = id,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new ForumPostLikeStatusResponse(
+            id,
+            post.Likes.Count,
+            true
+        ));
+    }
+
+    [HttpDelete("{id:guid}/like")]
+    public async Task<IActionResult> Unlike(Guid id)
+    {
+        var me = User.GetUserId();
+        var like = await _db.ForumPostLikes.FirstOrDefaultAsync(l => l.UserId == me && l.ForumPostId == id);
+        if (like is null) return NotFound(new { message = "Like not found." });
+
+        _db.ForumPostLikes.Remove(like);
+        await _db.SaveChangesAsync();
+
+        var likesCount = await _db.ForumPostLikes.CountAsync(l => l.ForumPostId == id);
+        return Ok(new ForumPostLikeStatusResponse(
+            id,
+            likesCount,
+            false
+        ));
+    }
+
     private long? TryGetCurrentUserId()
     {
         if (!User.Identity?.IsAuthenticated ?? true) return null;
@@ -154,7 +226,7 @@ public class ForumPostsController : ControllerBase
     private static ForumPostResponse ToResponse(ForumPostModel post, long? currentUserId) => new(
         post.Id,
         post.UserId,
-        post.User.Name ?? post.User.Username,
+        GetDisplayName(post.User),
         post.User.AvatarUrl,
         post.Content,
         post.Attachments.Select(a => a.Url).ToList(),
@@ -163,6 +235,19 @@ public class ForumPostsController : ControllerBase
         post.IsAReply,
         post.ReplyingToPostId,
         post.Replies.Count,
-        currentUserId.HasValue && post.Bookmarks.Any(b => b.UserId == currentUserId.Value)
+        currentUserId.HasValue && post.Bookmarks.Any(b => b.UserId == currentUserId.Value),
+        post.Likes.Count,
+        currentUserId.HasValue && post.Likes.Any(l => l.UserId == currentUserId.Value)
     );
+
+    private static string GetDisplayName(AppUser user)
+    {
+        if (!string.IsNullOrWhiteSpace(user.Name))
+        {
+            return user.Name.Trim();
+        }
+
+        var fullName = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName;
+    }
 }

@@ -8,13 +8,19 @@ public class UpdateProfileRequest
     public string? Name { get; set; }
 
     [MaxLength(100)]
+    public string? Username { get; set; }
+
+    [EmailAddress, MaxLength(320)]
+    public string? Email { get; set; }
+
+    [MaxLength(50)]
+    public string? PhoneNumber { get; set; }
+
+    [MaxLength(100)]
     public string? FirstName { get; set; }
 
     [MaxLength(100)]
     public string? LastName { get; set; }
-
-    [MaxLength(50)]
-    public string? PhoneNumber { get; set; }
 
     [MaxLength(1000)]
     public string? Description { get; set; }

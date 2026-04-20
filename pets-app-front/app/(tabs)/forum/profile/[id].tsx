@@ -153,6 +153,8 @@ const ProfileScreen = () => {
         ReplyingToPost: item.replyingToPost ?? null,
         RepliesCount: item.repliesCount,
         IsBookmarked: item.isBookmarked,
+        LikesCount: item.likesCount ?? 0,
+        IsLikedByCurrentUser: item.isLikedByCurrentUser ?? false,
       }));
 
       const displayPosts = normalizedPosts.filter(

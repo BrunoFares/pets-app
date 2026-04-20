@@ -49,6 +49,8 @@ export default function ForumScreen() {
           replyingToPost?: string | null;
           repliesCount: number;
           isBookmarked: boolean;
+          likesCount: number;
+          isLikedByCurrentUser: boolean;
         }[]
       >("/api/ForumPosts");
 
@@ -66,6 +68,8 @@ export default function ForumScreen() {
           ReplyingToPost: post.replyingToPost ?? null,
           RepliesCount: post.repliesCount,
           IsBookmarked: post.isBookmarked,
+          LikesCount: post.likesCount,
+          IsLikedByCurrentUser: post.isLikedByCurrentUser,
         })),
       );
     } catch {
