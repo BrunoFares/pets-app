@@ -5,7 +5,8 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, resolveApiUrl } from "@/lib/api";
+import { goTo } from "@/utils";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -32,17 +33,20 @@ export default function Bookmarks() {
       const forumPosts = await apiRequest<
         {
           id: string;
+          userId: number;
           content: string;
           createdAt: string;
           userName: string;
+          userImage?: string | null;
         }[]
       >("/api/Users/bookmarks");
 
       setPosts(
         forumPosts.map((post) => ({
           Id: post.id,
-          UserId: "",
+          UserId: post.userId,
           UserName: post.userName,
+          UserImage: resolveApiUrl(post.userImage ?? null),
           Content: post.content,
           Attachments: [],
           CreatedAt: post.createdAt,
@@ -68,10 +72,15 @@ export default function Bookmarks() {
   const { isRefreshing, onRefresh } = usePullToRefresh(loadBookmarks);
   const showLoadingOverlay = isLoading && !isRefreshing;
 
-  const goTo = (item: ForumPostsModel, location: any) => {
+  const goToProfile = (item: ForumPostsModel) => {
+    const payload = encodeURIComponent(JSON.stringify(item));
+
     router.push({
-      pathname: location,
-      params: { id: String(item.Id) },
+      pathname: "/(tabs)/forum/profile/[id]",
+      params: {
+        id: String(item.UserId || item.Id),
+        payload,
+      },
     });
   };
 
@@ -92,8 +101,8 @@ export default function Bookmarks() {
           renderItem={({ item }) => {
             return (
               <ForumPost
-                onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]")}
-                onClickProfile={() => goTo(item, "/(tabs)/forum/profile/[id]")}
+                onClickPost={() => goTo(item, "/(tabs)/forum/post/[id]", router)}
+                onClickProfile={() => goToProfile(item)}
                 size="small"
                 item={item}
               />

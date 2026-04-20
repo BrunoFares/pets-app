@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { AppUsersModel, ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, resolveApiUrl } from "@/lib/api";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -23,8 +23,32 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+type ApiForumUserProfileResponse = {
+  id: number;
+  name: string;
+  image?: string | null;
+  description?: string | null;
+};
+
+const mapApiForumUserToModel = (
+  user: ApiForumUserProfileResponse,
+): AppUsersModel => ({
+  Id: user.id,
+  Name: user.name,
+  FirstName: "",
+  LastName: "",
+  Email: "",
+  PhoneNumber: "",
+  PasswordHash: "",
+  Image: resolveApiUrl(user.image ?? null),
+  CreatedAt: "",
+  LastLogin: null,
+  Description: user.description ?? "",
+  BookmarkedPostID: [],
+});
+
 const ProfileScreen = () => {
-  const { payload } = useLocalSearchParams<{ payload?: any }>();
+  const { id, payload } = useLocalSearchParams<{ id?: string; payload?: any }>();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [user, setUser] = useState<AppUsersModel>();
@@ -55,7 +79,17 @@ const ProfileScreen = () => {
       }
     }
   }, [payload]);
-  const selectedUserID = selectedPost?.UserId;
+  const selectedUserID = useMemo(() => {
+    if (selectedPost?.UserId !== undefined && selectedPost?.UserId !== null) {
+      return String(selectedPost.UserId);
+    }
+
+    if (id) {
+      return String(id);
+    }
+
+    return null;
+  }, [id, selectedPost?.UserId]);
   const fallbackUser = useMemo<AppUsersModel | undefined>(() => {
     if (!selectedUserID) {
       return undefined;
@@ -69,7 +103,7 @@ const ProfileScreen = () => {
       Email: "",
       PhoneNumber: "",
       PasswordHash: "",
-      Image: "",
+      Image: selectedPost?.UserImage ?? "",
       CreatedAt: "",
       LastLogin: null,
       Description: "",
@@ -78,7 +112,7 @@ const ProfileScreen = () => {
   }, [selectedPost, selectedUserID]);
   const displayedUser = user ?? fallbackUser;
 
-  const loadPosts = useCallback(async () => {
+  const loadProfile = useCallback(async () => {
     if (!selectedUserID || !fallbackUser) {
       setUser(undefined);
       setPosts([]);
@@ -92,12 +126,25 @@ const ProfileScreen = () => {
     setReplies([]);
     setIsLoading(true);
 
-    try {
-      const allPosts = await apiRequest<any[]>("/api/ForumPosts");
-      const normalizedPosts = allPosts.map((item) => ({
+    const [forumUserResult, allPostsResult] = await Promise.allSettled([
+      apiRequest<ApiForumUserProfileResponse>(
+        `/api/Users/${selectedUserID}/forum-profile`,
+      ),
+      apiRequest<any[]>("/api/ForumPosts"),
+    ]);
+
+    if (forumUserResult.status === "fulfilled") {
+      setUser(mapApiForumUserToModel(forumUserResult.value));
+    } else {
+      setUser(fallbackUser);
+    }
+
+    if (allPostsResult.status === "fulfilled") {
+      const normalizedPosts = allPostsResult.value.map((item) => ({
         Id: item.id,
         UserId: item.userId,
         UserName: item.userName,
+        UserImage: resolveApiUrl(item.userImage ?? null),
         Content: item.content,
         Attachments: item.attachments ?? [],
         CreatedAt: item.createdAt,
@@ -114,21 +161,19 @@ const ProfileScreen = () => {
 
       setPosts(displayPosts.filter((item) => !item.IsAReply));
       setReplies(displayPosts);
-      setUser(fallbackUser);
-    } catch {
-      setUser(fallbackUser);
+    } else {
       setPosts([]);
       setReplies([]);
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   }, [fallbackUser, selectedUserID]);
 
   useEffect(() => {
-    void loadPosts();
-  }, [loadPosts]);
+    void loadProfile();
+  }, [loadProfile]);
 
-  const { isRefreshing, onRefresh } = usePullToRefresh(loadPosts);
+  const { isRefreshing, onRefresh } = usePullToRefresh(loadProfile);
   const showLoadingOverlay = isLoading && !isRefreshing;
 
   const horizontalScroll = (i: number) => {

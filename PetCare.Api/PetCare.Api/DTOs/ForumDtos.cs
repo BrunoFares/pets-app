@@ -18,6 +18,7 @@ public record ForumPostResponse(
     Guid Id,
     long UserId,
     string UserName,
+    string? UserImage,
     string Content,
     IReadOnlyList<string> Attachments,
     DateTimeOffset CreatedAt,
