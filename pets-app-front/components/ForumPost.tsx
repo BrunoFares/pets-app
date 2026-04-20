@@ -1,8 +1,8 @@
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
-import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
+import { presentApiError } from "@/lib/api-feedback";
 import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -167,7 +167,7 @@ const ForumPost = ({
 
           <AdaptiveView style={styles.inner}>
             <TouchableOpacity onPress={handleProfilePress}>
-              <AdaptiveView style={styles.postHeaderText}>
+              <View style={styles.postHeaderText}>
                 <AdaptiveText style={styles.postTitle}>
                   {item.UserName}
                 </AdaptiveText>
@@ -176,7 +176,7 @@ const ForumPost = ({
                     {compactTimestamp}
                   </AdaptiveText>
                 ) : null}
-              </AdaptiveView>
+              </View>
             </TouchableOpacity>
 
             {item.IsAReply && (
@@ -253,7 +253,7 @@ const ForumPost = ({
               image={item.UserImage}
               customStyles={styles.placeholder}
             />
-            <AdaptiveView style={styles.postHeaderText}>
+            <View style={styles.postHeaderText}>
               <AdaptiveText style={styles.postTitle}>
                 {item.UserName}
               </AdaptiveText>
@@ -262,7 +262,7 @@ const ForumPost = ({
                   {detailedTimestamp}
                 </AdaptiveText>
               ) : null}
-            </AdaptiveView>
+            </View>
           </TouchableOpacity>
           <AdaptiveText style={styles.postBody}>{item.Content}</AdaptiveText>
         </View>
@@ -368,6 +368,7 @@ const createStyles = ({ darkMode }: any) => {
     postTitle: {
       fontFamily: "Poppins-SemiBold",
       fontSize: 18,
+      marginBottom: -6,
     },
     postHeaderText: {
       marginLeft: 10,
@@ -377,7 +378,6 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-Regular",
       fontSize: 12,
       color: darkMode ? colors.lightGrey : colors.darkGrey,
-      marginTop: 2,
     },
     postContent: {
       fontFamily: "Poppins-Light",
