@@ -40,6 +40,7 @@ INSERT INTO public.users (
     email,
     phone_number,
     password_hash,
+    email_verified,
     avatar_url,
     description,
     created_at,
@@ -54,6 +55,7 @@ INSERT INTO public.users (
         'sarah@example.com',
         '+96170000001',
         'PBKDF2$100000$ABEiM0RVZneImaq7zN3u/w==$KroxdWT7IvrShuABUvHjXpy/NsrR9uzkxF9XROF/MSs=',
+        TRUE,
         '/uploads/users/sarah.jpg',
         'Cat mom and frequent forum contributor.',
         '2026-01-10T08:00:00Z',
@@ -68,6 +70,7 @@ INSERT INTO public.users (
         'omar@example.com',
         '+96170000002',
         'PBKDF2$100000$ABEiM0RVZneImaq7zN3u/w==$KroxdWT7IvrShuABUvHjXpy/NsrR9uzkxF9XROF/MSs=',
+        TRUE,
         '/uploads/users/omar.jpg',
         'Dog owner who uses the consultation and vaccine features.',
         '2026-01-15T10:15:00Z',
@@ -82,6 +85,7 @@ INSERT INTO public.users (
         'maya@example.com',
         '+96170000003',
         'PBKDF2$100000$ABEiM0RVZneImaq7zN3u/w==$KroxdWT7IvrShuABUvHjXpy/NsrR9uzkxF9XROF/MSs=',
+        TRUE,
         NULL,
         'Keeps detailed medication schedules for rescue pets.',
         '2026-02-01T07:45:00Z',
@@ -96,12 +100,22 @@ INSERT INTO public.users (
         'jad@example.com',
         '+96170000004',
         'PBKDF2$100000$ABEiM0RVZneImaq7zN3u/w==$KroxdWT7IvrShuABUvHjXpy/NsrR9uzkxF9XROF/MSs=',
+        TRUE,
         '/uploads/users/jad.jpg',
         NULL,
         '2026-02-20T12:10:00Z',
         '2026-04-12T07:20:00Z'
     )
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE public.users
+SET email_verified = TRUE
+WHERE email IN (
+    'sarah@example.com',
+    'omar@example.com',
+    'maya@example.com',
+    'jad@example.com'
+);
 
 INSERT INTO public.pet_places (
     id,

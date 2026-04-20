@@ -35,9 +35,11 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.Username).HasColumnName("username").HasMaxLength(100).IsRequired();
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
             e.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
+            e.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(50).IsRequired();
             e.Property(x => x.PasswordHash).HasColumnName("password_hash").IsRequired();
             e.Property(x => x.EmailVerified).HasColumnName("email_verified").IsRequired().HasDefaultValue(false);
             e.Property(x => x.EmailVerificationTokenHash).HasColumnName("email_verification_token_hash");
