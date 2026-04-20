@@ -42,6 +42,23 @@ public class UsersController : ControllerBase
         ));
     }
 
+    [HttpGet("{id:long}/forum-profile")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetForumProfile(long id)
+    {
+        var user = await _context.Users
+            .Where(u => u.Id == id)
+            .Select(u => new ForumUserProfileResponse(
+                u.Id,
+                u.Name ?? u.Username,
+                u.AvatarUrl,
+                u.Description
+            ))
+            .FirstOrDefaultAsync();
+
+        return user is null ? NotFound() : Ok(user);
+    }
+
     [HttpPut("edit-profile")]
     public async Task<IActionResult> EditProfile([FromBody] UpdateProfileRequest request)
     {
@@ -103,9 +120,11 @@ public class UsersController : ControllerBase
             .Select(b => new
             {
                 b.ForumPost.Id,
+                b.ForumPost.UserId,
                 b.ForumPost.Content,
                 b.ForumPost.CreatedAt,
-                UserName = b.ForumPost.User.Name ?? b.ForumPost.User.Username
+                UserName = b.ForumPost.User.Name ?? b.ForumPost.User.Username,
+                UserImage = b.ForumPost.User.AvatarUrl
             })
             .ToListAsync();
 

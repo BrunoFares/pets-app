@@ -6,7 +6,7 @@ import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, resolveApiUrl } from "@/lib/api";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -22,6 +22,7 @@ const normalizeForumPost = (post: any): ForumPostsModel => ({
   Id: post.id ?? post.Id,
   UserId: post.userId ?? post.UserId,
   UserName: post.userName ?? post.UserName,
+  UserImage: resolveApiUrl(post.userImage ?? post.UserImage ?? null),
   Content: post.content ?? post.Content,
   Attachments: post.attachments ?? post.Attachments ?? [],
   CreatedAt: post.createdAt ?? post.CreatedAt,
@@ -89,20 +90,27 @@ const PostScreen = () => {
 
     if (selectedPost) {
       setItem(selectedPost);
-      setReplies([]);
-      setIsLoading(false);
-      return;
     }
 
     if (!id) {
-      setItem(undefined);
-      setReplies([]);
-      setIsLoading(false);
+      if (!selectedPost) {
+        setItem(undefined);
+        setReplies([]);
+        setIsLoading(false);
+      }
       return;
     }
 
     void loadPost(id);
   }, [id, loadPost, payload]);
+
+  const handleReplySubmitted = useCallback(async () => {
+    if (!id) {
+      return;
+    }
+
+    await loadPost(id);
+  }, [id, loadPost]);
 
   const { isRefreshing, onRefresh } = usePullToRefresh(
     useCallback(async () => {
@@ -126,7 +134,15 @@ const PostScreen = () => {
           onScrollBeginDrag={Keyboard.dismiss}
           contentContainerStyle={{ alignSelf: "center", width: "100%", flexGrow: 1 }}
           keyExtractor={(item) => String(item.Id)}
-          ListHeaderComponent={item ? <ForumPost size="big" item={item} /> : null}
+          ListHeaderComponent={
+            item ? (
+              <ForumPost
+                size="big"
+                item={item}
+                onReplySubmitted={handleReplySubmitted}
+              />
+            ) : null
+          }
           ListEmptyComponent={
             isLoading ? null : item ? (
               <AdaptiveText

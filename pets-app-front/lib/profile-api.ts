@@ -10,6 +10,7 @@ import {
   VaccineRecordModel,
 } from "@/data/models";
 import { apiRequest, resolveApiUrl } from "@/lib/api";
+import { normalizeMedicationReminderRecord } from "@/lib/medication-reminders";
 
 type ApiUserResponse = {
   id: number;
@@ -344,9 +345,11 @@ export async function fetchIllnessMedications(illnessId: string | number) {
 
 export async function fetchMedicationReminders() {
   const response = await apiRequest<ApiMedicationResponse[]>(
-    "/api/Medications/needs-reminders",
+    "/api/Medications/active",
   );
-  return response.map(mapApiMedicationToModel);
+  return response.map((medication) =>
+    normalizeMedicationReminderRecord(mapApiMedicationToModel(medication)),
+  );
 }
 
 export async function fetchUpcomingConsultations() {

@@ -33,3 +33,10 @@ public record UserProfileResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset? LastLogin
 );
+
+public record ForumUserProfileResponse(
+    long Id,
+    string Name,
+    string? Image,
+    string? Description
+);

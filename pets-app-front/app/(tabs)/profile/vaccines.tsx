@@ -7,10 +7,7 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { PetModel, VaccineRecordModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { presentApiError } from "@/lib/api-feedback";
-import {
-  fetchPetVaccines,
-  parseRoutePayload,
-} from "@/lib/profile-api";
+import { fetchPetVaccines, parseRoutePayload } from "@/lib/profile-api";
 import { goTo } from "@/utils";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -120,6 +117,7 @@ const VaccinesScreen = () => {
                 borderColor: colors.darkGrey,
                 borderWidth: 1,
                 borderRadius: 14,
+                marginBottom: 10,
                 paddingVertical: 10,
                 paddingHorizontal: 20,
               }}
