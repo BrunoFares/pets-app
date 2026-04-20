@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
+using PetCare.Api.Model;
 using PetCare.Api.Security;
 
 namespace PetCare.Api.Controllers;
@@ -47,16 +48,17 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetForumProfile(long id)
     {
         var user = await _context.Users
-            .Where(u => u.Id == id)
-            .Select(u => new ForumUserProfileResponse(
-                u.Id,
-                u.Name ?? u.Username,
-                u.AvatarUrl,
-                u.Description
-            ))
-            .FirstOrDefaultAsync();
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id);
 
-        return user is null ? NotFound() : Ok(user);
+        return user is null
+            ? NotFound()
+            : Ok(new ForumUserProfileResponse(
+                user.Id,
+                GetDisplayName(user),
+                user.AvatarUrl,
+                user.Description
+            ));
     }
 
     [HttpPut("edit-profile")]
@@ -65,7 +67,24 @@ public class UsersController : ControllerBase
         var user = await _context.Users.FindAsync(User.GetUserId());
         if (user == null) return NotFound();
 
-        if (!string.IsNullOrWhiteSpace(request.Name)) user.Name = request.Name.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Username))
+        {
+            var username = request.Username.Trim();
+            var usernameTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Username == username);
+            if (usernameTaken) return Conflict(new { message = "Username already exists." });
+            user.Username = username;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var email = request.Email.Trim().ToLowerInvariant();
+            var emailTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Email == email);
+            if (emailTaken) return Conflict(new { message = "Email already exists." });
+            user.Email = email;
+        }
+
+        if (request.Name is not null)
+            user.Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim();
         if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName.Trim();
         if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName.Trim();
         if (!string.IsNullOrWhiteSpace(request.PhoneNumber)) user.PhoneNumber = request.PhoneNumber.Trim();
@@ -114,21 +133,20 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetMyBookmarkedPosts()
     {
         var me = User.GetUserId();
-        var posts = await _context.ForumPostBookmarks
+        var bookmarks = await _context.ForumPostBookmarks
             .Where(b => b.UserId == me)
             .OrderByDescending(b => b.CreatedAt)
-            .Select(b => new
-            {
-                b.ForumPost.Id,
-                b.ForumPost.UserId,
-                b.ForumPost.Content,
-                b.ForumPost.CreatedAt,
-                UserName = b.ForumPost.User.Name ?? b.ForumPost.User.Username,
-                UserImage = b.ForumPost.User.AvatarUrl
-            })
+            .Include(b => b.ForumPost)
+                .ThenInclude(p => p.User)
+            .Include(b => b.ForumPost)
+                .ThenInclude(p => p.Attachments)
+            .Include(b => b.ForumPost)
+                .ThenInclude(p => p.Replies)
+            .Include(b => b.ForumPost)
+                .ThenInclude(p => p.Likes)
             .ToListAsync();
 
-        return Ok(posts);
+        return Ok(bookmarks.Select(b => ToForumPostResponse(b.ForumPost, me)));
     }
 
     [HttpPost("bookmarks")]
@@ -162,5 +180,33 @@ public class UsersController : ControllerBase
         _context.ForumPostBookmarks.Remove(bookmark);
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    private static ForumPostResponse ToForumPostResponse(ForumPostModel post, long currentUserId) => new(
+        post.Id,
+        post.UserId,
+        GetDisplayName(post.User),
+        post.User.AvatarUrl,
+        post.Content,
+        post.Attachments.Select(a => a.Url).ToList(),
+        post.CreatedAt,
+        post.UpdatedAt,
+        post.IsAReply,
+        post.ReplyingToPostId,
+        post.Replies.Count,
+        true,
+        post.Likes.Count,
+        post.Likes.Any(l => l.UserId == currentUserId)
+    );
+
+    private static string GetDisplayName(AppUser user)
+    {
+        if (!string.IsNullOrWhiteSpace(user.Name))
+        {
+            return user.Name.Trim();
+        }
+
+        var fullName = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName;
     }
 }

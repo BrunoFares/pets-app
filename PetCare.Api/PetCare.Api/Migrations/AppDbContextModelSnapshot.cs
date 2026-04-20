@@ -54,6 +54,20 @@ namespace PetCare.Api.Migrations
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
 
+                    b.Property<DateTimeOffset?>("EmailVerificationTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verification_token_expires_at");
+
+                    b.Property<string>("EmailVerificationTokenHash")
+                        .HasColumnType("text")
+                        .HasColumnName("email_verification_token_hash");
+
+                    b.Property<bool>("EmailVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("email_verified");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -70,21 +84,10 @@ namespace PetCare.Api.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
-                    b.Property<string>("Name")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("phone_number");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -293,6 +296,27 @@ namespace PetCare.Api.Migrations
                     b.HasIndex("ForumPostId");
 
                     b.ToTable("forum_post_bookmarks", "public");
+                });
+
+            modelBuilder.Entity("PetCare.Api.Model.ForumPostLikeModel", b =>
+                {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("ForumPostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("forum_post_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("UserId", "ForumPostId");
+
+                    b.HasIndex("ForumPostId");
+
+                    b.ToTable("forum_post_likes", "public");
                 });
 
             modelBuilder.Entity("PetCare.Api.Model.ForumPostModel", b =>
@@ -641,6 +665,53 @@ namespace PetCare.Api.Migrations
                     b.ToTable("pet_places", "public");
                 });
 
+            modelBuilder.Entity("PetCare.Api.Model.PetPlaceScheduleModel", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<TimeOnly?>("BreakEndTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("break_end_time");
+
+                    b.Property<TimeOnly?>("BreakStartTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("break_start_time");
+
+                    b.Property<TimeOnly?>("CloseTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("close_time");
+
+                    b.Property<string>("DayOfWeek")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_closed");
+
+                    b.Property<TimeOnly?>("OpenTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("open_time");
+
+                    b.Property<Guid>("PetPlaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_place_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PetPlaceId", "DayOfWeek")
+                        .IsUnique();
+
+                    b.ToTable("pet_place_schedules", "public");
+                });
+
             modelBuilder.Entity("PetCare.Api.Model.SpeciesModel", b =>
                 {
                     b.Property<int>("Id")
@@ -822,6 +893,25 @@ namespace PetCare.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PetCare.Api.Model.ForumPostLikeModel", b =>
+                {
+                    b.HasOne("PetCare.Api.Model.ForumPostModel", "ForumPost")
+                        .WithMany("Likes")
+                        .HasForeignKey("ForumPostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PetCare.Api.Model.AppUser", "User")
+                        .WithMany("LikedPosts")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ForumPost");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PetCare.Api.Model.ForumPostModel", b =>
                 {
                     b.HasOne("PetCare.Api.Model.ForumPostModel", "ReplyingToPost")
@@ -888,6 +978,17 @@ namespace PetCare.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PetCare.Api.Model.PetPlaceScheduleModel", b =>
+                {
+                    b.HasOne("PetCare.Api.Model.PetPlaceModel", "PetPlace")
+                        .WithMany("Schedules")
+                        .HasForeignKey("PetPlaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PetPlace");
+                });
+
             modelBuilder.Entity("PetCare.Api.Model.VaccineRecordModel", b =>
                 {
                     b.HasOne("PetCare.Api.Model.PetModel", "Pet")
@@ -909,6 +1010,8 @@ namespace PetCare.Api.Migrations
 
                     b.Navigation("ForumPosts");
 
+                    b.Navigation("LikedPosts");
+
                     b.Navigation("Pets");
                 });
 
@@ -927,6 +1030,8 @@ namespace PetCare.Api.Migrations
                     b.Navigation("Attachments");
 
                     b.Navigation("Bookmarks");
+
+                    b.Navigation("Likes");
 
                     b.Navigation("Replies");
                 });
@@ -948,6 +1053,8 @@ namespace PetCare.Api.Migrations
             modelBuilder.Entity("PetCare.Api.Model.PetPlaceModel", b =>
                 {
                     b.Navigation("Consultations");
+
+                    b.Navigation("Schedules");
                 });
 
             modelBuilder.Entity("PetCare.Api.Model.SpeciesModel", b =>
