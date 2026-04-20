@@ -1,73 +1,79 @@
 import { colors } from "@/constants/colors";
-import { StyleSheet, Text, useColorScheme, View, ViewStyle } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    useColorScheme,
+    View,
+    ViewStyle,
+} from "react-native";
 import CustomImage from "./CustomImage";
 
 const ShopItem = ({
-    name,
-    image,
-    location,
-    rating,
-    style
+  name,
+  image,
+  location,
+  rating,
+  style,
 }: {
-    name: string;
-    image?: string | null;
-    location: string;
-    rating?: string | number | null;
-    style?: ViewStyle
+  name: string;
+  image?: string | null;
+  location: string;
+  rating?: string | number | null;
+  style?: ViewStyle;
 }) => {
-    const darkMode = useColorScheme() === 'dark';
-    const styles = createStyles({ darkMode });
+  const darkMode = useColorScheme() === "dark";
+  const hasRating = rating !== undefined && rating !== null && rating !== "";
+  const styles = createStyles({ darkMode, hasRating });
 
-    return (
-        <View style={[styles.container, style]}>
-            <CustomImage image={image} customStyles={styles.image} />
-            <Text style={styles.name}>{name}</Text>
-            <Text style={styles.location}>{location}</Text>
-            {rating !== undefined && rating !== null && rating !== "" ? (
-              <Text style={styles.rating}>★ {rating}</Text>
-            ) : null}
-        </View>
-    )
+  return (
+    <View style={[styles.container, style]}>
+      <CustomImage image={image} customStyles={styles.image} />
+      <Text style={styles.name}>{name}</Text>
+      <Text style={styles.location}>{location}</Text>
+      {hasRating ? <Text style={styles.rating}>★ {rating}</Text> : null}
+    </View>
+  );
 };
 
-const createStyles = ({ darkMode }: any) => {
-    return StyleSheet.create({
-        container: {
-            width: '100%',
-            backgroundColor: darkMode ? colors.darkGrey : colors.white,
-            borderColor: darkMode ? '' : colors.lightGrey,
-            borderWidth: darkMode ? 0 : 2,
-            borderRadius: 10,
-            alignSelf: 'center',
-        },
-        image: {
-            height: 200,
-            width: '100%', 
-            backgroundColor: colors.lightGrey,
-            borderTopLeftRadius: 10,
-            borderTopRightRadius: 10,
-        },
-        name: {
-            fontFamily: 'Poppins-Bold',
-            color: darkMode ? colors.white : colors.green,
-            fontSize: 16,
-            marginTop: 10,
-            marginLeft: 10,
-        },
-        location: {
-            fontFamily: 'Poppins-Regular',
-            color: darkMode ? colors.white : colors.black,
-            fontSize: 16,
-            marginLeft: 10
-        },
-        rating: {
-            fontFamily: 'Poppins-Regular',
-            color: darkMode ? colors.white : colors.black,
-            fontSize: 16,
-            marginLeft: 10,
-            marginBottom: 10
-        }
-    });
-}
+const createStyles = ({ darkMode, hasRating }: any) => {
+  return StyleSheet.create({
+    container: {
+      width: "100%",
+      backgroundColor: darkMode ? colors.darkGrey : colors.white,
+      borderColor: darkMode ? "" : colors.lightGrey,
+      borderWidth: darkMode ? 0 : 2,
+      borderRadius: 10,
+      alignSelf: "center",
+    },
+    image: {
+      height: 200,
+      width: "100%",
+      backgroundColor: colors.lightGrey,
+      borderTopLeftRadius: 10,
+      borderTopRightRadius: 10,
+    },
+    name: {
+      fontFamily: "Poppins-Bold",
+      color: darkMode ? colors.white : colors.green,
+      fontSize: 16,
+      marginTop: 10,
+      marginLeft: 10,
+    },
+    location: {
+      fontFamily: "Poppins-Regular",
+      color: darkMode ? colors.white : colors.black,
+      fontSize: 16,
+      marginBottom: hasRating ? 0 : 10,
+      marginLeft: 10,
+    },
+    rating: {
+      fontFamily: "Poppins-Regular",
+      color: darkMode ? colors.white : colors.black,
+      fontSize: 16,
+      marginLeft: 10,
+      marginBottom: 10,
+    },
+  });
+};
 
 export default ShopItem;

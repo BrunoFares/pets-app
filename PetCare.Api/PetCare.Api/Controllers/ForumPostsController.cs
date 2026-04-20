@@ -155,6 +155,7 @@ public class ForumPostsController : ControllerBase
         post.Id,
         post.UserId,
         post.User.Name ?? post.User.Username,
+        post.User.AvatarUrl,
         post.Content,
         post.Attachments.Select(a => a.Url).ToList(),
         post.CreatedAt,

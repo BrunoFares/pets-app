@@ -14,6 +14,11 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
 import {
+  DEFAULT_MEDICATION_REMINDER_TIMES,
+  normalizeMedicationReminderTimes,
+} from "@/lib/medication-reminders";
+import { syncMedicationReminderNotifications } from "@/lib/notifications";
+import {
   fetchIllnessMedications,
   parseRoutePayload,
   toApiIllnessStatus,
@@ -43,6 +48,8 @@ type MedicationForm = {
   id: number;
   instructions: string;
   name: string;
+  reminderEnabled: boolean;
+  times: string[];
 };
 
 const createMedicationForm = (
@@ -55,6 +62,10 @@ const createMedicationForm = (
   dosage: medication?.dosage ?? "",
   frequency: medication ? String(medication.frequencyInDays) : "",
   instructions: medication?.instructions ?? "",
+  reminderEnabled: medication ? medication.reminderEnabled || medication.isActive : true,
+  times: medication
+    ? normalizeMedicationReminderTimes(medication.times)
+    : [...DEFAULT_MEDICATION_REMINDER_TIMES],
 });
 
 const ModifyAddIllness = () => {
@@ -321,8 +332,9 @@ const ModifyAddIllness = () => {
           endDate:
             selectedStatus === "Resolved" ? curedDate.toISOString() : null,
           frequencyInDays: Number(medication.frequency),
-          times: [],
-          reminderEnabled: false,
+          times: normalizeMedicationReminderTimes(medication.times),
+          reminderEnabled:
+            selectedStatus === "Ongoing" ? medication.reminderEnabled : false,
           isActive: selectedStatus === "Ongoing",
         };
 
@@ -342,6 +354,7 @@ const ModifyAddIllness = () => {
         }
       }
 
+      await syncMedicationReminderNotifications();
       router.back();
     } catch (error) {
       presentApiError("Unable to save illness", error, {
