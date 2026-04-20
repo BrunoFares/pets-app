@@ -57,24 +57,43 @@ const RegisterScreen = () => {
 
     try {
       setIsSubmitting(true);
-      const response = await apiRequest<{ accessToken: string; userId: number }>(
-        "/api/Auth/register",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            username: username.trim(),
-            name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-            email: email.trim(),
-            phoneNumber: phoneNumber.trim(),
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            password,
-          }),
-        },
-      );
+      const response = await apiRequest<{
+        accessToken?: string;
+        userId: number;
+        message?: string;
+      }>("/api/Auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          username: username.trim(),
+          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          email: email.trim(),
+          phoneNumber: phoneNumber.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          password,
+        }),
+      });
 
-      await signIn(response);
-      router.replace("/(tabs)");
+      if (response.accessToken) {
+        await signIn({
+          accessToken: response.accessToken,
+          userId: response.userId,
+        });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      Alert.alert(
+        "Registration successful",
+        response.message ??
+          "Your account was created. Please verify your email before logging in.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/login-screen"),
+          },
+        ],
+      );
     } catch (error) {
       presentApiError("Registration failed", error, {
         fallbackMessage: "Unable to register.",

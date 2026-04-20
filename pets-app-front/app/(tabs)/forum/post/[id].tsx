@@ -31,6 +31,9 @@ const normalizeForumPost = (post: any): ForumPostsModel => ({
   ReplyingToPost: post.replyingToPost ?? post.ReplyingToPost ?? null,
   RepliesCount: post.repliesCount ?? post.RepliesCount,
   IsBookmarked: post.isBookmarked ?? post.IsBookmarked,
+  LikesCount: post.likesCount ?? post.LikesCount ?? 0,
+  IsLikedByCurrentUser:
+    post.isLikedByCurrentUser ?? post.IsLikedByCurrentUser ?? false,
 });
 
 const PostScreen = () => {

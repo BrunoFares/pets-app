@@ -5,7 +5,7 @@ import { apiRequest } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
 import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -62,10 +62,9 @@ const ForumPost = ({
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
   const styles = createStyles({ darkMode });
-  const [liked, setLiked] = useState<boolean>();
-  const [bookmarked, setBookmarked] = useState<boolean>(
-    item.IsBookmarked ?? false,
-  );
+  const [liked, setLiked] = useState(item.IsLikedByCurrentUser ?? false);
+  const [likesCount, setLikesCount] = useState(item.LikesCount ?? 0);
+  const [bookmarked, setBookmarked] = useState(item.IsBookmarked ?? false);
   const [replyContent, setReplyContent] = useState("");
   const [isReplySubmitting, setIsReplySubmitting] = useState(false);
   const { setShowFooter } = useGlobal();
@@ -87,6 +86,12 @@ const ForumPost = ({
       });
     });
 
+  useEffect(() => {
+    setLiked(item.IsLikedByCurrentUser ?? false);
+    setLikesCount(item.LikesCount ?? 0);
+    setBookmarked(item.IsBookmarked ?? false);
+  }, [item.Id, item.IsBookmarked, item.IsLikedByCurrentUser, item.LikesCount]);
+
   const syncBookmark = async (nextBookmarked: boolean) => {
     if (nextBookmarked) {
       await apiRequest("/api/Users/bookmarks", {
@@ -101,8 +106,34 @@ const ForumPost = ({
     });
   };
 
+  const syncLike = async (nextLiked: boolean) =>
+    apiRequest<{ likesCount: number; isLikedByCurrentUser: boolean }>(
+      `/api/ForumPosts/${item.Id}/like`,
+      {
+        method: nextLiked ? "POST" : "DELETE",
+      },
+    );
+
   const likePost = async () => {
-    setLiked(true);
+    const nextLiked = !liked;
+    const previousLiked = liked;
+    const previousLikesCount = likesCount;
+
+    setLiked(nextLiked);
+    setLikesCount(Math.max(0, previousLikesCount + (nextLiked ? 1 : -1)));
+
+    try {
+      const response = await syncLike(nextLiked);
+      setLiked(response.isLikedByCurrentUser);
+      setLikesCount(response.likesCount);
+    } catch (error) {
+      setLiked(previousLiked);
+      setLikesCount(previousLikesCount);
+      presentApiError("Unable to update like", error, {
+        networkMessage:
+          "We couldn't reach the server, so the like status was not updated.",
+      });
+    }
   };
 
   const bookmarkPost = async () => {
@@ -113,7 +144,10 @@ const ForumPost = ({
       await syncBookmark(nextBookmarked);
     } catch (error) {
       setBookmarked(!nextBookmarked);
-      console.error("Failed to update bookmark status.", error);
+      presentApiError("Unable to update bookmark", error, {
+        networkMessage:
+          "We couldn't reach the server, so the bookmark was not updated.",
+      });
     }
   };
 
@@ -194,15 +228,20 @@ const ForumPost = ({
         </AdaptiveView>
 
         <AdaptiveView style={[styles.inner, styles.additionalRowSmall]}>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handlePostPress} style={styles.actionButton}>
             <EvilIcons
               name="comment"
               size={26}
               color={darkMode ? colors.white : colors.black}
             />
+            {typeof item.RepliesCount === "number" ? (
+              <AdaptiveText style={styles.actionCount}>
+                {item.RepliesCount}
+              </AdaptiveText>
+            ) : null}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={likePost}>
+          <TouchableOpacity onPress={likePost} style={styles.actionButton}>
             {liked ? (
               <Ionicons name="heart-sharp" size={18} color={colors.green} />
             ) : (
@@ -212,6 +251,7 @@ const ForumPost = ({
                 color={darkMode ? colors.white : colors.black}
               />
             )}
+            <AdaptiveText style={styles.actionCount}>{likesCount}</AdaptiveText>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={bookmarkPost}>
@@ -268,15 +308,20 @@ const ForumPost = ({
         </View>
 
         <View style={styles.additionalRowBig}>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handlePostPress} style={styles.actionButton}>
             <EvilIcons
               name="comment"
               size={26}
               color={darkMode ? colors.white : colors.black}
             />
+            {typeof item.RepliesCount === "number" ? (
+              <AdaptiveText style={styles.actionCount}>
+                {item.RepliesCount}
+              </AdaptiveText>
+            ) : null}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={likePost}>
+          <TouchableOpacity onPress={likePost} style={styles.actionButton}>
             {liked ? (
               <Ionicons name="heart-sharp" size={18} color={colors.green} />
             ) : (
@@ -286,6 +331,7 @@ const ForumPost = ({
                 color={darkMode ? colors.white : colors.black}
               />
             )}
+            <AdaptiveText style={styles.actionCount}>{likesCount}</AdaptiveText>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={bookmarkPost}>
@@ -390,6 +436,16 @@ const createStyles = ({ darkMode }: any) => {
       justifyContent: "space-between",
       alignItems: "center",
       marginTop: 10,
+    },
+    actionButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    actionCount: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 12,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
     },
     additionalRowBig: {
       borderTopColor: darkMode ? colors.darkGrey : colors.lightGrey,

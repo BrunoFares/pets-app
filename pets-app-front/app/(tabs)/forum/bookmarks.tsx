@@ -36,8 +36,15 @@ export default function Bookmarks() {
           userId: number;
           content: string;
           createdAt: string;
+          updatedAt?: string | null;
           userName: string;
           userImage?: string | null;
+          isAReply?: boolean;
+          replyingToPost?: string | null;
+          repliesCount?: number;
+          isBookmarked?: boolean;
+          likesCount?: number;
+          isLikedByCurrentUser?: boolean;
         }[]
       >("/api/Users/bookmarks");
 
@@ -50,10 +57,13 @@ export default function Bookmarks() {
           Content: post.content,
           Attachments: [],
           CreatedAt: post.createdAt,
-          IsAReply: false,
-          ReplyingToPost: null,
-          IsBookmarked: true,
-          RepliesCount: 0,
+          UpdatedAt: post.updatedAt ?? null,
+          IsAReply: post.isAReply ?? false,
+          ReplyingToPost: post.replyingToPost ?? null,
+          IsBookmarked: post.isBookmarked ?? true,
+          RepliesCount: post.repliesCount ?? 0,
+          LikesCount: post.likesCount ?? 0,
+          IsLikedByCurrentUser: post.isLikedByCurrentUser ?? false,
         })),
       );
     } catch {
