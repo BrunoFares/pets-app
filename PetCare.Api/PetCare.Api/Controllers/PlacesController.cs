@@ -22,31 +22,18 @@ public class PlacesController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetAll([FromQuery] PlaceType? type)
     {
-        var query = _db.PetPlaces.AsQueryable();
+        var query = _db.PetPlaces
+            .AsNoTracking()
+            .Include(p => p.Schedules)
+            .AsQueryable();
+
         if (type.HasValue) query = query.Where(p => p.Type == type.Value);
 
         var items = await query
             .OrderBy(p => p.Name)
-            .Select(p => new PlaceResponse(
-                p.Id,
-                p.Name,
-                p.Phone,
-                p.Email,
-                p.Photo,
-                p.Description,
-                p.AddressLine1,
-                p.AddressLine2,
-                p.City,
-                p.Country,
-                p.Status,
-                p.Type,
-                p.Latitude,
-                p.Longitude,
-                p.CreatedAt
-            ))
             .ToListAsync();
 
-        return Ok(items);
+        return Ok(items.Select(ToResponse));
     }
 
     [HttpGet("{id:guid}")]
@@ -54,27 +41,11 @@ public class PlacesController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var item = await _db.PetPlaces
-            .Where(p => p.Id == id)
-            .Select(p => new PlaceResponse(
-                p.Id,
-                p.Name,
-                p.Phone,
-                p.Email,
-                p.Photo,
-                p.Description,
-                p.AddressLine1,
-                p.AddressLine2,
-                p.City,
-                p.Country,
-                p.Status,
-                p.Type,
-                p.Latitude,
-                p.Longitude,
-                p.CreatedAt
-            ))
-            .FirstOrDefaultAsync();
+            .AsNoTracking()
+            .Include(p => p.Schedules)
+            .FirstOrDefaultAsync(p => p.Id == id);
 
-        return item is null ? NotFound() : Ok(item);
+        return item is null ? NotFound() : Ok(ToResponse(item));
     }
 
     [HttpGet("vets")]
@@ -97,37 +68,23 @@ public class PlacesController : ControllerBase
         var lonMax = lon + (radiusKm / 111m);
 
         var items = await _db.PetPlaces
+            .AsNoTracking()
+            .Include(p => p.Schedules)
             .Where(p => p.Latitude.HasValue && p.Longitude.HasValue)
             .Where(p => p.Latitude >= latMin && p.Latitude <= latMax && p.Longitude >= lonMin && p.Longitude <= lonMax)
-            .Select(p => new PlaceResponse(
-                p.Id,
-                p.Name,
-                p.Phone,
-                p.Email,
-                p.Photo,
-                p.Description,
-                p.AddressLine1,
-                p.AddressLine2,
-                p.City,
-                p.Country,
-                p.Status,
-                p.Type,
-                p.Latitude,
-                p.Longitude,
-                p.CreatedAt
-            ))
             .ToListAsync();
 
-        return Ok(items);
+        return Ok(items.Select(ToResponse));
     }
 
     [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePlaceRequest request)
     {
+        var placeId = Guid.NewGuid();
         var entity = new PetPlaceModel
         {
-            Id = Guid.NewGuid(),
+            Id = placeId,
             Name = request.Name.Trim(),
             Phone = request.Phone.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
@@ -141,20 +98,24 @@ public class PlacesController : ControllerBase
             Type = request.Type,
             Latitude = request.Latitude,
             Longitude = request.Longitude,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            Schedules = ToScheduleModels(placeId, request.Schedule)
         };
 
         _db.PetPlaces.Add(entity);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, new { entity.Id });
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToResponse(entity));
     }
 
     [Authorize]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePlaceRequest request)
     {
-        var entity = await _db.PetPlaces.FindAsync(id);
+        var entity = await _db.PetPlaces
+            .Include(p => p.Schedules)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
         if (entity is null) return NotFound();
 
         entity.Name = request.Name.Trim();
@@ -170,9 +131,13 @@ public class PlacesController : ControllerBase
         entity.Type = request.Type;
         entity.Latitude = request.Latitude;
         entity.Longitude = request.Longitude;
+        var newSchedules = ToScheduleModels(entity.Id, request.Schedule);
+        _db.PetPlaceSchedules.RemoveRange(entity.Schedules);
+        entity.Schedules = newSchedules;
+        _db.PetPlaceSchedules.AddRange(newSchedules);
 
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Place updated." });
+        return Ok(ToResponse(entity));
     }
 
     [Authorize]
@@ -189,4 +154,48 @@ public class PlacesController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    private static List<PetPlaceScheduleModel> ToScheduleModels(Guid petPlaceId, IReadOnlyList<PlaceScheduleRequest> schedule) =>
+        schedule
+            .Select(item => new PetPlaceScheduleModel
+            {
+                PetPlaceId = petPlaceId,
+                DayOfWeek = item.DayOfWeek,
+                IsClosed = item.IsClosed,
+                OpenTime = item.IsClosed ? null : item.OpenTime,
+                CloseTime = item.IsClosed ? null : item.CloseTime,
+                BreakStartTime = item.IsClosed ? null : item.BreakStartTime,
+                BreakEndTime = item.IsClosed ? null : item.BreakEndTime
+            })
+            .ToList();
+
+    private static PlaceResponse ToResponse(PetPlaceModel place) => new(
+        place.Id,
+        place.Name,
+        place.Phone,
+        place.Email,
+        place.Photo,
+        place.Description,
+        place.AddressLine1,
+        place.AddressLine2,
+        place.City,
+        place.Country,
+        place.Status,
+        place.Type,
+        place.Latitude,
+        place.Longitude,
+        place.CreatedAt,
+        place.Schedules
+            .OrderBy(s => s.DayOfWeek)
+            .Select(s => new PlaceScheduleResponse(
+                s.Id,
+                s.DayOfWeek,
+                s.IsClosed,
+                s.OpenTime,
+                s.CloseTime,
+                s.BreakStartTime,
+                s.BreakEndTime
+            ))
+            .ToList()
+    );
 }

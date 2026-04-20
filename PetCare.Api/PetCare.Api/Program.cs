@@ -1,14 +1,15 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Microsoft.Extensions.FileProviders;
-using Npgsql;                         // 👈 add
+using Npgsql;
+using PetCare.Api.Data;
+using PetCare.Api.Model;
+using PetCare.Api.Services.Email;
 using System.Text;
 using System.Text.Json.Serialization;
-using PetCare.Api.Data;
-using PetCare.Api.Model;            // PetSex
 
 const string AdminUiCorsPolicy = "AdminUiCors";
 const string AdminUiRoutePrefix = "/admin";
@@ -22,8 +23,10 @@ dsb.MapEnum<PetSex>(pgName: "pet_sex"); // map enum type name in PostgreSQL
 var dataSource = dsb.Build();
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseNpgsql(dataSource)        // 👈 use the mapped data source
+    opt.UseNpgsql(dataSource)
 );
+builder.Services.Configure<EmailSenderOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
 // Controllers + Swagger (+ JSON enum converter + JWT scheme)
 builder.Services.AddControllers()
@@ -76,7 +79,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// JWT
 var secret = builder.Configuration["Jwt:Secret"] ?? "dev_secret_change_me_very_long";
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

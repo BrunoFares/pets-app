@@ -30,6 +30,8 @@ export interface ForumPostsModel {
   ReplyingToPost?: string | null;
   RepliesCount?: number;
   IsBookmarked?: boolean;
+  LikesCount?: number;
+  IsLikedByCurrentUser?: boolean;
 }
 
 export interface ChatMessageModel {
