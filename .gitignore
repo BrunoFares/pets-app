@@ -10,3 +10,4 @@ PetCare.Api/PetCare.Api/wwwroot/uploads/
 pets-app-front/node_modules/
 pets-app-front/.expo/
 pets-app-front/.idea/
+/PetCare.Api/PetCare.Api/appsettings.Development.json
