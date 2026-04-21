@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
@@ -22,9 +23,15 @@ public class AdminAuthController : ControllerBase
         _auditLogger = auditLogger;
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] AdminLoginRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new { message = "Email and password are required." });
+        }
+
         var email = request.Email.Trim().ToLowerInvariant();
         var admin = await _db.AdminUsers.FirstOrDefaultAsync(a => a.Email == email);
         if (admin is null)

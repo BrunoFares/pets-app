@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -135,31 +137,29 @@ public class PetsController : ControllerBase
 
     [HttpPost("{id:guid}/avatar")]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(5_000_000)]
+    [EnableRateLimiting("uploads")]
+    [RequestSizeLimit(ImageUploadValidator.MaxImageBytes)]
     public async Task<IActionResult> UploadAvatar(Guid id, [FromForm] UploadAvatarRequest request)
     {
         var me = User.GetUserId();
         var pet = await _db.Pets.FirstOrDefaultAsync(p => p.Id == id && p.UserId == me);
         if (pet is null) return NotFound();
 
-        var file = request.File;
-        if (file == null || file.Length == 0) return BadRequest(new { message = "No file uploaded." });
+        if (!ImageUploadValidator.TryValidateImage(request.File, out var errorMessage, out var extension))
+            return BadRequest(new { message = errorMessage });
 
-        var allowed = new[] { "image/jpeg", "image/png", "image/webp" };
-        if (!allowed.Contains(file.ContentType)) return BadRequest(new { message = "Only JPG, PNG, WEBP are allowed." });
-
-        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(ext)) ext = ".jpg";
+        var file = request.File!;
 
         var root = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        Directory.CreateDirectory(root);
         var petDir = Path.Combine(root, "uploads", "pets", id.ToString());
         Directory.CreateDirectory(petDir);
 
-        var outPath = Path.Combine(petDir, "avatar" + ext);
+        var outPath = Path.Combine(petDir, "avatar" + extension);
         await using (var fs = System.IO.File.Create(outPath))
             await file.CopyToAsync(fs);
 
-        pet.AvatarUrl = $"/uploads/pets/{id}/avatar{ext}";
+        pet.AvatarUrl = $"/uploads/pets/{id}/avatar{extension}";
         pet.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
 

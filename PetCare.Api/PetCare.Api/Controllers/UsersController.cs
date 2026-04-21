@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -91,28 +93,24 @@ public class UsersController : ControllerBase
 
     [HttpPost("avatar")]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(5_000_000)]
+    [EnableRateLimiting("uploads")]
+    [RequestSizeLimit(ImageUploadValidator.MaxImageBytes)]
     public async Task<IActionResult> UploadAvatar([FromForm] UploadAvatarRequest request)
     {
-        var file = request.File;
-        if (file == null || file.Length == 0)
-            return BadRequest(new { message = "No file uploaded." });
+        if (!ImageUploadValidator.TryValidateImage(request.File, out var errorMessage, out var extension))
+            return BadRequest(new { message = errorMessage });
 
-        var allowed = new[] { "image/jpeg", "image/png", "image/webp" };
-        if (!allowed.Contains(file.ContentType))
-            return BadRequest(new { message = "Only JPG, PNG, WEBP are allowed." });
+        var file = request.File!;
 
         var user = await _context.Users.FindAsync(User.GetUserId());
         if (user == null) return NotFound();
 
         var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        Directory.CreateDirectory(webRoot);
         var uploadsDir = Path.Combine(webRoot, "uploads", "users");
         Directory.CreateDirectory(uploadsDir);
 
-        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(ext)) ext = ".jpg";
-
-        var fileName = $"{user.Id}{ext}";
+        var fileName = $"{user.Id}{extension}";
         var fullPath = Path.Combine(uploadsDir, fileName);
 
         await using (var stream = System.IO.File.Create(fullPath))
