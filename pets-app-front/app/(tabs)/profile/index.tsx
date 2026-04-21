@@ -104,6 +104,11 @@ export default function Profile() {
                   <AdaptiveText style={styles.title}>
                     {profileInfo.Name}
                   </AdaptiveText>
+                  {profileInfo.Username ? (
+                    <AdaptiveText style={styles.username}>
+                      @{profileInfo.Username}
+                    </AdaptiveText>
+                  ) : null}
                   <TouchableOpacity
                     style={styles.editProfile}
                     onPress={() => {
@@ -285,6 +290,13 @@ const createStyles = ({ darkMode, translateY }: any) => {
     title: {
       fontFamily: "Poppins-SemiBold",
       fontSize: 24,
+      marginBottom: -6,
+    },
+    username: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 14,
+      opacity: 0.7,
+      marginBottom: 2,
     },
     editProfile: {
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,

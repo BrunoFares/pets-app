@@ -25,6 +25,11 @@ const CustomImage = ({
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [chosenImage, setChosenImage] = useState<string | null>(null);
+  const imageUri =
+    chosenImage || (typeof image === "string" && image ? image : null);
+  const imageSource = imageUri
+    ? { uri: imageUri }
+    : image;
 
   const pickImage = async () => {
     const permissionResult =
@@ -58,13 +63,8 @@ const CustomImage = ({
     <View style={[styles.pfpBox, customStyles]}>
       {chosenImage || image ? (
         <Image
-          source={
-            chosenImage
-              ? { uri: chosenImage }
-              : typeof image === "string"
-                ? { uri: image }
-                : image
-          }
+          key={imageUri ?? "static-image"}
+          source={imageSource}
           style={[styles.pfp, customStyles]}
         />
       ) : (
