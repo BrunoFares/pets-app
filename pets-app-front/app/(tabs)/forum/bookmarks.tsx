@@ -5,7 +5,7 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest, resolveApiUrl } from "@/lib/api";
+import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
 import { goTo } from "@/utils";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -28,6 +28,7 @@ export default function Bookmarks() {
 
   const loadBookmarks = useCallback(async () => {
     setIsLoading(true);
+    const avatarCacheKey = Date.now();
 
     try {
       const forumPosts = await apiRequest<
@@ -53,7 +54,10 @@ export default function Bookmarks() {
           Id: post.id,
           UserId: post.userId,
           UserName: post.userName,
-          UserImage: resolveApiUrl(post.userImage ?? null),
+          UserImage: resolveApiUrlWithCacheBust(
+            post.userImage ?? null,
+            avatarCacheKey,
+          ),
           Content: post.content,
           Attachments: [],
           CreatedAt: post.createdAt,
@@ -94,6 +98,12 @@ export default function Bookmarks() {
     });
   };
 
+  const handleDeletedPost = useCallback((deletedPost: ForumPostsModel) => {
+    setPosts((currentPosts) =>
+      currentPosts.filter((post) => post.Id !== deletedPost.Id),
+    );
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <View>
@@ -115,6 +125,7 @@ export default function Bookmarks() {
                 onClickProfile={() => goToProfile(item)}
                 size="small"
                 item={item}
+                onDeleted={handleDeletedPost}
               />
             );
           }}

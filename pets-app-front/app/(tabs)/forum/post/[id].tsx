@@ -6,8 +6,9 @@ import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest, resolveApiUrl } from "@/lib/api";
+import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
@@ -18,11 +19,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const normalizeForumPost = (post: any): ForumPostsModel => ({
+const normalizeForumPost = (
+  post: any,
+  avatarCacheKey?: string | number,
+): ForumPostsModel => ({
   Id: post.id ?? post.Id,
   UserId: post.userId ?? post.UserId,
   UserName: post.userName ?? post.UserName,
-  UserImage: resolveApiUrl(post.userImage ?? post.UserImage ?? null),
+  UserImage: resolveApiUrlWithCacheBust(
+    post.userImage ?? post.UserImage ?? null,
+    avatarCacheKey,
+  ),
   Content: post.content ?? post.Content,
   Attachments: post.attachments ?? post.Attachments ?? [],
   CreatedAt: post.createdAt ?? post.CreatedAt,
@@ -50,6 +57,7 @@ const PostScreen = () => {
 
   const loadPost = useCallback(async (postId: string) => {
     setIsLoading(true);
+    const avatarCacheKey = Date.now();
 
     try {
       const [post, postReplies] = await Promise.all([
@@ -57,8 +65,10 @@ const PostScreen = () => {
         apiRequest<any[]>(`/api/ForumPosts/${postId}/replies`),
       ]);
 
-      setItem(normalizeForumPost(post));
-      setReplies(postReplies.map(normalizeForumPost));
+      setItem(normalizeForumPost(post, avatarCacheKey));
+      setReplies(
+        postReplies.map((reply) => normalizeForumPost(reply, avatarCacheKey)),
+      );
     } catch {
       setItem(undefined);
       setReplies([]);
@@ -80,11 +90,18 @@ const PostScreen = () => {
     let selectedPost: ForumPostsModel | null = null;
 
     if (payload) {
+      const avatarCacheKey = Date.now();
       try {
-        selectedPost = normalizeForumPost(JSON.parse(decodeURIComponent(payload)));
+        selectedPost = normalizeForumPost(
+          JSON.parse(decodeURIComponent(payload)),
+          avatarCacheKey,
+        );
       } catch {
         try {
-          selectedPost = normalizeForumPost(JSON.parse(payload));
+          selectedPost = normalizeForumPost(
+            JSON.parse(payload),
+            avatarCacheKey,
+          );
         } catch {
           selectedPost = null;
         }
@@ -115,6 +132,36 @@ const PostScreen = () => {
     await loadPost(id);
   }, [id, loadPost]);
 
+  const handleDeletedPost = useCallback(
+    async (deletedPost: ForumPostsModel) => {
+      if (item && deletedPost.Id === item.Id) {
+        router.back();
+        return;
+      }
+
+      setReplies((currentReplies) =>
+        currentReplies.filter((reply) => reply.Id !== deletedPost.Id),
+      );
+
+      if (
+        item &&
+        deletedPost.IsAReply &&
+        deletedPost.ReplyingToPost &&
+        String(deletedPost.ReplyingToPost) === String(item.Id)
+      ) {
+        setItem((currentItem) =>
+          currentItem
+            ? {
+                ...currentItem,
+                RepliesCount: Math.max(0, (currentItem.RepliesCount ?? 0) - 1),
+              }
+            : currentItem,
+        );
+      }
+    },
+    [item],
+  );
+
   const { isRefreshing, onRefresh } = usePullToRefresh(
     useCallback(async () => {
       if (id) {
@@ -143,6 +190,7 @@ const PostScreen = () => {
                 size="big"
                 item={item}
                 onReplySubmitted={handleReplySubmitted}
+                onDeleted={handleDeletedPost}
               />
             ) : null
           }
@@ -169,7 +217,13 @@ const PostScreen = () => {
               </AdaptiveText>
             )
           }
-          renderItem={({ item }) => <ForumPost size="small" item={item} />}
+          renderItem={({ item }) => (
+            <ForumPost
+              size="small"
+              item={item}
+              onDeleted={handleDeletedPost}
+            />
+          )}
           ListFooterComponent={<View style={{ height: 140 }} />}
         />
       </View>

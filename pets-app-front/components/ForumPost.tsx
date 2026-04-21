@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
 import { apiRequest } from "@/lib/api";
@@ -19,6 +20,7 @@ import { goTo } from "../utils";
 import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
 import CustomImage from "./CustomImage";
+import CustomModal from "./CustomModal";
 
 function formatPostTimestamp(
   createdAt: ForumPostsModel["CreatedAt"],
@@ -52,24 +54,30 @@ const ForumPost = ({
   onClickPost,
   onClickProfile,
   onReplySubmitted,
+  onDeleted,
 }: {
   item: ForumPostsModel;
   size?: "big" | "small";
   onClickPost?: () => void;
   onClickProfile?: () => void;
   onReplySubmitted?: () => void | Promise<void>;
+  onDeleted?: (deletedPost: ForumPostsModel) => void | Promise<void>;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const router = useRouter();
   const styles = createStyles({ darkMode });
+  const { user } = useAuth();
   const [liked, setLiked] = useState(item.IsLikedByCurrentUser ?? false);
   const [likesCount, setLikesCount] = useState(item.LikesCount ?? 0);
   const [bookmarked, setBookmarked] = useState(item.IsBookmarked ?? false);
   const [replyContent, setReplyContent] = useState("");
   const [isReplySubmitting, setIsReplySubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isOptionsVisible, setIsOptionsVisible] = useState(false);
   const { setShowFooter } = useGlobal();
   const compactTimestamp = formatPostTimestamp(item.CreatedAt, "compact");
   const detailedTimestamp = formatPostTimestamp(item.CreatedAt, "detailed");
+  const isOwnPost = user ? String(user.Id) === String(item.UserId) : false;
   const handlePostPress =
     onClickPost ?? (() => goTo(item, "/(tabs)/forum/post/[id]", router));
   const handleProfilePress =
@@ -91,6 +99,14 @@ const ForumPost = ({
     setLikesCount(item.LikesCount ?? 0);
     setBookmarked(item.IsBookmarked ?? false);
   }, [item.Id, item.IsBookmarked, item.IsLikedByCurrentUser, item.LikesCount]);
+
+  const closeOptionsModal = () => {
+    if (isDeleting) {
+      return;
+    }
+
+    setIsOptionsVisible(false);
+  };
 
   const syncBookmark = async (nextBookmarked: boolean) => {
     if (nextBookmarked) {
@@ -183,132 +199,236 @@ const ForumPost = ({
     }
   };
 
+  const deletePost = async () => {
+    if (isDeleting) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await apiRequest(`/api/ForumPosts/${item.Id}`, {
+        method: "DELETE",
+      });
+      setIsOptionsVisible(false);
+      await onDeleted?.(item);
+    } catch (error) {
+      presentApiError("Unable to delete post", error, {
+        networkMessage:
+          "We couldn't reach the server, so your post was not deleted.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const renderOptionsModal = () => (
+    <CustomModal visible={isOptionsVisible} onClose={closeOptionsModal}>
+      <View style={styles.optionsModalContent}>
+        <AdaptiveText style={styles.optionsModalTitle}>
+          Post options
+        </AdaptiveText>
+
+        {isOwnPost ? (
+          <AdaptiveText style={styles.optionsModalSubtitle}>
+            You can delete this post from the forum.
+          </AdaptiveText>
+        ) : (
+          <AdaptiveText style={styles.optionsModalSubtitle}>
+            You can only delete posts that belong to your account.
+          </AdaptiveText>
+        )}
+
+        {isOwnPost ? (
+          <TouchableOpacity
+            onPress={deletePost}
+            disabled={isDeleting}
+            style={[
+              styles.modalActionButton,
+              styles.deleteActionButton,
+              isDeleting ? styles.modalActionButtonDisabled : null,
+            ]}
+          >
+            <AdaptiveText style={styles.deleteActionText}>
+              {isDeleting ? "Deleting..." : "Delete post"}
+            </AdaptiveText>
+          </TouchableOpacity>
+        ) : null}
+
+        <TouchableOpacity
+          onPress={closeOptionsModal}
+          disabled={isDeleting}
+          style={[
+            styles.modalActionButton,
+            styles.closeActionButton,
+            isDeleting ? styles.modalActionButtonDisabled : null,
+          ]}
+        >
+          <AdaptiveText style={styles.closeActionText}>Close</AdaptiveText>
+        </TouchableOpacity>
+      </View>
+    </CustomModal>
+  );
+
   if (size === "small") {
     return (
-      <TouchableOpacity onPress={handlePostPress} style={styles.post}>
-        <AdaptiveView style={[styles.inner, { flexDirection: "row" }]}>
-          <TouchableOpacity onPress={handleProfilePress}>
-            {/* {user.Image ? (
-              <Image source={user.Image} />
-            ) : (
-              <View style={styles.placeholder} />
-            )} */}
-            <CustomImage
-              image={item.UserImage}
-              customStyles={styles.placeholder}
-            />
-          </TouchableOpacity>
+      <>
+        <View style={styles.post}>
+          <TouchableOpacity onPress={handlePostPress}>
+            <AdaptiveView style={[styles.inner, styles.smallPostBody]}>
+              <TouchableOpacity onPress={handleProfilePress}>
+                <CustomImage
+                  image={item.UserImage}
+                  customStyles={styles.placeholder}
+                />
+              </TouchableOpacity>
 
-          <AdaptiveView style={styles.inner}>
-            <TouchableOpacity onPress={handleProfilePress}>
-              <View style={styles.postHeaderText}>
-                <AdaptiveText style={styles.postTitle}>
-                  {item.UserName}
+              <AdaptiveView style={[styles.inner, styles.smallPostContentWrap]}>
+                <View style={{ flexDirection: "row" }}>
+                  <TouchableOpacity onPress={handleProfilePress}>
+                    <View style={styles.postHeaderText}>
+                      <AdaptiveText style={styles.postTitle}>
+                        {item.UserName}
+                      </AdaptiveText>
+                      {compactTimestamp ? (
+                        <AdaptiveText style={styles.postTimestamp}>
+                          {compactTimestamp}
+                        </AdaptiveText>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setIsOptionsVisible(true)}
+                    style={styles.optionsButton}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={18}
+                      color={darkMode ? colors.white : colors.black}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {item.IsAReply && (
+                  <TouchableOpacity
+                    style={styles.reply}
+                    onPress={handlePostPress}
+                  >
+                    <AdaptiveText style={styles.replyTxt}>
+                      Replying to another post
+                    </AdaptiveText>
+                  </TouchableOpacity>
+                )}
+
+                <AdaptiveText style={styles.postContent}>
+                  {item.Content}
                 </AdaptiveText>
-                {compactTimestamp ? (
-                  <AdaptiveText style={styles.postTimestamp}>
-                    {compactTimestamp}
+              </AdaptiveView>
+            </AdaptiveView>
+
+            <AdaptiveView style={[styles.inner, styles.additionalRowSmall]}>
+              <TouchableOpacity
+                onPress={handlePostPress}
+                style={styles.actionButton}
+              >
+                <EvilIcons
+                  name="comment"
+                  size={26}
+                  color={darkMode ? colors.white : colors.black}
+                />
+                {typeof item.RepliesCount === "number" ? (
+                  <AdaptiveText style={styles.actionCount}>
+                    {item.RepliesCount}
                   </AdaptiveText>
                 ) : null}
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            {item.IsAReply && (
-              <TouchableOpacity style={styles.reply} onPress={handlePostPress}>
-                <AdaptiveText style={styles.replyTxt}>
-                  Replying to another post
+              <TouchableOpacity onPress={likePost} style={styles.actionButton}>
+                {liked ? (
+                  <Ionicons name="heart-sharp" size={18} color={colors.green} />
+                ) : (
+                  <Ionicons
+                    name="heart-outline"
+                    size={18}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                )}
+                <AdaptiveText style={styles.actionCount}>
+                  {likesCount}
                 </AdaptiveText>
               </TouchableOpacity>
-            )}
 
-            <AdaptiveText style={styles.postContent}>
-              {item.Content}
-            </AdaptiveText>
-          </AdaptiveView>
-        </AdaptiveView>
+              <TouchableOpacity onPress={bookmarkPost}>
+                {bookmarked ? (
+                  <Ionicons name="bookmark" size={18} color={colors.green} />
+                ) : (
+                  <Ionicons
+                    name="bookmark-outline"
+                    size={18}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                )}
+              </TouchableOpacity>
 
-        <AdaptiveView style={[styles.inner, styles.additionalRowSmall]}>
-          <TouchableOpacity onPress={handlePostPress} style={styles.actionButton}>
-            <EvilIcons
-              name="comment"
-              size={26}
-              color={darkMode ? colors.white : colors.black}
-            />
-            {typeof item.RepliesCount === "number" ? (
-              <AdaptiveText style={styles.actionCount}>
-                {item.RepliesCount}
-              </AdaptiveText>
-            ) : null}
+              <TouchableOpacity>
+                <Feather
+                  name="share"
+                  size={18}
+                  color={darkMode ? colors.white : colors.black}
+                />
+              </TouchableOpacity>
+            </AdaptiveView>
           </TouchableOpacity>
-
-          <TouchableOpacity onPress={likePost} style={styles.actionButton}>
-            {liked ? (
-              <Ionicons name="heart-sharp" size={18} color={colors.green} />
-            ) : (
-              <Ionicons
-                name="heart-outline"
-                size={18}
-                color={darkMode ? colors.white : colors.black}
-              />
-            )}
-            <AdaptiveText style={styles.actionCount}>{likesCount}</AdaptiveText>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={bookmarkPost}>
-            {bookmarked ? (
-              <Ionicons name="bookmark" size={18} color={colors.green} />
-            ) : (
-              <Ionicons
-                name="bookmark-outline"
-                size={18}
-                color={darkMode ? colors.white : colors.black}
-              />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity>
-            <Feather
-              name="share"
-              size={18}
-              color={darkMode ? colors.white : colors.black}
-            />
-          </TouchableOpacity>
-        </AdaptiveView>
-      </TouchableOpacity>
+        </View>
+        {renderOptionsModal()}
+      </>
     );
   } else if (size === "big") {
     return (
       <>
         <View style={{ marginHorizontal: 20 }}>
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginVertical: 16,
-              alignSelf: "flex-start",
-            }}
-            onPress={handleProfilePress}
-          >
-            <CustomImage
-              image={item.UserImage}
-              customStyles={styles.placeholder}
-            />
-            <View style={styles.postHeaderText}>
-              <AdaptiveText style={styles.postTitle}>
-                {item.UserName}
-              </AdaptiveText>
-              {detailedTimestamp ? (
-                <AdaptiveText style={styles.postTimestamp}>
-                  {detailedTimestamp}
+          <View style={styles.bigHeaderRow}>
+            <TouchableOpacity
+              style={styles.bigHeaderProfile}
+              onPress={handleProfilePress}
+            >
+              <CustomImage
+                image={item.UserImage}
+                customStyles={styles.placeholder}
+              />
+              <View style={styles.postHeaderText}>
+                <AdaptiveText style={styles.postTitle}>
+                  {item.UserName}
                 </AdaptiveText>
-              ) : null}
-            </View>
-          </TouchableOpacity>
+                {detailedTimestamp ? (
+                  <AdaptiveText style={styles.postTimestamp}>
+                    {detailedTimestamp}
+                  </AdaptiveText>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsOptionsVisible(true)}
+              style={styles.optionsButton}
+              // hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={18}
+                color={darkMode ? colors.white : colors.black}
+              />
+            </TouchableOpacity>
+          </View>
           <AdaptiveText style={styles.postBody}>{item.Content}</AdaptiveText>
         </View>
 
         <View style={styles.additionalRowBig}>
-          <TouchableOpacity onPress={handlePostPress} style={styles.actionButton}>
+          <TouchableOpacity
+            onPress={handlePostPress}
+            style={styles.actionButton}
+          >
             <EvilIcons
               name="comment"
               size={26}
@@ -387,6 +507,7 @@ const ForumPost = ({
             />
           </TouchableOpacity>
         </View>
+        {renderOptionsModal()}
       </>
     );
   } else {
@@ -407,9 +528,16 @@ const createStyles = ({ darkMode }: any) => {
       borderBottomColor: darkMode ? colors.darkGrey : colors.lightGrey,
       borderBottomWidth: 1,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+      position: "relative",
     },
     inner: {
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    },
+    smallPostBody: {
+      flexDirection: "row",
+    },
+    smallPostContentWrap: {
+      flex: 1,
     },
     postTitle: {
       fontFamily: "Poppins-SemiBold",
@@ -419,6 +547,26 @@ const createStyles = ({ darkMode }: any) => {
     postHeaderText: {
       marginLeft: 10,
       flexShrink: 1,
+    },
+    optionsButton: {
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: 28,
+      minHeight: 28,
+      marginLeft: "auto",
+    },
+    bigHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginVertical: 16,
+      gap: 12,
+    },
+    bigHeaderProfile: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      flex: 1,
     },
     postTimestamp: {
       fontFamily: "Poppins-Regular",
@@ -487,6 +635,52 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-Medium",
       fontSize: 12,
       color: colors.green,
+    },
+    optionsModalContent: {
+      width: "100%",
+      paddingBottom: 32,
+      alignItems: "center",
+    },
+    optionsModalTitle: {
+      fontFamily: "Poppins-Bold",
+      fontSize: 24,
+      textAlign: "center",
+    },
+    optionsModalSubtitle: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 15,
+      textAlign: "center",
+      marginTop: 12,
+      marginBottom: 28,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+      lineHeight: 22,
+    },
+    modalActionButton: {
+      width: "100%",
+      borderRadius: 18,
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12,
+    },
+    modalActionButtonDisabled: {
+      opacity: 0.6,
+    },
+    deleteActionButton: {
+      backgroundColor: "#FCE8E8",
+    },
+    deleteActionText: {
+      color: "#B3261E",
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    closeActionButton: {
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
+    },
+    closeActionText: {
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
     },
   });
 };

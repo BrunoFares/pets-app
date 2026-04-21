@@ -1,10 +1,10 @@
 import { colors } from "@/constants/colors";
 import {
-    StyleSheet,
-    Text,
-    useColorScheme,
-    View,
-    ViewStyle,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+  ViewStyle,
 } from "react-native";
 import CustomImage from "./CustomImage";
 
@@ -51,6 +51,7 @@ const createStyles = ({ darkMode, hasRating }: any) => {
       backgroundColor: colors.lightGrey,
       borderTopLeftRadius: 10,
       borderTopRightRadius: 10,
+      borderRadius: 0,
     },
     name: {
       fontFamily: "Poppins-Bold",

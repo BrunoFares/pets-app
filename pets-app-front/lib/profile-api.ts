@@ -144,6 +144,7 @@ export function mapApiUserToModel(user: ApiUserResponse): AppUsersModel {
   return {
     Id: user.id,
     Name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+    Username: user.username,
     FirstName: user.firstName,
     LastName: user.lastName,
     Email: user.email,
@@ -360,7 +361,7 @@ export async function fetchUpcomingConsultations() {
 }
 
 export async function fetchSpeciesOptions() {
-  const response = await apiRequest<ApiSpeciesResponse[]>("/api/meta/species");
+  const response = await apiRequest<ApiSpeciesResponse[]>("/api/Species");
   return response.map(mapApiSpeciesToModel);
 }
 
@@ -368,7 +369,7 @@ export async function fetchBreedOptions(speciesId?: number | null) {
   const query =
     typeof speciesId === "number" ? `?speciesId=${speciesId}` : "";
   const response = await apiRequest<ApiBreedResponse[]>(
-    `/api/meta/breeds${query}`,
+    `/api/Breeds${query}`,
   );
   return response.map(mapApiBreedToModel);
 }
@@ -383,9 +384,28 @@ export async function fetchVetOptions() {
 
 function buildImageFormData(asset: ImagePicker.ImagePickerAsset) {
   const formData = new FormData();
-  const extension = asset.fileName?.split(".").pop() || "jpg";
-  const name = asset.fileName || `upload.${extension}`;
-  const type = asset.mimeType || "image/jpeg";
+  const normalizedMimeType = asset.mimeType?.toLowerCase();
+  const extensionFromMimeType =
+    normalizedMimeType === "image/png"
+      ? "png"
+      : normalizedMimeType === "image/webp"
+        ? "webp"
+        : "jpg";
+  const extensionFromFileName =
+    asset.fileName?.split(".").pop()?.toLowerCase() || "";
+  const extension =
+    extensionFromFileName === "png" || extensionFromFileName === "webp"
+      ? extensionFromFileName
+      : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
+        ? "jpg"
+        : extensionFromMimeType;
+  const type =
+    extension === "png"
+      ? "image/png"
+      : extension === "webp"
+        ? "image/webp"
+        : "image/jpeg";
+  const name = `upload.${extension}`;
 
   formData.append("file", {
     uri: asset.uri,
