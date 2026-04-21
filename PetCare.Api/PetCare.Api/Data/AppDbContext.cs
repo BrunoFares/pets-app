@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
 
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
+    public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
     public DbSet<SpeciesModel> Species => Set<SpeciesModel>();
     public DbSet<BreedModel> Breeds => Set<BreedModel>();
     public DbSet<PetModel> Pets => Set<PetModel>();
@@ -73,6 +74,32 @@ public class AppDbContext : DbContext
 
             e.HasIndex(x => x.Email).IsUnique();
             e.HasIndex(x => x.Username).IsUnique();
+        });
+
+        b.Entity<AdminActionLog>(e =>
+        {
+            e.ToTable("admin_action_logs", "public");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.AdminUserId).HasColumnName("admin_user_id").IsRequired();
+            e.Property(x => x.ActionType).HasColumnName("action_type").HasMaxLength(100).IsRequired();
+            e.Property(x => x.TargetType).HasColumnName("target_type").HasMaxLength(100).IsRequired();
+            e.Property(x => x.TargetId).HasColumnName("target_id").HasMaxLength(100).IsRequired();
+            e.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000).IsRequired();
+            e.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(1000);
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            e.HasOne(x => x.AdminUser)
+                .WithMany(x => x.ActionLogs)
+                .HasForeignKey(x => x.AdminUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => x.AdminUserId);
+            e.HasIndex(x => x.ActionType);
+            e.HasIndex(x => x.TargetType);
+            e.HasIndex(x => x.TargetId);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => new { x.AdminUserId, x.CreatedAt });
         });
 
         b.Entity<SpeciesModel>(e =>

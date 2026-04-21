@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -13,10 +14,12 @@ namespace PetCare.Api.Controllers;
 public class AdminModerationController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AdminAuditLogger _auditLogger;
 
-    public AdminModerationController(AppDbContext db)
+    public AdminModerationController(AppDbContext db, AdminAuditLogger auditLogger)
     {
         _db = db;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("users")]
@@ -71,6 +74,7 @@ public class AdminModerationController : ControllerBase
     [HttpPost("users/{id:long}/ban")]
     public async Task<IActionResult> BanUser(long id, [FromBody] BanUserRequest request)
     {
+        var adminUserId = User.GetAdminId();
         var user = await _db.Users.FindAsync(id);
         if (user is null)
         {
@@ -80,6 +84,14 @@ public class AdminModerationController : ControllerBase
         user.IsBanned = true;
         user.BannedAt = DateTimeOffset.UtcNow;
         user.BanReason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
+        _auditLogger.Log(
+            adminUserId,
+            "BanUser",
+            "User",
+            user.Id.ToString(),
+            $"Banned user '{user.Username}'.",
+            user.BanReason
+        );
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "User banned." });
@@ -88,6 +100,7 @@ public class AdminModerationController : ControllerBase
     [HttpPost("users/{id:long}/unban")]
     public async Task<IActionResult> UnbanUser(long id)
     {
+        var adminUserId = User.GetAdminId();
         var user = await _db.Users.FindAsync(id);
         if (user is null)
         {
@@ -97,6 +110,13 @@ public class AdminModerationController : ControllerBase
         user.IsBanned = false;
         user.BannedAt = null;
         user.BanReason = null;
+        _auditLogger.Log(
+            adminUserId,
+            "UnbanUser",
+            "User",
+            user.Id.ToString(),
+            $"Unbanned user '{user.Username}'."
+        );
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "User unbanned." });
@@ -105,6 +125,7 @@ public class AdminModerationController : ControllerBase
     [HttpDelete("forum-posts/{id:guid}")]
     public async Task<IActionResult> DeleteForumPost(Guid id)
     {
+        var adminUserId = User.GetAdminId();
         var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id);
         if (post is null)
         {
@@ -112,6 +133,13 @@ public class AdminModerationController : ControllerBase
         }
 
         _db.ForumPosts.Remove(post);
+        _auditLogger.Log(
+            adminUserId,
+            "DeleteForumPost",
+            "ForumPost",
+            post.Id.ToString(),
+            $"Deleted forum post '{post.Id}' created by user '{post.UserId}'."
+        );
         await _db.SaveChangesAsync();
         return NoContent();
     }

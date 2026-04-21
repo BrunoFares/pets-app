@@ -9,6 +9,7 @@ using Npgsql;
 using PetCare.Api.Data;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 using PetCare.Api.Services.Email;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -27,6 +28,7 @@ var dataSource = dsb.Build();
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(dataSource)
 );
+builder.Services.AddScoped<AdminAuditLogger>();
 builder.Services.Configure<EmailSenderOptions>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
