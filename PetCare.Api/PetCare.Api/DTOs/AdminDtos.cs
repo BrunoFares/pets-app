@@ -117,6 +117,37 @@ public record ModeratedUserDetailsResponse(
     DateTimeOffset? LastLogin
 );
 
+public record AdminUserSearchListResponse(
+    IReadOnlyList<ModeratedUserListItemResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages
+);
+
+public record AdminForumPostListItemResponse(
+    Guid Id,
+    long UserId,
+    string UserName,
+    string? UserImage,
+    string Content,
+    IReadOnlyList<string> Attachments,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt,
+    bool IsAReply,
+    Guid? ReplyingToPostId,
+    int RepliesCount,
+    int LikesCount
+);
+
+public record AdminForumPostSearchListResponse(
+    IReadOnlyList<AdminForumPostListItemResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages
+);
+
 public record AdminActionLogResponse(
     long Id,
     long AdminUserId,
