@@ -10,7 +10,7 @@ namespace PetCare.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = AuthConstants.Policies.UserOnly)]
 public class ForumPostsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -242,11 +242,6 @@ public class ForumPostsController : ControllerBase
 
     private static string GetDisplayName(AppUser user)
     {
-        if (!string.IsNullOrWhiteSpace(user.Name))
-        {
-            return user.Name.Trim();
-        }
-
         var fullName = $"{user.FirstName} {user.LastName}".Trim();
         return string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName;
     }

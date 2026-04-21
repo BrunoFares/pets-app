@@ -10,7 +10,7 @@ namespace PetCare.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = AuthConstants.Policies.UserOnly)]
 public class PetsController : ControllerBase
 {
     private readonly AppDbContext _db;

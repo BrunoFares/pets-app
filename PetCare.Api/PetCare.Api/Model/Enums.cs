@@ -48,3 +48,9 @@ public enum ChatRole
     User = 1,
     Bot = 2
 }
+
+public enum AdminRole
+{
+    Admin = 1,
+    Manager = 2
+}

@@ -10,7 +10,7 @@ namespace PetCare.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = AuthConstants.Policies.UserOnly)]
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -31,11 +31,9 @@ public class UsersController : ControllerBase
         return Ok(new UserProfileResponse(
             user.Id,
             user.Username,
-            user.Name,
             user.FirstName,
             user.LastName,
             user.Email,
-            user.PhoneNumber,
             user.AvatarUrl,
             user.Description,
             user.CreatedAt,
@@ -83,11 +81,8 @@ public class UsersController : ControllerBase
             user.Email = email;
         }
 
-        if (request.Name is not null)
-            user.Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim();
         if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName.Trim();
         if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName.Trim();
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber)) user.PhoneNumber = request.PhoneNumber.Trim();
         if (request.Description is not null) user.Description = request.Description.Trim();
 
         await _context.SaveChangesAsync();
@@ -201,11 +196,6 @@ public class UsersController : ControllerBase
 
     private static string GetDisplayName(AppUser user)
     {
-        if (!string.IsNullOrWhiteSpace(user.Name))
-        {
-            return user.Name.Trim();
-        }
-
         var fullName = $"{user.FirstName} {user.LastName}".Trim();
         return string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName;
     }
