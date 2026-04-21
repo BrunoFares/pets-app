@@ -36,6 +36,7 @@ public class AuthController : ControllerBase
 
     public record LoginRequest([Required, EmailAddress] string Email, [Required] string Password);
     public record ResendVerificationRequest([Required, EmailAddress] string Email);
+    public record VerifyEmailRequest([Required, EmailAddress] string Email, [Required] string Code);
     public record AuthResponse(long UserId, string AccessToken);
     public record RegistrationResponse(long UserId, string Message);
 
@@ -85,13 +86,13 @@ public class AuthController : ControllerBase
             PasswordHash = PasswordHasher.Hash(req.Password)
         };
 
-        var verificationToken = EmailVerificationTokenService.GenerateToken();
-        user.EmailVerificationTokenHash = EmailVerificationTokenService.HashToken(verificationToken);
+        var verificationCode = EmailVerificationTokenService.GenerateToken();
+        user.EmailVerificationTokenHash = EmailVerificationTokenService.HashToken(verificationCode);
         user.EmailVerificationTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(GetVerificationTokenHours());
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-        await SendVerificationEmailAsync(user, verificationToken);
+        await SendVerificationEmailAsync(user, verificationCode);
         return Ok(new RegistrationResponse(
             user.Id,
             "Registration successful. Please verify your email before logging in."
@@ -134,26 +135,33 @@ public class AuthController : ControllerBase
         return Ok(new AuthResponse(user.Id, token));
     }
 
-    [HttpGet("verify-email")]
-    public async Task<IActionResult> VerifyEmail([FromQuery, Required, EmailAddress] string email, [FromQuery, Required] string token)
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest req)
     {
-        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Code))
+            return BadRequest(new { message = "Email and verification code are required." });
+
+        var normalizedEmail = req.Email.Trim().ToLowerInvariant();
+        var code = req.Code.Trim();
+        if (code.Length != 6 || !code.All(char.IsDigit))
+            return BadRequest(new { message = "Verification code must be a 6-digit number." });
+
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
         if (user is null)
-            return BadRequest(new { message = "Invalid or expired verification link." });
+            return BadRequest(new { message = "Invalid or expired verification code." });
 
         if (user.EmailVerified)
             return Ok(new { message = "Email is already verified." });
 
         if (string.IsNullOrWhiteSpace(user.EmailVerificationTokenHash) || user.EmailVerificationTokenExpiresAt is null)
-            return BadRequest(new { message = "Invalid or expired verification link." });
+            return BadRequest(new { message = "Invalid or expired verification code." });
 
         if (user.EmailVerificationTokenExpiresAt <= DateTimeOffset.UtcNow)
-            return BadRequest(new { message = "Verification link has expired. Please request a new one." });
+            return BadRequest(new { message = "Verification code has expired. Please request a new one." });
 
-        var incomingTokenHash = EmailVerificationTokenService.HashToken(token);
+        var incomingTokenHash = EmailVerificationTokenService.HashToken(code);
         if (!string.Equals(incomingTokenHash, user.EmailVerificationTokenHash, StringComparison.Ordinal))
-            return BadRequest(new { message = "Invalid or expired verification link." });
+            return BadRequest(new { message = "Invalid or expired verification code." });
 
         user.EmailVerified = true;
         user.EmailVerificationTokenHash = null;
@@ -180,12 +188,12 @@ public class AuthController : ControllerBase
         if (user.EmailVerified)
             return Ok(new { message = "Email is already verified." });
 
-        var verificationToken = EmailVerificationTokenService.GenerateToken();
-        user.EmailVerificationTokenHash = EmailVerificationTokenService.HashToken(verificationToken);
+        var verificationCode = EmailVerificationTokenService.GenerateToken();
+        user.EmailVerificationTokenHash = EmailVerificationTokenService.HashToken(verificationCode);
         user.EmailVerificationTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(GetVerificationTokenHours());
 
         await _context.SaveChangesAsync();
-        await SendVerificationEmailAsync(user, verificationToken);
+        await SendVerificationEmailAsync(user, verificationCode);
 
         return Ok(new { message = "If the account exists and is not verified, a verification email has been sent." });
     }
@@ -199,17 +207,9 @@ public class AuthController : ControllerBase
         return int.TryParse(_cfg["Email:VerificationTokenHours"], out var hours) ? hours : 24;
     }
 
-    private async Task SendVerificationEmailAsync(AppUser user, string rawToken)
+    private async Task SendVerificationEmailAsync(AppUser user, string verificationCode)
     {
-        var verificationBaseUrl = _cfg["Email:FrontendVerificationUrlBase"]?.Trim();
-        if (string.IsNullOrWhiteSpace(verificationBaseUrl))
-            throw new InvalidOperationException("Missing Email:FrontendVerificationUrlBase configuration.");
-
-        var separator = verificationBaseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        var verificationLink =
-            $"{verificationBaseUrl}{separator}email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(rawToken)}";
-
         var recipientName = $"{user.FirstName} {user.LastName}".Trim();
-        await _emailSender.SendVerificationEmailAsync(user.Email, recipientName, verificationLink);
+        await _emailSender.SendVerificationEmailAsync(user.Email, recipientName, verificationCode);
     }
 }

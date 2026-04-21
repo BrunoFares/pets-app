@@ -7,7 +7,7 @@ public static class EmailVerificationTokenService
 {
     public static string GenerateToken()
     {
-        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        return RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
     }
 
     public static string HashToken(string token)

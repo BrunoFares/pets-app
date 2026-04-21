@@ -17,11 +17,11 @@ public class SmtpEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public async Task SendVerificationEmailAsync(string toEmail, string toName, string verificationLink, CancellationToken cancellationToken = default)
+    public async Task SendVerificationEmailAsync(string toEmail, string toName, string verificationCode, CancellationToken cancellationToken = default)
     {
         if (_env.IsDevelopment() && string.IsNullOrWhiteSpace(_options.SmtpHost))
         {
-            _logger.LogInformation("Email verification link for {Email}: {VerificationLink}", toEmail, verificationLink);
+            _logger.LogInformation("Email verification code for {Email}: {VerificationCode}", toEmail, verificationCode);
             return;
         }
 
@@ -29,7 +29,7 @@ public class SmtpEmailSender : IEmailSender
         {
             From = new MailAddress(_options.SenderEmail, _options.SenderName),
             Subject = "Verify your email",
-            Body = BuildBody(toName, verificationLink),
+            Body = BuildBody(toName, verificationCode),
             IsBodyHtml = false
         };
 
@@ -45,15 +45,15 @@ public class SmtpEmailSender : IEmailSender
         await client.SendMailAsync(message, cancellationToken);
     }
 
-    private static string BuildBody(string toName, string verificationLink)
+    private string BuildBody(string toName, string verificationCode)
     {
         return
 $@"Hello {toName},
 
-Please verify your email address by opening the link below:
-{verificationLink}
+Please verify your email address using this 6-digit code:
+{verificationCode}
 
-This link expires in 24 hours.
+This code expires in {_options.VerificationTokenHours} hours.
 
 If you did not create this account, you can ignore this email.";
     }
