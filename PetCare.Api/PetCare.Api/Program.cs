@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -42,8 +42,10 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(dataSource)
 );
 builder.Services.AddScoped<AdminAuditLogger>();
+builder.Services.Configure<PetTranslatorOptions>(builder.Configuration.GetSection("PetTranslator"));
 builder.Services.Configure<EmailSenderOptions>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<PetTranslatorService>();
 builder.Services.AddProblemDetails();
 builder.Services.AddRateLimiter(options =>
 {
@@ -215,6 +217,11 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthorizationHandler, UserAccessHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, AdminAccessHandler>();
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5063);
+});
 
 var app = builder.Build();
 var adminUiPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "..", "pets-app-admin"));
