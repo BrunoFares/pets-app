@@ -3,14 +3,28 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { PetSound, TRANSLATIONS } from "@/data/translations";
-import { Feather, FontAwesome6 } from "@expo/vector-icons";
+import {
+  PetTranslatorAnalysis,
+  analyzePetAudio,
+} from "@/lib/pet-translator-api";
+import { presentApiError } from "@/lib/api-feedback";
+import { Feather } from "@expo/vector-icons";
+import {
+  RecordingPresets,
+  getRecordingPermissionsAsync,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from "expo-audio";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   Pressable,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   useColorScheme,
   View,
 } from "react-native";
@@ -31,16 +45,30 @@ function getRandomTranslation(sound: PetSound) {
   return options[Math.floor(Math.random() * options.length)];
 }
 
+type DetectedAnimal = "cat" | "dog" | "neither";
+
+function getRandomTranslationForAnimal(animal: Extract<DetectedAnimal, "cat" | "dog">) {
+  return getRandomTranslation(animal === "cat" ? "meow" : "bark");
+}
+
 export default function PetTranslatorScreen() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const pulse = useRef(new Animated.Value(1)).current;
-  const [selectedSound, setSelectedSound] = useState<PetSound>("meow");
-  const [isRecording, setIsRecording] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [translation, setTranslation] = useState(() =>
-    getRandomTranslation("meow"),
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder, 200);
+  const isRecording = recorderState.isRecording;
+  const [hasMicrophonePermission, setHasMicrophonePermission] = useState<
+    boolean | null
+  >(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [detectedAnimal, setDetectedAnimal] = useState<DetectedAnimal | null>(
+    null,
   );
+  const [analysis, setAnalysis] = useState<PetTranslatorAnalysis | null>(null);
+  const [translation, setTranslation] = useState<ReturnType<
+    typeof getRandomTranslation
+  > | null>(null);
 
   useEffect(() => {
     if (!isRecording) {
@@ -73,14 +101,48 @@ export default function PetTranslatorScreen() {
   }, [isRecording, pulse]);
 
   useEffect(() => {
-    if (!isRecording) return;
+    let isMounted = true;
 
-    const interval = setInterval(() => {
-      setElapsedSeconds((current) => current + 1);
-    }, 1000);
+    async function configureRecorder() {
+      try {
+        const status = await getRecordingPermissionsAsync();
+        const granted =
+          status.granted ||
+          (await requestRecordingPermissionsAsync()).granted;
 
-    return () => clearInterval(interval);
-  }, [isRecording]);
+        if (!isMounted) {
+          return;
+        }
+
+        setHasMicrophonePermission(granted);
+
+        if (!granted) {
+          return;
+        }
+
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: true,
+        });
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setHasMicrophonePermission(false);
+        Alert.alert(
+          "Microphone unavailable",
+          "We couldn't access the microphone. Please check the app permissions and try again.",
+        );
+      }
+    }
+
+    void configureRecorder();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const animatedMicStyle = useMemo(
     () => ({
@@ -89,15 +151,105 @@ export default function PetTranslatorScreen() {
     [pulse],
   );
 
-  const startRecording = () => {
-    setTranslation(getRandomTranslation(selectedSound));
-    setElapsedSeconds(0);
-    setIsRecording(true);
+  async function ensureRecordingPermission() {
+    if (hasMicrophonePermission) {
+      return true;
+    }
+
+    try {
+      const { granted } = await requestRecordingPermissionsAsync();
+      setHasMicrophonePermission(granted);
+
+      if (!granted) {
+        Alert.alert(
+          "Microphone access required",
+          "Please allow microphone access so the translator can analyze your pet's sound.",
+        );
+        return false;
+      }
+
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
+
+      return true;
+    } catch {
+      Alert.alert(
+        "Microphone unavailable",
+        "We couldn't request microphone access right now. Please try again.",
+      );
+      return false;
+    }
+  }
+
+  const startRecording = async () => {
+    if (isAnalyzing) {
+      return;
+    }
+
+    const granted = await ensureRecordingPermission();
+    if (!granted) {
+      return;
+    }
+
+    setDetectedAnimal(null);
+    setAnalysis(null);
+    setTranslation(null);
+
+    try {
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+    } catch (error) {
+      Alert.alert(
+        "Couldn't start recording",
+        "The recorder couldn't start. Please try again.",
+      );
+    }
   };
 
-  const stopRecording = () => {
-    setIsRecording(false);
-    setTranslation(getRandomTranslation(selectedSound));
+  const stopRecording = async () => {
+    if (!isRecording) {
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      await recorder.stop();
+
+      if (!recorder.uri) {
+        throw new Error("No recording was captured.");
+      }
+
+      const nextAnalysis = await analyzePetAudio({
+        uri: recorder.uri,
+        fileName:
+          recorder.uri.split("/").pop() ||
+          `pet-recording.${recorder.uri.endsWith(".webm") ? "webm" : "m4a"}`,
+        mimeType: recorder.uri.endsWith(".webm") ? "audio/webm" : "audio/mp4",
+      });
+
+      setAnalysis(nextAnalysis);
+      setDetectedAnimal(nextAnalysis.label);
+
+      if (nextAnalysis.label === "cat" || nextAnalysis.label === "dog") {
+        setTranslation(getRandomTranslationForAnimal(nextAnalysis.label));
+        return;
+      }
+
+      setTranslation(null);
+    } catch (error) {
+      setDetectedAnimal(null);
+      setAnalysis(null);
+      setTranslation(null);
+      presentApiError("Couldn't analyze recording", error, {
+        fallbackMessage:
+          "Please try again with a clearer pet sound, or make sure the backend translator service is available.",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
@@ -114,53 +266,13 @@ export default function PetTranslatorScreen() {
             Pet Translator
           </AdaptiveText>
           <AdaptiveText style={styles.heroTitle}>
-            Record a bark or meow and get a playful fake translation.
+            Record a pet sound and let the model decide whether it came from a
+            cat, a dog, or neither.
           </AdaptiveText>
           <AdaptiveText style={styles.heroDescription}>
-            A lighthearted feature for turning pet noises into funny captions.
+            The translator only generates a playful caption after the model
+            classifies the audio as cat or dog.
           </AdaptiveText>
-
-          <View style={styles.soundToggleRow}>
-            {(["meow", "bark"] as PetSound[]).map((sound) => {
-              const active = selectedSound === sound;
-              return (
-                <TouchableOpacity
-                  key={sound}
-                  activeOpacity={0.9}
-                  style={[
-                    styles.soundToggleButton,
-                    active && styles.soundToggleButtonActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedSound(sound);
-                    if (!isRecording) {
-                      setTranslation(getRandomTranslation(sound));
-                    }
-                  }}
-                >
-                  <FontAwesome6
-                    name={sound === "meow" ? "cat" : "dog"}
-                    size={16}
-                    color={
-                      active
-                        ? colors.white
-                        : darkMode
-                          ? colors.white
-                          : colors.black
-                    }
-                  />
-                  <AdaptiveText
-                    style={[
-                      styles.soundToggleLabel,
-                      active && styles.soundToggleLabelActive,
-                    ]}
-                  >
-                    {sound === "meow" ? "Cat meow" : "Dog bark"}
-                  </AdaptiveText>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </AdaptiveView>
 
         <AdaptiveView style={styles.recorderCard}>
@@ -170,22 +282,32 @@ export default function PetTranslatorScreen() {
                 Recorder
               </AdaptiveText>
               <AdaptiveText style={styles.recorderHint}>
-                {selectedSound === "meow" ? "Cat mode" : "Dog mode"}
+                {isAnalyzing
+                  ? "Uploading the recording and waiting for the model result."
+                  : detectedAnimal === "cat"
+                  ? "Latest result: cat audio detected."
+                  : detectedAnimal === "dog"
+                    ? "Latest result: dog audio detected."
+                    : detectedAnimal === "neither"
+                      ? "Latest result: neither cat nor dog."
+                      : hasMicrophonePermission === false
+                        ? "Microphone access is required before recording."
+                        : "The model will classify the sound after you stop recording."}
               </AdaptiveText>
             </View>
             <View
               style={[
                 styles.statusPill,
-                isRecording && styles.statusPillActive,
+                (isRecording || isAnalyzing) && styles.statusPillActive,
               ]}
             >
               <AdaptiveText
                 style={[
                   styles.statusPillText,
-                  isRecording && styles.statusPillTextActive,
+                  (isRecording || isAnalyzing) && styles.statusPillTextActive,
                 ]}
               >
-                {isRecording ? "Recording" : "Ready"}
+                {isRecording ? "Recording" : isAnalyzing ? "Analyzing" : "Ready"}
               </AdaptiveText>
             </View>
           </View>
@@ -193,23 +315,40 @@ export default function PetTranslatorScreen() {
           <Animated.View style={[styles.micShell, animatedMicStyle]}>
             <Pressable
               onPress={isRecording ? stopRecording : startRecording}
+              disabled={isAnalyzing}
               style={[styles.micButton, isRecording && styles.micButtonActive]}
             >
-              <Feather
-                name={isRecording ? "pause" : "mic"}
-                size={34}
-                color={colors.white}
-              />
+              {isAnalyzing ? (
+                <ActivityIndicator color={colors.white} size="small" />
+              ) : (
+                <Feather
+                  name={isRecording ? "pause" : "mic"}
+                  size={34}
+                  color={colors.white}
+                />
+              )}
             </Pressable>
           </Animated.View>
 
           <AdaptiveText style={styles.recordingStatus}>
-            {isRecording
-              ? `Listening to ${selectedSound === "meow" ? "meows" : "barks"}...`
-              : `Ready for a ${selectedSound === "meow" ? "cat solo" : "dog speech"}.`}
+            {isAnalyzing
+              ? "Analyzing the recording..."
+              : isRecording
+              ? "Listening for cat or dog cues..."
+              : detectedAnimal === "cat"
+                ? `Detected: Cat${
+                    analysis ? ` (${Math.round(analysis.confidence * 100)}%)` : ""
+                  }`
+                : detectedAnimal === "dog"
+                  ? `Detected: Dog${
+                      analysis ? ` (${Math.round(analysis.confidence * 100)}%)` : ""
+                    }`
+                  : detectedAnimal === "neither"
+                    ? "Detected: Neither cat nor dog"
+                    : "Ready to analyze pet audio."}
           </AdaptiveText>
           <AdaptiveText style={styles.recordingTimer}>
-            {formatSeconds(elapsedSeconds)}
+            {formatSeconds(Math.floor((recorderState.durationMillis ?? 0) / 1000))}
           </AdaptiveText>
 
           <View style={styles.visualizerRow}>
@@ -220,7 +359,7 @@ export default function PetTranslatorScreen() {
                   styles.visualizerBar,
                   {
                     height: isRecording ? 26 + heightFactor * 54 : 18,
-                    opacity: isRecording ? 1 : 0.35,
+                    opacity: isRecording || isAnalyzing ? 1 : 0.35,
                   },
                 ]}
               />
@@ -233,26 +372,50 @@ export default function PetTranslatorScreen() {
             Translation Result
           </AdaptiveText>
 
-          <View style={styles.translationHeader}>
-            <View style={styles.translationTitleBlock}>
-              <AdaptiveText style={styles.translationTitle}>
-                {translation.title}
+          {translation && detectedAnimal !== "neither" ? (
+            <>
+              <View style={styles.translationHeader}>
+                <View style={styles.translationTitleBlock}>
+                  <AdaptiveText style={styles.translationTitle}>
+                    {translation.title}
+                  </AdaptiveText>
+                  <AdaptiveText style={styles.translationSubtitle}>
+                    {translation.subtitle}
+                  </AdaptiveText>
+                </View>
+
+                <View style={styles.energyBadge}>
+                  <AdaptiveText style={styles.energyBadgeText}>
+                    {translation.energy}
+                  </AdaptiveText>
+                </View>
+              </View>
+
+              <AdaptiveText style={styles.translationBody}>
+                {translation.body}
               </AdaptiveText>
-              <AdaptiveText style={styles.translationSubtitle}>
-                {translation.subtitle}
+            </>
+          ) : detectedAnimal === "neither" ? (
+            <View style={styles.resultMessageCard}>
+              <AdaptiveText style={styles.resultMessageTitle}>
+                No translation available
+              </AdaptiveText>
+              <AdaptiveText style={styles.resultMessageBody}>
+                {analysis?.message ||
+                  "The model did not identify this recording as a cat or dog vocalization, so no translated caption was generated."}
               </AdaptiveText>
             </View>
-
-            <View style={styles.energyBadge}>
-              <AdaptiveText style={styles.energyBadgeText}>
-                {translation.energy}
+          ) : (
+            <View style={styles.resultMessageCard}>
+              <AdaptiveText style={styles.resultMessageTitle}>
+                Waiting for a recording
+              </AdaptiveText>
+              <AdaptiveText style={styles.resultMessageBody}>
+                Record a sound and stop the session to let the model classify
+                it before showing a result.
               </AdaptiveText>
             </View>
-          </View>
-
-          <AdaptiveText style={styles.translationBody}>
-            {translation.body}
-          </AdaptiveText>
+          )}
         </AdaptiveView>
 
         <AdaptiveView style={styles.footerNoteCard}>
@@ -260,9 +423,9 @@ export default function PetTranslatorScreen() {
             What this actually does
           </AdaptiveText>
           <AdaptiveText style={styles.footerNoteText}>
-            This screen is intentionally playful. It doesn&apos;t decode real
-            animal language, it just turns pet sounds into funny, friendly
-            captions for the user.
+            This screen now records a real audio clip, uploads it to the
+            backend model, and only shows a playful translation when the model
+            classifies the recording as cat or dog audio.
           </AdaptiveText>
         </AdaptiveView>
       </ScrollView>
@@ -310,31 +473,6 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) => {
       fontSize: 14,
       lineHeight: 22,
       color: darkMode ? colors.lightGrey : colors.mildDarkGrey,
-    },
-    soundToggleRow: {
-      flexDirection: "row",
-      gap: 10,
-    },
-    soundToggleButton: {
-      flex: 1,
-      flexDirection: "row",
-      justifyContent: "center",
-      alignItems: "center",
-      gap: 8,
-      borderRadius: 20,
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
-    },
-    soundToggleButtonActive: {
-      backgroundColor: colors.green,
-    },
-    soundToggleLabel: {
-      fontFamily: "Poppins-Medium",
-      fontSize: 13,
-    },
-    soundToggleLabelActive: {
-      color: colors.white,
     },
     recorderCard: {
       padding: 22,
@@ -489,6 +627,21 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) => {
       fontSize: 16,
       lineHeight: 26,
       color: darkMode ? colors.white : colors.black,
+    },
+    resultMessageCard: {
+      borderRadius: 22,
+      padding: 18,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      gap: 10,
+    },
+    resultMessageTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 18,
+    },
+    resultMessageBody: {
+      fontSize: 15,
+      lineHeight: 24,
+      color: darkMode ? colors.lightGrey : colors.mildDarkGrey,
     },
     footerNoteCard: {
       padding: 20,
