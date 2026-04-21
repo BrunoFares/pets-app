@@ -179,24 +179,29 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    private static ForumPostResponse ToForumPostResponse(ForumPostModel post, long currentUserId) => new(
-        post.Id,
-        post.UserId,
-        GetDisplayName(post.User),
-        post.User.AvatarUrl,
-        post.Content,
-        post.Attachments.Select(a => a.Url).ToList(),
-        post.CreatedAt,
-        post.UpdatedAt,
-        post.IsAReply,
-        post.ReplyingToPostId,
-        post.Replies.Count,
-        true,
-        true,
-        post.Bookmarks.Count,
-        post.Likes.Count,
-        post.Likes.Any(l => l.UserId == currentUserId)
-    );
+    private static ForumPostResponse ToForumPostResponse(ForumPostModel post, long currentUserId)
+    {
+        const bool isBookmarkedByCurrentUser = true;
+
+        return new ForumPostResponse(
+            post.Id,
+            post.UserId,
+            GetDisplayName(post.User),
+            post.User.AvatarUrl,
+            post.Content,
+            post.Attachments.Select(a => a.Url).ToList(),
+            post.CreatedAt,
+            post.UpdatedAt,
+            post.IsAReply,
+            post.ReplyingToPostId,
+            post.Replies.Count,
+            isBookmarkedByCurrentUser,
+            isBookmarkedByCurrentUser,
+            post.Bookmarks.Count,
+            post.Likes.Count,
+            post.Likes.Any(l => l.UserId == currentUserId)
+        );
+    }
 
     private static string GetDisplayName(AppUser user)
     {
