@@ -5,6 +5,7 @@ using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -13,10 +14,12 @@ namespace PetCare.Api.Controllers;
 public class PlacesController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AdminAuditLogger _auditLogger;
 
-    public PlacesController(AppDbContext db)
+    public PlacesController(AppDbContext db, AdminAuditLogger auditLogger)
     {
         _db = db;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet]
@@ -82,6 +85,7 @@ public class PlacesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePlaceRequest request)
     {
+        var adminUserId = User.GetAdminId();
         var placeId = Guid.NewGuid();
         var entity = new PetPlaceModel
         {
@@ -104,6 +108,13 @@ public class PlacesController : ControllerBase
         };
 
         _db.PetPlaces.Add(entity);
+        _auditLogger.Log(
+            adminUserId,
+            "CreatePlace",
+            "Place",
+            entity.Id.ToString(),
+            $"Created place '{entity.Name}' with type '{entity.Type}'."
+        );
         await _db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToResponse(entity));
@@ -113,6 +124,7 @@ public class PlacesController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePlaceRequest request)
     {
+        var adminUserId = User.GetAdminId();
         var entity = await _db.PetPlaces
             .Include(p => p.Schedules)
             .FirstOrDefaultAsync(p => p.Id == id);
@@ -136,6 +148,13 @@ public class PlacesController : ControllerBase
         _db.PetPlaceSchedules.RemoveRange(entity.Schedules);
         entity.Schedules = newSchedules;
         _db.PetPlaceSchedules.AddRange(newSchedules);
+        _auditLogger.Log(
+            adminUserId,
+            "UpdatePlace",
+            "Place",
+            entity.Id.ToString(),
+            $"Updated place '{entity.Name}' with type '{entity.Type}'."
+        );
 
         await _db.SaveChangesAsync();
         return Ok(ToResponse(entity));
@@ -145,6 +164,7 @@ public class PlacesController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
+        var adminUserId = User.GetAdminId();
         var entity = await _db.PetPlaces.FindAsync(id);
         if (entity is null) return NotFound();
 
@@ -152,6 +172,13 @@ public class PlacesController : ControllerBase
         if (usedByConsultations) return Conflict(new { message = "Cannot delete a place referenced by consultations." });
 
         _db.PetPlaces.Remove(entity);
+        _auditLogger.Log(
+            adminUserId,
+            "DeletePlace",
+            "Place",
+            entity.Id.ToString(),
+            $"Deleted place '{entity.Name}' with type '{entity.Type}'."
+        );
         await _db.SaveChangesAsync();
         return NoContent();
     }

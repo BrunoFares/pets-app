@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -12,11 +13,13 @@ public class AdminAuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _cfg;
+    private readonly AdminAuditLogger _auditLogger;
 
-    public AdminAuthController(AppDbContext db, IConfiguration cfg)
+    public AdminAuthController(AppDbContext db, IConfiguration cfg, AdminAuditLogger auditLogger)
     {
         _db = db;
         _cfg = cfg;
+        _auditLogger = auditLogger;
     }
 
     [HttpPost("login")]
@@ -39,8 +42,16 @@ public class AdminAuthController : ControllerBase
             return Unauthorized();
         }
 
-        admin.LastLogin = DateTimeOffset.UtcNow;
-        admin.UpdatedAt = DateTimeOffset.UtcNow;
+        var now = DateTimeOffset.UtcNow;
+        admin.LastLogin = now;
+        admin.UpdatedAt = now;
+        _auditLogger.Log(
+            admin.Id,
+            "AdminLogin",
+            "AdminUser",
+            admin.Id.ToString(),
+            $"Admin '{admin.Username}' logged in."
+        );
         await _db.SaveChangesAsync();
 
         var token = JwtIssuer.CreateAdminToken(

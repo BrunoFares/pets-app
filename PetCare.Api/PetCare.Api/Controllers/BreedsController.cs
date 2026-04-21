@@ -5,6 +5,7 @@ using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -13,10 +14,12 @@ namespace PetCare.Api.Controllers;
 public class BreedsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AdminAuditLogger _auditLogger;
 
-    public BreedsController(AppDbContext db)
+    public BreedsController(AppDbContext db, AdminAuditLogger auditLogger)
     {
         _db = db;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet]
@@ -49,6 +52,7 @@ public class BreedsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateBreedRequest request)
     {
+        var adminUserId = User.GetAdminId();
         var speciesExists = await _db.Species.AnyAsync(s => s.Id == request.SpeciesId);
         if (!speciesExists) return BadRequest(new { message = "Invalid species." });
 
@@ -60,6 +64,15 @@ public class BreedsController : ControllerBase
         _db.Breeds.Add(item);
         await _db.SaveChangesAsync();
 
+        _auditLogger.Log(
+            adminUserId,
+            "CreateBreed",
+            "Breed",
+            item.Id.ToString(),
+            $"Created breed '{item.Name}' for species '{item.SpeciesId}'."
+        );
+        await _db.SaveChangesAsync();
+
         return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
     }
 
@@ -67,6 +80,7 @@ public class BreedsController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateBreedRequest request)
     {
+        var adminUserId = User.GetAdminId();
         var item = await _db.Breeds.FindAsync(id);
         if (item is null) return NotFound();
 
@@ -79,6 +93,13 @@ public class BreedsController : ControllerBase
 
         item.SpeciesId = request.SpeciesId;
         item.Name = name;
+        _auditLogger.Log(
+            adminUserId,
+            "UpdateBreed",
+            "Breed",
+            item.Id.ToString(),
+            $"Updated breed '{item.Name}' for species '{item.SpeciesId}'."
+        );
         await _db.SaveChangesAsync();
 
         return Ok(item);
@@ -88,6 +109,7 @@ public class BreedsController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
+        var adminUserId = User.GetAdminId();
         var item = await _db.Breeds.FindAsync(id);
         if (item is null) return NotFound();
 
@@ -95,6 +117,13 @@ public class BreedsController : ControllerBase
         if (hasPets) return Conflict(new { message = "Cannot delete breed that is used by pets." });
 
         _db.Breeds.Remove(item);
+        _auditLogger.Log(
+            adminUserId,
+            "DeleteBreed",
+            "Breed",
+            item.Id.ToString(),
+            $"Deleted breed '{item.Name}' from species '{item.SpeciesId}'."
+        );
         await _db.SaveChangesAsync();
         return NoContent();
     }

@@ -116,3 +116,23 @@ public record ModeratedUserDetailsResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset? LastLogin
 );
+
+public record AdminActionLogResponse(
+    long Id,
+    long AdminUserId,
+    string AdminUsername,
+    string ActionType,
+    string TargetType,
+    string TargetId,
+    string Description,
+    string? Reason,
+    DateTimeOffset CreatedAt
+);
+
+public record AdminActionLogListResponse(
+    IReadOnlyList<AdminActionLogResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages
+);

@@ -5,6 +5,7 @@ using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -13,10 +14,12 @@ namespace PetCare.Api.Controllers;
 public class SpeciesController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AdminAuditLogger _auditLogger;
 
-    public SpeciesController(AppDbContext db)
+    public SpeciesController(AppDbContext db, AdminAuditLogger auditLogger)
     {
         _db = db;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet]
@@ -57,6 +60,7 @@ public class SpeciesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSpeciesRequest request)
     {
+        var adminUserId = User.GetAdminId();
         var code = request.Code.Trim().ToLowerInvariant();
         var name = request.Name.Trim();
 
@@ -70,6 +74,15 @@ public class SpeciesController : ControllerBase
         _db.Species.Add(item);
         await _db.SaveChangesAsync();
 
+        _auditLogger.Log(
+            adminUserId,
+            "CreateSpecies",
+            "Species",
+            item.Id.ToString(),
+            $"Created species '{item.Name}' with code '{item.Code}'."
+        );
+        await _db.SaveChangesAsync();
+
         return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
     }
 
@@ -77,6 +90,7 @@ public class SpeciesController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateSpeciesRequest request)
     {
+        var adminUserId = User.GetAdminId();
         var item = await _db.Species.FindAsync(id);
         if (item is null) return NotFound();
 
@@ -91,6 +105,13 @@ public class SpeciesController : ControllerBase
 
         item.Code = code;
         item.Name = name;
+        _auditLogger.Log(
+            adminUserId,
+            "UpdateSpecies",
+            "Species",
+            item.Id.ToString(),
+            $"Updated species '{item.Name}' with code '{item.Code}'."
+        );
         await _db.SaveChangesAsync();
 
         return Ok(item);
@@ -100,6 +121,7 @@ public class SpeciesController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
+        var adminUserId = User.GetAdminId();
         var item = await _db.Species.FindAsync(id);
         if (item is null) return NotFound();
 
@@ -107,6 +129,13 @@ public class SpeciesController : ControllerBase
         if (hasPets) return Conflict(new { message = "Cannot delete species that is used by pets." });
 
         _db.Species.Remove(item);
+        _auditLogger.Log(
+            adminUserId,
+            "DeleteSpecies",
+            "Species",
+            item.Id.ToString(),
+            $"Deleted species '{item.Name}' with code '{item.Code}'."
+        );
         await _db.SaveChangesAsync();
         return NoContent();
     }

@@ -5,6 +5,7 @@ using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -14,10 +15,12 @@ namespace PetCare.Api.Controllers;
 public class AdminUsersController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AdminAuditLogger _auditLogger;
 
-    public AdminUsersController(AppDbContext db)
+    public AdminUsersController(AppDbContext db, AdminAuditLogger auditLogger)
     {
         _db = db;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet]
@@ -69,6 +72,7 @@ public class AdminUsersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAdminUserRequest request)
     {
+        var actorId = User.GetAdminId();
         var email = request.Email.Trim().ToLowerInvariant();
         var username = request.Username.Trim();
 
@@ -112,6 +116,15 @@ public class AdminUsersController : ControllerBase
         };
 
         _db.AdminUsers.Add(admin);
+        await _db.SaveChangesAsync();
+
+        _auditLogger.Log(
+            actorId,
+            "CreateAdmin",
+            "AdminUser",
+            admin.Id.ToString(),
+            $"Created admin '{admin.Username}' with role '{admin.Role}'."
+        );
         await _db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = admin.Id }, new AdminUserDetailsResponse(
@@ -164,6 +177,9 @@ public class AdminUsersController : ControllerBase
             return Conflict(new { message = "Username already exists." });
         }
 
+        var previousRole = admin.Role;
+        var previousIsActive = admin.IsActive;
+
         admin.Username = username;
         admin.FirstName = request.FirstName.Trim();
         admin.LastName = request.LastName.Trim();
@@ -171,6 +187,13 @@ public class AdminUsersController : ControllerBase
         admin.Role = request.Role;
         admin.IsActive = request.IsActive;
         admin.UpdatedAt = DateTimeOffset.UtcNow;
+        _auditLogger.Log(
+            me,
+            "UpdateAdmin",
+            "AdminUser",
+            admin.Id.ToString(),
+            $"Updated admin '{admin.Username}' (role: {previousRole} -> {admin.Role}, active: {previousIsActive} -> {admin.IsActive})."
+        );
 
         await _db.SaveChangesAsync();
         return Ok(new AdminUserDetailsResponse(
@@ -204,6 +227,13 @@ public class AdminUsersController : ControllerBase
 
         admin.IsActive = false;
         admin.UpdatedAt = DateTimeOffset.UtcNow;
+        _auditLogger.Log(
+            me,
+            "DeactivateAdmin",
+            "AdminUser",
+            admin.Id.ToString(),
+            $"Deactivated admin '{admin.Username}'."
+        );
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "Admin deactivated." });
@@ -212,6 +242,7 @@ public class AdminUsersController : ControllerBase
     [HttpPost("{id:long}/activate")]
     public async Task<IActionResult> Activate(long id)
     {
+        var me = User.GetAdminId();
         var admin = await _db.AdminUsers.FindAsync(id);
         if (admin is null)
         {
@@ -220,6 +251,13 @@ public class AdminUsersController : ControllerBase
 
         admin.IsActive = true;
         admin.UpdatedAt = DateTimeOffset.UtcNow;
+        _auditLogger.Log(
+            me,
+            "ActivateAdmin",
+            "AdminUser",
+            admin.Id.ToString(),
+            $"Activated admin '{admin.Username}'."
+        );
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "Admin activated." });
