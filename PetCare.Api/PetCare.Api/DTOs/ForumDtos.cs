@@ -20,6 +20,8 @@ public record ForumPostLikeStatusResponse(
     bool IsLikedByCurrentUser
 );
 
+// `IsBookmarked` is kept as a legacy alias for client compatibility.
+// Newer clients should prefer `IsBookmarkedByCurrentUser`.
 public record ForumPostResponse(
     Guid Id,
     long UserId,

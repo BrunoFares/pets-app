@@ -291,24 +291,29 @@ public class ForumPostsController : ControllerBase
         return User.GetUserId();
     }
 
-    private static ForumPostResponse ToResponse(ForumPostModel post, long? currentUserId) => new(
-        post.Id,
-        post.UserId,
-        GetDisplayName(post.User),
-        post.User.AvatarUrl,
-        post.Content,
-        post.Attachments.Select(a => a.Url).ToList(),
-        post.CreatedAt,
-        post.UpdatedAt,
-        post.IsAReply,
-        post.ReplyingToPostId,
-        post.Replies.Count,
-        currentUserId.HasValue && post.Bookmarks.Any(b => b.UserId == currentUserId.Value),
-        currentUserId.HasValue && post.Bookmarks.Any(b => b.UserId == currentUserId.Value),
-        post.Bookmarks.Count,
-        post.Likes.Count,
-        currentUserId.HasValue && post.Likes.Any(l => l.UserId == currentUserId.Value)
-    );
+    private static ForumPostResponse ToResponse(ForumPostModel post, long? currentUserId)
+    {
+        var isBookmarkedByCurrentUser = currentUserId.HasValue && post.Bookmarks.Any(b => b.UserId == currentUserId.Value);
+
+        return new ForumPostResponse(
+            post.Id,
+            post.UserId,
+            GetDisplayName(post.User),
+            post.User.AvatarUrl,
+            post.Content,
+            post.Attachments.Select(a => a.Url).ToList(),
+            post.CreatedAt,
+            post.UpdatedAt,
+            post.IsAReply,
+            post.ReplyingToPostId,
+            post.Replies.Count,
+            isBookmarkedByCurrentUser,
+            isBookmarkedByCurrentUser,
+            post.Bookmarks.Count,
+            post.Likes.Count,
+            currentUserId.HasValue && post.Likes.Any(l => l.UserId == currentUserId.Value)
+        );
+    }
 
     private static bool TryValidateSearchRequest(
         string? sort,
@@ -457,7 +462,7 @@ public class ForumPostsController : ControllerBase
             .ToListAsync();
 
         var items = rows
-            .Select(r => new ForumPostResponse(
+            .Select(r => CreateForumPostResponse(
                 r.Id,
                 r.UserId,
                 GetDisplayName(r.UserName, r.FirstName, r.LastName),
@@ -469,7 +474,6 @@ public class ForumPostsController : ControllerBase
                 r.IsAReply,
                 r.ReplyingToPost,
                 r.RepliesCount,
-                r.IsBookmarkedByCurrentUser,
                 r.IsBookmarkedByCurrentUser,
                 r.BookmarksCount,
                 r.LikesCount,
@@ -491,6 +495,43 @@ public class ForumPostsController : ControllerBase
     {
         var fullName = $"{firstName} {lastName}".Trim();
         return string.IsNullOrWhiteSpace(fullName) ? username : fullName;
+    }
+
+    private static ForumPostResponse CreateForumPostResponse(
+        Guid id,
+        long userId,
+        string userName,
+        string? userImage,
+        string content,
+        IReadOnlyList<string> attachments,
+        DateTimeOffset createdAt,
+        DateTimeOffset? updatedAt,
+        bool isAReply,
+        Guid? replyingToPost,
+        int repliesCount,
+        bool isBookmarkedByCurrentUser,
+        int bookmarksCount,
+        int likesCount,
+        bool isLikedByCurrentUser)
+    {
+        return new ForumPostResponse(
+            id,
+            userId,
+            userName,
+            userImage,
+            content,
+            attachments,
+            createdAt,
+            updatedAt,
+            isAReply,
+            replyingToPost,
+            repliesCount,
+            isBookmarkedByCurrentUser,
+            isBookmarkedByCurrentUser,
+            bookmarksCount,
+            likesCount,
+            isLikedByCurrentUser
+        );
     }
 
     private sealed record ForumPostQueryItem(
