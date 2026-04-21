@@ -1,11 +1,33 @@
-Manual bootstrap/seed SQL scripts were removed from this folder because they had
-drifted from the current EF Core model and migrations.
+This folder contains PostgreSQL helper scripts for local setup and demo data.
+Run these from the `PetCare.Api/PetCare.Api` directory. The schema itself still
+comes from EF Core migrations, so use the scripts in this order:
 
-Use EF Core migrations as the source of truth for schema setup:
+1. Create the PostgreSQL login/database:
 
-```powershell
-dotnet ef database update
-```
+   ```powershell
+   psql -h 127.0.0.1 -U postgres -d postgres -f sql/create_petapp_database.sql
+   ```
 
-`grant_petapp_permissions.sql` remains because it is still useful when granting
-runtime permissions on an existing PostgreSQL database.
+2. Apply the EF Core schema:
+
+   ```powershell
+   dotnet ef database update
+   ```
+
+3. Load the dummy dataset:
+
+   ```powershell
+   psql -h 127.0.0.1 -U petapp -d petapp -f sql/seed_petapp_dummy_data.sql
+   ```
+
+Notes:
+
+- `create_petapp_database.sql` creates the `petapp` PostgreSQL role and the
+  `petapp` database.
+- `seed_petapp_dummy_data.sql` is intentionally destructive for app data. It
+  truncates the current PetCare tables, then reloads a full sample dataset.
+- Update your local connection string password to match the database role
+  password defined in `create_petapp_database.sql`.
+- `grant_petapp_permissions.sql` is still useful when you already have a
+  PostgreSQL database and only need to grant runtime access to the `petapp`
+  role.

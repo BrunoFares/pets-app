@@ -6,8 +6,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { AppUsersModel, ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest, resolveApiUrl } from "@/lib/api";
-import { useLocalSearchParams } from "expo-router";
+import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -17,6 +18,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
   useColorScheme,
   useWindowDimensions,
@@ -32,6 +34,7 @@ type ApiForumUserProfileResponse = {
 
 const mapApiForumUserToModel = (
   user: ApiForumUserProfileResponse,
+  avatarCacheKey?: string | number,
 ): AppUsersModel => ({
   Id: user.id,
   Name: user.name,
@@ -40,7 +43,7 @@ const mapApiForumUserToModel = (
   Email: "",
   PhoneNumber: "",
   PasswordHash: "",
-  Image: resolveApiUrl(user.image ?? null),
+  Image: resolveApiUrlWithCacheBust(user.image ?? null, avatarCacheKey),
   CreatedAt: "",
   LastLogin: null,
   Description: user.description ?? "",
@@ -48,10 +51,14 @@ const mapApiForumUserToModel = (
 });
 
 const ProfileScreen = () => {
-  const { id, payload } = useLocalSearchParams<{ id?: string; payload?: any }>();
+  const { id, payload } = useLocalSearchParams<{
+    id?: string;
+    payload?: any;
+  }>();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [user, setUser] = useState<AppUsersModel>();
+  const router = useRouter();
 
   const labels = ["Posts", "Posts & Replies"];
   const { width } = useWindowDimensions();
@@ -125,6 +132,7 @@ const ProfileScreen = () => {
     setPosts([]);
     setReplies([]);
     setIsLoading(true);
+    const avatarCacheKey = Date.now();
 
     const [forumUserResult, allPostsResult] = await Promise.allSettled([
       apiRequest<ApiForumUserProfileResponse>(
@@ -134,7 +142,7 @@ const ProfileScreen = () => {
     ]);
 
     if (forumUserResult.status === "fulfilled") {
-      setUser(mapApiForumUserToModel(forumUserResult.value));
+      setUser(mapApiForumUserToModel(forumUserResult.value, avatarCacheKey));
     } else {
       setUser(fallbackUser);
     }
@@ -144,7 +152,10 @@ const ProfileScreen = () => {
         Id: item.id,
         UserId: item.userId,
         UserName: item.userName,
-        UserImage: resolveApiUrl(item.userImage ?? null),
+        UserImage: resolveApiUrlWithCacheBust(
+          item.userImage ?? null,
+          avatarCacheKey,
+        ),
         Content: item.content,
         Attachments: item.attachments ?? [],
         CreatedAt: item.createdAt,
@@ -183,6 +194,15 @@ const ProfileScreen = () => {
     scrollRef.current?.scrollTo({ x: i * width, animated: true });
   };
 
+  const handleDeletedPost = useCallback((deletedPost: ForumPostsModel) => {
+    setPosts((currentPosts) =>
+      currentPosts?.filter((post) => post.Id !== deletedPost.Id),
+    );
+    setReplies((currentReplies) =>
+      currentReplies?.filter((post) => post.Id !== deletedPost.Id),
+    );
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <PageHeader title="" />
@@ -206,6 +226,25 @@ const ProfileScreen = () => {
             >
               {displayedUser.Name}
             </AdaptiveText>
+
+            <TouchableOpacity
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: colors.green,
+                borderRadius: 16,
+                width: 40,
+                height: 40,
+                marginLeft: "auto",
+              }}
+              onPress={() => router.push("/(tabs)/forum/create")}
+            >
+              <Ionicons
+                name="add"
+                size={24}
+                color={darkMode ? colors.white : colors.black}
+              />
+            </TouchableOpacity>
           </View>
 
           <AdaptiveText
@@ -274,7 +313,13 @@ const ProfileScreen = () => {
                   scrollEnabled={false}
                   keyExtractor={(item) => String(item.Id)}
                   renderItem={({ item }) => {
-                    return <ForumPost size="small" item={item} />;
+                    return (
+                      <ForumPost
+                        size="small"
+                        item={item}
+                        onDeleted={handleDeletedPost}
+                      />
+                    );
                   }}
                 />
               ) : (
@@ -292,7 +337,13 @@ const ProfileScreen = () => {
                   keyExtractor={(item) => String(item.Id)}
                   contentContainerStyle={{ width: 370 }}
                   renderItem={({ item }) => {
-                    return <ForumPost size="small" item={item} />;
+                    return (
+                      <ForumPost
+                        size="small"
+                        item={item}
+                        onDeleted={handleDeletedPost}
+                      />
+                    );
                   }}
                 />
               ) : (

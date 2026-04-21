@@ -218,6 +218,24 @@ export function resolveApiUrl(path?: string | null) {
   return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+export function resolveApiUrlWithCacheBust(
+  path?: string | null,
+  cacheKey?: string | number | null,
+) {
+  const resolved = resolveApiUrl(path);
+
+  if (!resolved) {
+    return "";
+  }
+
+  if (cacheKey === undefined || cacheKey === null || cacheKey === "") {
+    return resolved;
+  }
+
+  const separator = resolved.includes("?") ? "&" : "?";
+  return `${resolved}${separator}cb=${encodeURIComponent(String(cacheKey))}`;
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},

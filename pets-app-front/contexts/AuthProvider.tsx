@@ -83,6 +83,7 @@ function mapUserToModel(user: ApiUserResponse): AppUsersModel {
   return {
     Id: user.id,
     Name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+    Username: user.username,
     FirstName: user.firstName,
     LastName: user.lastName,
     Email: user.email,
