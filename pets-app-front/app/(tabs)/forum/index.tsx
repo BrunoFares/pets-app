@@ -6,7 +6,7 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest, resolveApiUrl } from "@/lib/api";
+import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -33,6 +33,7 @@ export default function ForumScreen() {
 
   const loadPosts = useCallback(async () => {
     setIsLoading(true);
+    const avatarCacheKey = Date.now();
 
     try {
       const forumPosts = await apiRequest<
@@ -59,7 +60,10 @@ export default function ForumScreen() {
           Id: post.id,
           UserId: post.userId,
           UserName: post.userName,
-          UserImage: resolveApiUrl(post.userImage ?? null),
+          UserImage: resolveApiUrlWithCacheBust(
+            post.userImage ?? null,
+            avatarCacheKey,
+          ),
           Content: post.content,
           Attachments: post.attachments ?? [],
           CreatedAt: post.createdAt,
@@ -87,6 +91,12 @@ export default function ForumScreen() {
 
   const { isRefreshing, onRefresh } = usePullToRefresh(loadPosts);
   const showLoadingOverlay = isLoading && !isRefreshing;
+
+  const handleDeletedPost = useCallback((deletedPost: ForumPostsModel) => {
+    setPosts((currentPosts) =>
+      currentPosts.filter((post) => post.Id !== deletedPost.Id),
+    );
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -149,7 +159,13 @@ export default function ForumScreen() {
             contentContainerStyle={{ alignSelf: "center", width: "100%" }}
             keyExtractor={(item) => String(item.Id)}
             renderItem={({ item }) => {
-              return <ForumPost size="small" item={item} />;
+              return (
+                <ForumPost
+                  size="small"
+                  item={item}
+                  onDeleted={handleDeletedPost}
+                />
+              );
             }}
             ListFooterComponent={<View style={{ height: 180 }} />}
           />

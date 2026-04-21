@@ -2,6 +2,7 @@ export interface AppUsersModel {
   // account info
   Id: string | number;
   Name: string;
+  Username?: string;
   FirstName: string;
   LastName: string;
   Email: string;

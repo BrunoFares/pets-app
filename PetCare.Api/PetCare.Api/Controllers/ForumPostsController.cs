@@ -14,11 +14,13 @@ namespace PetCare.Api.Controllers;
 public class ForumPostsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IWebHostEnvironment _env;
     private static readonly string[] AllowedSorts = ["newest", "oldest", "mostliked", "mostbookmarked", "mostrelevant"];
 
-    public ForumPostsController(AppDbContext db)
+    public ForumPostsController(AppDbContext db, IWebHostEnvironment env)
     {
         _db = db;
+        _env = env;
     }
 
     [HttpGet]
@@ -232,10 +234,46 @@ public class ForumPostsController : ControllerBase
         var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id && p.UserId == me);
         if (post is null) return NotFound();
 
-        _db.ForumPosts.Remove(post);
-        await _db.SaveChangesAsync();
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        await DeletePostThreadAsync(post.Id);
+        await tx.CommitAsync();
 
         return NoContent();
+    }
+
+    private async Task DeletePostThreadAsync(Guid rootPostId)
+    {
+        var levels = new List<List<Guid>>();
+        var seenIds = new HashSet<Guid>();
+        var currentLevel = new List<Guid> { rootPostId };
+
+        while (currentLevel.Count > 0)
+        {
+            levels.Add(currentLevel);
+            foreach (var postId in currentLevel)
+            {
+                seenIds.Add(postId);
+            }
+
+            var nextLevel = await _db.ForumPosts
+                .AsNoTracking()
+                .Where(p => p.ReplyingToPostId.HasValue && currentLevel.Contains(p.ReplyingToPostId.Value))
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            currentLevel = nextLevel
+                .Where(postId => !seenIds.Contains(postId))
+                .Distinct()
+                .ToList();
+        }
+
+        for (var index = levels.Count - 1; index >= 0; index--)
+        {
+            var levelIds = levels[index];
+            await _db.ForumPosts
+                .Where(p => levelIds.Contains(p.Id))
+                .ExecuteDeleteAsync();
+        }
     }
 
     [HttpPost("{id:guid}/like")]
@@ -291,7 +329,7 @@ public class ForumPostsController : ControllerBase
         return User.GetUserId();
     }
 
-    private static ForumPostResponse ToResponse(ForumPostModel post, long? currentUserId)
+    private ForumPostResponse ToResponse(ForumPostModel post, long? currentUserId)
     {
         var isBookmarkedByCurrentUser = currentUserId.HasValue && post.Bookmarks.Any(b => b.UserId == currentUserId.Value);
 
@@ -299,7 +337,7 @@ public class ForumPostsController : ControllerBase
             post.Id,
             post.UserId,
             GetDisplayName(post.User),
-            post.User.AvatarUrl,
+            ToVersionedStaticFileUrl(post.User.AvatarUrl),
             post.Content,
             post.Attachments.Select(a => a.Url).ToList(),
             post.CreatedAt,
@@ -497,7 +535,7 @@ public class ForumPostsController : ControllerBase
         return string.IsNullOrWhiteSpace(fullName) ? username : fullName;
     }
 
-    private static ForumPostResponse CreateForumPostResponse(
+    private ForumPostResponse CreateForumPostResponse(
         Guid id,
         long userId,
         string userName,
@@ -518,7 +556,7 @@ public class ForumPostsController : ControllerBase
             id,
             userId,
             userName,
-            userImage,
+            ToVersionedStaticFileUrl(userImage),
             content,
             attachments,
             createdAt,
@@ -553,4 +591,25 @@ public class ForumPostsController : ControllerBase
         int LikesCount,
         bool IsLikedByCurrentUser
     );
+
+    private string? ToVersionedStaticFileUrl(string? storedPath)
+    {
+        if (string.IsNullOrWhiteSpace(storedPath))
+        {
+            return storedPath;
+        }
+
+        var basePath = storedPath.Split('?', 2)[0];
+        var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var relativeFilePath = basePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.Combine(webRoot, relativeFilePath);
+
+        if (!System.IO.File.Exists(fullPath))
+        {
+            return basePath;
+        }
+
+        var version = System.IO.File.GetLastWriteTimeUtc(fullPath).Ticks;
+        return $"{basePath}?v={version}";
+    }
 }

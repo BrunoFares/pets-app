@@ -6,11 +6,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
+import { presentApiError } from "@/lib/api-feedback";
 import { uploadUserAvatar } from "@/lib/profile-api";
-import { useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -31,10 +31,9 @@ const EditProfile = () => {
   const { user, refreshProfile } = useAuth();
   const router = useRouter();
 
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [description, setDescription] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [selectedImageAsset, setSelectedImageAsset] =
@@ -42,10 +41,9 @@ const EditProfile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    setName(user?.Name ?? "");
+    setUsername(user?.Username ?? "");
     setFirstName(user?.FirstName ?? "");
     setLastName(user?.LastName ?? "");
-    setPhoneNumber(user?.PhoneNumber ?? "");
     setDescription(user?.Description ?? "");
     setProfileImage(user?.Image ?? null);
   }, [user]);
@@ -61,16 +59,11 @@ const EditProfile = () => {
   );
 
   const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
+    if (!username.trim() || !firstName.trim() || !lastName.trim()) {
       Alert.alert(
         "Missing information",
-        "Please enter your first and last name.",
+        "Please enter your username, first name, and last name.",
       );
-      return;
-    }
-
-    if (!phoneNumber.trim()) {
-      Alert.alert("Missing information", "Please enter your phone number.");
       return;
     }
 
@@ -80,10 +73,9 @@ const EditProfile = () => {
       await apiRequest("/api/Users/edit-profile", {
         method: "PUT",
         body: JSON.stringify({
-          name: name.trim() || `${firstName.trim()} ${lastName.trim()}`.trim(),
+          username: username.trim(),
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          phoneNumber: phoneNumber.trim(),
           description: description.trim(),
         }),
       });
@@ -137,39 +129,32 @@ const EditProfile = () => {
             }}
           >
             <AdaptiveText style={{ width: "100%", marginBottom: 5 }}>
-              Display Name
+              Username
             </AdaptiveText>
             <CustomInput
-              value={name}
-              onChangeText={setName}
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
               style={{ width: "100%" }}
             />
           </View>
         </View>
 
-        <AdaptiveText style={{ width: "84%" }}>First Name</AdaptiveText>
+        <AdaptiveText style={styles.inputText}>First Name</AdaptiveText>
         <CustomInput
           value={firstName}
           onChangeText={setFirstName}
           style={{ width: "84%" }}
         />
 
-        <AdaptiveText style={{ width: "84%" }}>Last Name</AdaptiveText>
+        <AdaptiveText style={styles.inputText}>Last Name</AdaptiveText>
         <CustomInput
           value={lastName}
           onChangeText={setLastName}
           style={{ width: "84%" }}
         />
 
-        <AdaptiveText style={{ width: "84%" }}>Phone Number</AdaptiveText>
-        <CustomInput
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          keyboardType="phone-pad"
-          style={{ width: "84%" }}
-        />
-
-        <AdaptiveText style={{ width: "84%" }}>Description</AdaptiveText>
+        <AdaptiveText style={styles.inputText}>Description</AdaptiveText>
         <CustomInput
           value={description}
           onChangeText={setDescription}
@@ -223,6 +208,10 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-Bold",
       fontSize: 18,
       textAlign: "center",
+    },
+    inputText: {
+      width: "84%",
+      marginBottom: -7,
     },
   });
 };

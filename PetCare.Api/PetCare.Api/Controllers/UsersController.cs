@@ -36,7 +36,7 @@ public class UsersController : ControllerBase
             user.FirstName,
             user.LastName,
             user.Email,
-            user.AvatarUrl,
+            ToVersionedStaticFileUrl(user.AvatarUrl),
             user.Description,
             user.CreatedAt,
             user.LastLogin
@@ -56,7 +56,7 @@ public class UsersController : ControllerBase
             : Ok(new ForumUserProfileResponse(
                 user.Id,
                 GetDisplayName(user),
-                user.AvatarUrl,
+                ToVersionedStaticFileUrl(user.AvatarUrl),
                 user.Description
             ));
     }
@@ -119,7 +119,11 @@ public class UsersController : ControllerBase
         user.AvatarUrl = $"/uploads/users/{fileName}";
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Avatar updated", avatarUrl = user.AvatarUrl });
+        return Ok(new
+        {
+            message = "Avatar updated",
+            avatarUrl = ToVersionedStaticFileUrl(user.AvatarUrl)
+        });
     }
 
     [HttpGet("bookmarks")]
@@ -177,7 +181,7 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    private static ForumPostResponse ToForumPostResponse(ForumPostModel post, long currentUserId)
+    private ForumPostResponse ToForumPostResponse(ForumPostModel post, long currentUserId)
     {
         const bool isBookmarkedByCurrentUser = true;
 
@@ -185,7 +189,7 @@ public class UsersController : ControllerBase
             post.Id,
             post.UserId,
             GetDisplayName(post.User),
-            post.User.AvatarUrl,
+            ToVersionedStaticFileUrl(post.User.AvatarUrl),
             post.Content,
             post.Attachments.Select(a => a.Url).ToList(),
             post.CreatedAt,
@@ -205,5 +209,26 @@ public class UsersController : ControllerBase
     {
         var fullName = $"{user.FirstName} {user.LastName}".Trim();
         return string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName;
+    }
+
+    private string? ToVersionedStaticFileUrl(string? storedPath)
+    {
+        if (string.IsNullOrWhiteSpace(storedPath))
+        {
+            return storedPath;
+        }
+
+        var basePath = storedPath.Split('?', 2)[0];
+        var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var relativeFilePath = basePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.Combine(webRoot, relativeFilePath);
+
+        if (!System.IO.File.Exists(fullPath))
+        {
+            return basePath;
+        }
+
+        var version = System.IO.File.GetLastWriteTimeUtc(fullPath).Ticks;
+        return $"{basePath}?v={version}";
     }
 }
