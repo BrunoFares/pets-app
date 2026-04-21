@@ -27,9 +27,7 @@ public class AuthController : ControllerBase
 
     public record RegisterRequest(
         [Required] string Username,
-        string? Name,
         [Required, EmailAddress] string Email,
-        [Required] string PhoneNumber,
         [Required] string FirstName,
         [Required] string LastName,
         [Required, StringLength(64, MinimumLength = 8)] string Password
@@ -68,9 +66,7 @@ public class AuthController : ControllerBase
         var user = new AppUser
         {
             Username = username,
-            Name = string.IsNullOrWhiteSpace(req.Name) ? null : req.Name.Trim(),
             Email = email,
-            PhoneNumber = req.PhoneNumber.Trim(),
             FirstName = req.FirstName.Trim(),
             LastName = req.LastName.Trim(),
             PasswordHash = PasswordHasher.Hash(req.Password)
@@ -102,10 +98,13 @@ public class AuthController : ControllerBase
         if (!user.EmailVerified)
             return Unauthorized(new { message = PendingVerificationMessage });
 
+        if (user.IsBanned)
+            return Unauthorized(new { message = "Your account is banned." });
+
         user.LastLogin = DateTimeOffset.UtcNow;
         await _context.SaveChangesAsync();
 
-        var token = JwtIssuer.Create(
+        var token = JwtIssuer.CreateUserToken(
             user.Id.ToString(),
             user.Username,
             user.Email,
@@ -170,7 +169,7 @@ public class AuthController : ControllerBase
         return Ok(new { message = "If the account exists and is not verified, a verification email has been sent." });
     }
 
-    [Authorize]
+    [Authorize(Policy = AuthConstants.Policies.UserOnly)]
     [HttpPost("logout")]
     public IActionResult Logout() => Ok(new { message = "Logged out" });
 

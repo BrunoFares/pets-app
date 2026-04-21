@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -7,6 +8,7 @@ using Microsoft.OpenApi.Models;
 using Npgsql;
 using PetCare.Api.Data;
 using PetCare.Api.Model;
+using PetCare.Api.Security;
 using PetCare.Api.Services.Email;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -97,6 +99,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthConstants.Policies.UserOnly, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(new UserAccessRequirement());
+    });
+
+    options.AddPolicy(AuthConstants.Policies.AdminOnly, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(new AdminAccessRequirement(AdminRole.Admin, AdminRole.Manager));
+    });
+
+    options.AddPolicy(AuthConstants.Policies.ManagerOnly, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(new AdminAccessRequirement(AdminRole.Manager));
+    });
+});
+
+builder.Services.AddScoped<IAuthorizationHandler, UserAccessHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, AdminAccessHandler>();
+
 var app = builder.Build();
 var adminUiPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "..", "pets-app-admin"));
 var hasAdminUi = Directory.Exists(adminUiPath);
@@ -132,4 +158,41 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var bootstrapEmail = cfg["AdminBootstrap:Email"]?.Trim();
+    var bootstrapPassword = cfg["AdminBootstrap:Password"];
+    if (!string.IsNullOrWhiteSpace(bootstrapEmail) && !string.IsNullOrWhiteSpace(bootstrapPassword))
+    {
+        var normalizedEmail = bootstrapEmail.ToLowerInvariant();
+        var existingManager = await db.AdminUsers.FirstOrDefaultAsync(a => a.Email == normalizedEmail);
+        if (existingManager is null)
+        {
+            var username = cfg["AdminBootstrap:Username"]?.Trim();
+            var firstName = cfg["AdminBootstrap:FirstName"]?.Trim();
+            var lastName = cfg["AdminBootstrap:LastName"]?.Trim();
+            var now = DateTimeOffset.UtcNow;
+
+            db.AdminUsers.Add(new AdminUser
+            {
+                Username = string.IsNullOrWhiteSpace(username) ? "manager" : username,
+                FirstName = string.IsNullOrWhiteSpace(firstName) ? "System" : firstName,
+                LastName = string.IsNullOrWhiteSpace(lastName) ? "Manager" : lastName,
+                Email = normalizedEmail,
+                PasswordHash = PasswordHasher.Hash(bootstrapPassword),
+                Role = AdminRole.Manager,
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+
+            await db.SaveChangesAsync();
+        }
+    }
+}
+
 app.Run();

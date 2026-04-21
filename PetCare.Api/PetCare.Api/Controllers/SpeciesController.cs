@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
+using PetCare.Api.Security;
 
 namespace PetCare.Api.Controllers;
 
@@ -52,7 +53,7 @@ public class SpeciesController : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
-    [Authorize]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSpeciesRequest request)
     {
@@ -72,7 +73,7 @@ public class SpeciesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
     }
 
-    [Authorize]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateSpeciesRequest request)
     {
@@ -95,7 +96,7 @@ public class SpeciesController : ControllerBase
         return Ok(item);
     }
 
-    [Authorize]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

@@ -9,6 +9,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> opts) : base(opts) { }
 
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<SpeciesModel> Species => Set<SpeciesModel>();
     public DbSet<BreedModel> Breeds => Set<BreedModel>();
     public DbSet<PetModel> Pets => Set<PetModel>();
@@ -35,18 +36,39 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.Username).HasColumnName("username").HasMaxLength(100).IsRequired();
-            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
             e.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
-            e.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(50).IsRequired();
             e.Property(x => x.PasswordHash).HasColumnName("password_hash").IsRequired();
             e.Property(x => x.EmailVerified).HasColumnName("email_verified").IsRequired().HasDefaultValue(false);
             e.Property(x => x.EmailVerificationTokenHash).HasColumnName("email_verification_token_hash");
             e.Property(x => x.EmailVerificationTokenExpiresAt).HasColumnName("email_verification_token_expires_at");
             e.Property(x => x.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(1024);
             e.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000);
+            e.Property(x => x.IsBanned).HasColumnName("is_banned").IsRequired().HasDefaultValue(false);
+            e.Property(x => x.BannedAt).HasColumnName("banned_at");
+            e.Property(x => x.BanReason).HasColumnName("ban_reason").HasMaxLength(500);
             e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            e.Property(x => x.LastLogin).HasColumnName("last_login");
+
+            e.HasIndex(x => x.Email).IsUnique();
+            e.HasIndex(x => x.Username).IsUnique();
+        });
+
+        b.Entity<AdminUser>(e =>
+        {
+            e.ToTable("admin_users", "public");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Username).HasColumnName("username").HasMaxLength(100).IsRequired();
+            e.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
+            e.Property(x => x.PasswordHash).HasColumnName("password_hash").IsRequired();
+            e.Property(x => x.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
             e.Property(x => x.LastLogin).HasColumnName("last_login");
 
             e.HasIndex(x => x.Email).IsUnique();
