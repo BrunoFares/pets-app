@@ -33,6 +33,16 @@ public record ForumPostResponse(
     Guid? ReplyingToPost,
     int RepliesCount,
     bool IsBookmarked,
+    bool IsBookmarkedByCurrentUser,
+    int BookmarksCount,
     int LikesCount,
     bool IsLikedByCurrentUser
+);
+
+public record ForumPostListResponse(
+    IReadOnlyList<ForumPostResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages
 );

@@ -138,6 +138,8 @@ public class UsersController : ControllerBase
             .Include(b => b.ForumPost)
                 .ThenInclude(p => p.Replies)
             .Include(b => b.ForumPost)
+                .ThenInclude(p => p.Bookmarks)
+            .Include(b => b.ForumPost)
                 .ThenInclude(p => p.Likes)
             .ToListAsync();
 
@@ -190,6 +192,8 @@ public class UsersController : ControllerBase
         post.ReplyingToPostId,
         post.Replies.Count,
         true,
+        true,
+        post.Bookmarks.Count,
         post.Likes.Count,
         post.Likes.Any(l => l.UserId == currentUserId)
     );
