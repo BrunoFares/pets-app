@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -11,16 +14,26 @@ using PetCare.Api.Model;
 using PetCare.Api.Security;
 using PetCare.Api.Services;
 using PetCare.Api.Services.Email;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 const string AdminUiCorsPolicy = "AdminUiCors";
 const string AdminUiRoutePrefix = "/admin";
+const string AuthRateLimitPolicy = "auth";
+const string UploadRateLimitPolicy = "uploads";
 
 var builder = WebApplication.CreateBuilder(args);
+var usingDevelopmentJwtSecretFallback = false;
 
 // Build a mapped Npgsql data source so C# enum <-> PG enum works
 var cs = builder.Configuration.GetConnectionString("Postgres");
+if (string.IsNullOrWhiteSpace(cs))
+{
+    throw new InvalidOperationException("Missing ConnectionStrings:Postgres configuration.");
+}
+
 var dsb = new NpgsqlDataSourceBuilder(cs);
 dsb.MapEnum<PetSex>(pgName: "pet_sex"); // map enum type name in PostgreSQL
 var dataSource = dsb.Build();
@@ -31,6 +44,54 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 builder.Services.AddScoped<AdminAuditLogger>();
 builder.Services.Configure<EmailSenderOptions>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddProblemDetails();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var httpContext = context.HttpContext;
+        httpContext.Response.ContentType = "application/problem+json";
+
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Too many requests.",
+            Detail = "Please wait a moment before retrying this request.",
+            Instance = httpContext.Request.Path
+        };
+        problem.Extensions["traceId"] = httpContext.TraceIdentifier;
+
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            problem.Extensions["retryAfterSeconds"] = (int)Math.Ceiling(retryAfter.TotalSeconds);
+        }
+
+        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken: cancellationToken);
+    };
+
+    options.AddPolicy(AuthRateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetRateLimitPartitionKey(httpContext, "auth"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
+    options.AddPolicy(UploadRateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetRateLimitPartitionKey(httpContext, "upload"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
 
 // Controllers + Swagger (+ JSON enum converter + JWT scheme)
 builder.Services.AddControllers()
@@ -66,6 +127,11 @@ builder.Services.AddCors(options =>
         policy
             .SetIsOriginAllowed(origin =>
             {
+                if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(origin))
+                {
+                    return true;
+                }
+
                 if (string.Equals(origin, "null", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
@@ -83,7 +149,32 @@ builder.Services.AddCors(options =>
     });
 });
 
-var secret = builder.Configuration["Jwt:Secret"] ?? "dev_secret_change_me_very_long";
+var secret = builder.Configuration["Jwt:Secret"];
+if (string.IsNullOrWhiteSpace(secret))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        secret = "dev_secret_change_me_very_long";
+        usingDevelopmentJwtSecretFallback = true;
+    }
+    else
+    {
+        throw new InvalidOperationException("Missing Jwt:Secret configuration.");
+    }
+}
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+if (string.IsNullOrWhiteSpace(jwtIssuer))
+{
+    throw new InvalidOperationException("Missing Jwt:Issuer configuration.");
+}
+
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+if (string.IsNullOrWhiteSpace(jwtAudience))
+{
+    throw new InvalidOperationException("Missing Jwt:Audience configuration.");
+}
+
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -94,8 +185,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = key,
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
@@ -128,12 +219,67 @@ builder.Services.AddScoped<IAuthorizationHandler, AdminAccessHandler>();
 var app = builder.Build();
 var adminUiPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "..", "pets-app-admin"));
 var hasAdminUi = Directory.Exists(adminUiPath);
+var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+
+if (usingDevelopmentJwtSecretFallback)
+{
+    startupLogger.LogWarning("Jwt:Secret is not configured. Using the development fallback secret.");
+}
+
+if (!app.Environment.IsDevelopment() && IsDevelopmentJwtSecret(secret))
+{
+    startupLogger.LogWarning("A development-style JWT secret appears to be configured. Replace it before production deployment.");
+}
+
+if (app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(app.Configuration["Email:SmtpHost"]))
+{
+    startupLogger.LogInformation("Email:SmtpHost is empty in Development. Verification emails will be logged instead of sent.");
+}
+
+if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(app.Configuration["Email:FrontendVerificationUrlBase"]))
+{
+    startupLogger.LogWarning("Email:FrontendVerificationUrlBase is missing. Registration email verification links will fail.");
+}
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        var feature = context.Features.Get<IExceptionHandlerPathFeature>();
+        var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("GlobalExceptionHandler");
+        var env = context.RequestServices.GetRequiredService<IHostEnvironment>();
+        var exception = feature?.Error;
+        var statusCode = exception switch
+        {
+            BadHttpRequestException => StatusCodes.Status400BadRequest,
+            UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+            _ => StatusCodes.Status500InternalServerError
+        };
+
+        logger.LogError(exception, "Unhandled exception while processing {Method} {Path}.", context.Request.Method, feature?.Path ?? context.Request.Path);
+
+        var problem = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = statusCode == StatusCodes.Status500InternalServerError
+                ? "An unexpected error occurred."
+                : "The request could not be processed.",
+            Detail = env.IsDevelopment() ? exception?.Message : null,
+            Instance = context.Request.Path
+        };
+        problem.Extensions["traceId"] = context.TraceIdentifier;
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(problem);
+    });
+});
 
 app.UseCors(AdminUiCorsPolicy);
 app.UseHttpsRedirection();
@@ -158,6 +304,7 @@ if (hasAdminUi)
 
 app.UseStaticFiles();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
@@ -193,8 +340,26 @@ using (var scope = app.Services.CreateScope())
             });
 
             await db.SaveChangesAsync();
+            startupLogger.LogInformation("Bootstrapped initial manager admin account for {Email}.", normalizedEmail);
         }
     }
 }
 
 app.Run();
+
+static string GetRateLimitPartitionKey(HttpContext httpContext, string prefix)
+{
+    var actorId =
+        httpContext.User.FindFirstValue(AuthConstants.Claims.UserId) ??
+        httpContext.User.FindFirstValue(AuthConstants.Claims.AdminId);
+
+    var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    return $"{prefix}:{actorId ?? remoteIp}";
+}
+
+static bool IsDevelopmentJwtSecret(string jwtSecret)
+{
+    return string.Equals(jwtSecret, "dev_secret_change_me_very_long", StringComparison.Ordinal)
+        || jwtSecret.Contains("local", StringComparison.OrdinalIgnoreCase)
+        || jwtSecret.Contains("dev", StringComparison.OrdinalIgnoreCase);
+}

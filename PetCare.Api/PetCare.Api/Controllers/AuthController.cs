@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.Model;
@@ -38,9 +39,19 @@ public class AuthController : ControllerBase
     public record AuthResponse(long UserId, string AccessToken);
     public record RegistrationResponse(long UserId, string Message);
 
+    [EnableRateLimiting("auth")]
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
+        if (string.IsNullOrWhiteSpace(req.Username) ||
+            string.IsNullOrWhiteSpace(req.Email) ||
+            string.IsNullOrWhiteSpace(req.FirstName) ||
+            string.IsNullOrWhiteSpace(req.LastName) ||
+            string.IsNullOrWhiteSpace(req.Password))
+        {
+            return BadRequest(new { message = "Username, first name, last name, email, and password are required." });
+        }
+
         var email = req.Email.Trim().ToLowerInvariant();
         var username = req.Username.Trim();
 
@@ -56,6 +67,8 @@ public class AuthController : ControllerBase
         ));
 
         if (!ok) return BadRequest(new { message = "Invalid password.", errors });
+        if (string.IsNullOrWhiteSpace(username))
+            return BadRequest(new { message = "Username is required." });
 
         if (await _context.Users.AnyAsync(u => u.Email == email))
             return Conflict(new { message = "Email already exists." });
@@ -85,9 +98,13 @@ public class AuthController : ControllerBase
         ));
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+            return BadRequest(new { message = "Email and password are required." });
+
         var email = req.Email.Trim().ToLowerInvariant();
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user is null) return Unauthorized();
@@ -146,9 +163,13 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Email verified successfully. You can now log in." });
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("resend-verification")]
     public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest req)
     {
+        if (string.IsNullOrWhiteSpace(req.Email))
+            return BadRequest(new { message = "Email is required." });
+
         var email = req.Email.Trim().ToLowerInvariant();
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user is null)
