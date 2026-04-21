@@ -236,11 +236,6 @@ if (app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(app.Configurati
     startupLogger.LogInformation("Email:SmtpHost is empty in Development. Verification emails will be logged instead of sent.");
 }
 
-if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(app.Configuration["Email:FrontendVerificationUrlBase"]))
-{
-    startupLogger.LogWarning("Email:FrontendVerificationUrlBase is missing. Registration email verification links will fail.");
-}
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
