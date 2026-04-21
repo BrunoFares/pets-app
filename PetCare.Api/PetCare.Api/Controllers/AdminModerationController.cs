@@ -45,6 +45,110 @@ public class AdminModerationController : ControllerBase
         return Ok(users);
     }
 
+    [HttpGet("users/search")]
+    public async Task<IActionResult> SearchUsers(
+        [FromQuery] string? username,
+        [FromQuery] string? email,
+        [FromQuery] string? firstName,
+        [FromQuery] string? lastName,
+        [FromQuery] bool? isBanned,
+        [FromQuery] string? sortBy = "username",
+        [FromQuery] string? sortDirection = "desc",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1)
+        {
+            return BadRequest(new { message = "page must be greater than or equal to 1." });
+        }
+
+        if (pageSize < 1 || pageSize > 200)
+        {
+            return BadRequest(new { message = "pageSize must be between 1 and 200." });
+        }
+
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "createdAt" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDirection = string.IsNullOrWhiteSpace(sortDirection) ? "desc" : sortDirection.Trim().ToLowerInvariant();
+
+        if (normalizedSortDirection is not ("asc" or "desc"))
+        {
+            return BadRequest(new { message = "sortDirection must be 'asc' or 'desc'." });
+        }
+
+        if (normalizedSortBy is not ("createdat" or "username" or "lastname" or "email" or "lastlogin"))
+        {
+            return BadRequest(new { message = "sortBy must be one of: createdAt, username, lastName, email, lastLogin." });
+        }
+
+        var query = _db.Users
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            var term = $"%{username.Trim()}%";
+            query = query.Where(u => EF.Functions.ILike(u.Username, term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var term = $"%{email.Trim()}%";
+            query = query.Where(u => EF.Functions.ILike(u.Email, term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(firstName))
+        {
+            var term = $"%{firstName.Trim()}%";
+            query = query.Where(u => EF.Functions.ILike(u.FirstName, term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(lastName))
+        {
+            var term = $"%{lastName.Trim()}%";
+            query = query.Where(u => EF.Functions.ILike(u.LastName, term));
+        }
+
+        if (isBanned.HasValue)
+        {
+            query = query.Where(u => u.IsBanned == isBanned.Value);
+        }
+
+        query = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("username", "asc") => query.OrderBy(u => u.Username).ThenBy(u => u.Id),
+            ("username", "desc") => query.OrderByDescending(u => u.Username).ThenByDescending(u => u.Id),
+            ("lastname", "asc") => query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Id),
+            ("lastname", "desc") => query.OrderByDescending(u => u.LastName).ThenByDescending(u => u.FirstName).ThenByDescending(u => u.Id),
+            ("email", "asc") => query.OrderBy(u => u.Email).ThenBy(u => u.Id),
+            ("email", "desc") => query.OrderByDescending(u => u.Email).ThenByDescending(u => u.Id),
+            ("lastlogin", "asc") => query.OrderBy(u => u.LastLogin).ThenBy(u => u.Id),
+            ("lastlogin", "desc") => query.OrderByDescending(u => u.LastLogin).ThenByDescending(u => u.Id),
+            ("createdat", "asc") => query.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id),
+            _ => query.OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.Id)
+        };
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(u => new ModeratedUserListItemResponse(
+                u.Id,
+                u.Username,
+                u.FirstName,
+                u.LastName,
+                u.Email,
+                u.EmailVerified,
+                u.IsBanned,
+                u.BannedAt,
+                u.CreatedAt,
+                u.LastLogin
+            ))
+            .ToListAsync();
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new AdminUserSearchListResponse(items, page, pageSize, totalCount, totalPages));
+    }
+
     [HttpGet("users/{id:long}")]
     public async Task<IActionResult> GetUserById(long id)
     {
@@ -142,5 +246,110 @@ public class AdminModerationController : ControllerBase
         );
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpGet("forum-posts")]
+    public async Task<IActionResult> SearchForumPosts(
+        [FromQuery] string? content,
+        [FromQuery] string? authorUsername,
+        [FromQuery] DateTimeOffset? from,
+        [FromQuery] DateTimeOffset? to,
+        [FromQuery] bool? isReply,
+        [FromQuery] string? sortBy = "createdAt",
+        [FromQuery] string? sortDirection = "desc",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1)
+        {
+            return BadRequest(new { message = "page must be greater than or equal to 1." });
+        }
+
+        if (pageSize < 1 || pageSize > 200)
+        {
+            return BadRequest(new { message = "pageSize must be between 1 and 200." });
+        }
+
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "createdAt" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDirection = string.IsNullOrWhiteSpace(sortDirection) ? "desc" : sortDirection.Trim().ToLowerInvariant();
+
+        if (normalizedSortDirection is not ("asc" or "desc"))
+        {
+            return BadRequest(new { message = "sortDirection must be 'asc' or 'desc'." });
+        }
+
+        if (normalizedSortBy is not ("createdat" or "updatedat" or "authorusername"))
+        {
+            return BadRequest(new { message = "sortBy must be one of: createdAt, updatedAt, authorUsername." });
+        }
+
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+        {
+            return BadRequest(new { message = "from must be earlier than or equal to to." });
+        }
+
+        var query = _db.ForumPosts
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(content))
+        {
+            var term = $"%{content.Trim()}%";
+            query = query.Where(p => EF.Functions.ILike(p.Content, term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(authorUsername))
+        {
+            var term = $"%{authorUsername.Trim()}%";
+            query = query.Where(p => EF.Functions.ILike(p.User.Username, term));
+        }
+
+        if (from.HasValue)
+        {
+            query = query.Where(p => p.CreatedAt >= from.Value);
+        }
+
+        if (to.HasValue)
+        {
+            query = query.Where(p => p.CreatedAt <= to.Value);
+        }
+
+        if (isReply.HasValue)
+        {
+            query = query.Where(p => p.IsAReply == isReply.Value);
+        }
+
+        query = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("authorusername", "asc") => query.OrderBy(p => p.User.Username).ThenBy(p => p.Id),
+            ("authorusername", "desc") => query.OrderByDescending(p => p.User.Username).ThenByDescending(p => p.Id),
+            ("updatedat", "asc") => query.OrderBy(p => p.UpdatedAt).ThenBy(p => p.Id),
+            ("updatedat", "desc") => query.OrderByDescending(p => p.UpdatedAt).ThenByDescending(p => p.Id),
+            ("createdat", "asc") => query.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id),
+            _ => query.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id)
+        };
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new AdminForumPostListItemResponse(
+                p.Id,
+                p.UserId,
+                p.User.Username,
+                p.User.AvatarUrl,
+                p.Content,
+                p.Attachments.OrderBy(a => a.Id).Select(a => a.Url).ToList(),
+                p.CreatedAt,
+                p.UpdatedAt,
+                p.IsAReply,
+                p.ReplyingToPostId,
+                p.Replies.Count,
+                p.Likes.Count
+            ))
+            .ToListAsync();
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new AdminForumPostSearchListResponse(items, page, pageSize, totalCount, totalPages));
     }
 }
