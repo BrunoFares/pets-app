@@ -180,62 +180,114 @@ const IllnessesScreen = () => {
 
   const isIllnessOngoing = (item: IllnessRecordModel) => !item.curedDate;
 
-  const renderMedicationRecordModel = (med: MedicationRecordModel) => {
+  const getMedicationStatusMeta = (med: MedicationRecordModel) => {
     const isDueToday =
-      med.isActive && isMedicationDay(med.startDate, med.frequencyInDays, new Date());
-    const medicationStatusLabel = isDueToday
-      ? "Due today"
-      : med.isActive
-        ? "Active"
-        : "Inactive";
+      med.isActive &&
+      isMedicationDay(med.startDate, med.frequencyInDays, new Date());
+    const primaryReminderTime = med.times
+      .map((time) => time.trim())
+      .find(Boolean);
+
+    if (isDueToday) {
+      return {
+        label: "Due Today",
+        supportingLabel: primaryReminderTime
+          ? `Take it today at ${primaryReminderTime}`
+          : "Scheduled for today",
+        tone: "due" as const,
+      };
+    }
+
+    if (med.isActive) {
+      return {
+        label: "Active",
+        supportingLabel: med.reminderEnabled ? "Reminders on" : "Reminders off",
+        tone: "active" as const,
+      };
+    }
+
+    return {
+      label: "Inactive",
+      supportingLabel: med.endDate
+        ? `Last scheduled ${formatDate(med.endDate)}`
+        : "Not currently being taken",
+      tone: "inactive" as const,
+    };
+  };
+
+  const renderMedicationRecordModel = (med: MedicationRecordModel) => {
+    const medicationStatus = getMedicationStatusMeta(med);
+    const medicationStatusBadgeStyle =
+      medicationStatus.tone === "due"
+        ? styles.medicationStatusBadgeDue
+        : medicationStatus.tone === "active"
+          ? styles.medicationStatusBadgeActive
+          : styles.medicationStatusBadgeInactive;
+    const medicationStatusTextStyle =
+      medicationStatus.tone === "due"
+        ? styles.medicationStatusTextDue
+        : medicationStatus.tone === "active"
+          ? styles.medicationStatusTextActive
+          : styles.medicationStatusTextInactive;
 
     return (
       <View key={med.Id} style={styles.medicationCard}>
-        <View style={styles.medicationHeader}>
-          <AdaptiveText style={styles.medicationName}>
-            {med.medicationName}
-          </AdaptiveText>
+        <View style={styles.medicationTopRow}>
+          <View style={styles.medicationHeadingBlock}>
+            <AdaptiveText style={styles.medicationName}>
+              {med.medicationName}
+            </AdaptiveText>
+
+            <AdaptiveText style={styles.medicationSupportText}>
+              {medicationStatus.supportingLabel}
+            </AdaptiveText>
+          </View>
 
           <View
-            style={[
-              styles.medicationStatusBadge,
-              isDueToday
-                ? styles.medicationStatusDueToday
-                : med.isActive
-                  ? styles.medicationStatusActive
-                  : styles.medicationStatusInactive,
-            ]}
+            style={[styles.medicationStatusBadge, medicationStatusBadgeStyle]}
           >
-            <AdaptiveText style={styles.medicationStatusText}>
-              {medicationStatusLabel}
+            <AdaptiveText
+              style={[styles.medicationStatusText, medicationStatusTextStyle]}
+            >
+              {medicationStatus.label}
             </AdaptiveText>
           </View>
         </View>
 
-        <View style={styles.medicationDetails}>
-          <View style={styles.medicationDetailRow}>
-            <AdaptiveText style={styles.medicationDetailLabel}>Dosage</AdaptiveText>
-            <AdaptiveText style={styles.medicationDetailValue}>
-              {med.dosage?.trim() || "Not recorded"}
+        <View style={styles.medicationChipRow}>
+          <View style={styles.medicationChip}>
+            <AdaptiveText style={styles.medicationChipText}>
+              Dose · {med.dosage?.trim() || "Not recorded"}
             </AdaptiveText>
           </View>
 
-          <View style={styles.medicationDetailRow}>
-            <AdaptiveText style={styles.medicationDetailLabel}>Schedule</AdaptiveText>
-            <AdaptiveText style={styles.medicationDetailValue}>
-              {formatMedicationFrequency(med.frequencyInDays)}
+          <View style={styles.medicationChip}>
+            <AdaptiveText style={styles.medicationChipText}>
+              Schedule · {formatMedicationFrequency(med.frequencyInDays)}
             </AdaptiveText>
           </View>
 
+          <View style={styles.medicationChip}>
+            <AdaptiveText style={styles.medicationChipText}>
+              Reminders · {med.reminderEnabled ? "On" : "Off"}
+            </AdaptiveText>
+          </View>
+        </View>
+
+        <View style={styles.medicationDetailsStack}>
           <View style={styles.medicationDetailRow}>
-            <AdaptiveText style={styles.medicationDetailLabel}>Times</AdaptiveText>
+            <AdaptiveText style={styles.medicationDetailLabel}>
+              Reminder times
+            </AdaptiveText>
             <AdaptiveText style={styles.medicationDetailValue}>
               {formatMedicationTimes(med.times)}
             </AdaptiveText>
           </View>
 
           <View style={styles.medicationDetailRow}>
-            <AdaptiveText style={styles.medicationDetailLabel}>Course</AdaptiveText>
+            <AdaptiveText style={styles.medicationDetailLabel}>
+              Course
+            </AdaptiveText>
             <AdaptiveText style={styles.medicationDetailValue}>
               {getMedicationCourseLabel(med)}
             </AdaptiveText>
@@ -243,10 +295,11 @@ const IllnessesScreen = () => {
 
           <View style={styles.medicationInstructionBlock}>
             <AdaptiveText style={styles.medicationDetailLabel}>
-              How to take it
+              Instructions
             </AdaptiveText>
             <AdaptiveText style={styles.medicationInstructionValue}>
-              {med.instructions?.trim() || "No special instructions recorded yet."}
+              {med.instructions?.trim() ||
+                "No special instructions recorded yet."}
             </AdaptiveText>
           </View>
         </View>
@@ -280,6 +333,11 @@ const IllnessesScreen = () => {
           const isExpanded = expandedIds.includes(item.Id);
           const illnessMeds = medications?.[item.Id] ?? [];
           const isOngoing = isIllnessOngoing(item);
+          const dueTodayCount = illnessMeds.filter(
+            (med) =>
+              med.isActive &&
+              isMedicationDay(med.startDate, med.frequencyInDays, new Date()),
+          ).length;
 
           return (
             <View style={styles.card}>
@@ -327,7 +385,7 @@ const IllnessesScreen = () => {
                 <View style={styles.summaryRow}>
                   <AdaptiveText style={styles.summaryText}>
                     {illnessMeds.length > 0
-                      ? `${illnessMeds.length} medication${illnessMeds.length !== 1 ? "s" : ""}`
+                      ? `${illnessMeds.length} medication${illnessMeds.length !== 1 ? "s" : ""}${dueTodayCount > 0 ? ` • ${dueTodayCount} due today` : ""}`
                       : "No medications added yet"}
                   </AdaptiveText>
 
@@ -341,19 +399,25 @@ const IllnessesScreen = () => {
 
               {isExpanded && (
                 <View style={styles.medicationsContent}>
-                  <AdaptiveText style={styles.medicationsHeading}>
-                    Medication plan
-                  </AdaptiveText>
-                  <AdaptiveText style={styles.medicationsSubheading}>
-                    Dose, schedule, times, and instructions at a glance.
-                  </AdaptiveText>
+                  <View style={styles.medicationsHeaderRow}>
+                    <AdaptiveText style={styles.medicationsHeaderTitle}>
+                      Medications
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.medicationsHeaderCount}>
+                      {illnessMeds.length > 0
+                        ? `${illnessMeds.length} tracked`
+                        : "Nothing tracked yet"}
+                    </AdaptiveText>
+                  </View>
 
                   {illnessMeds.length > 0 ? (
                     illnessMeds.map(renderMedicationRecordModel)
                   ) : (
-                    <AdaptiveText style={styles.noMedicationsText}>
-                      No medications added.
-                    </AdaptiveText>
+                    <View style={styles.noMedicationsCard}>
+                      <AdaptiveText style={styles.noMedicationsText}>
+                        No medications have been added for this illness yet.
+                      </AdaptiveText>
+                    </View>
                   )}
 
                   <TouchableOpacity
@@ -368,7 +432,7 @@ const IllnessesScreen = () => {
                     }}
                   >
                     <AdaptiveText style={styles.innerActionButtonText}>
-                      Add Medication / Edit Illness
+                      Manage Illness & Medications
                     </AdaptiveText>
                   </TouchableOpacity>
                 </View>
@@ -402,15 +466,15 @@ const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: darkMode ? colors.veryDarkGrey : "#f7f4ee",
-      gap: 8,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+      gap: 10,
     },
     title: {
       fontSize: 26,
       alignSelf: "center",
       fontFamily: "Poppins-SemiBold",
       paddingHorizontal: 10,
-      marginBottom: 12,
+      marginBottom: 10,
       textAlign: "center",
     },
     listContent: {
@@ -418,14 +482,14 @@ const createStyles = ({ darkMode }: any) => {
     },
     card: {
       alignSelf: "center",
-      width: "92%",
+      width: "90%",
       borderRadius: 20,
       marginBottom: 16,
       overflow: "hidden",
       backgroundColor: darkMode ? colors.averageDarkGrey : "#fcfbf7",
       shadowColor: colors.black,
-      shadowOpacity: darkMode ? 0 : 0.05,
-      shadowRadius: 16,
+      shadowOpacity: darkMode ? 0 : 0.04,
+      shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
       elevation: darkMode ? 0 : 1,
     },
@@ -448,10 +512,10 @@ const createStyles = ({ darkMode }: any) => {
       borderRadius: 999,
     },
     ongoingBadge: {
-      backgroundColor: "rgba(7, 125, 39, 0.12)",
+      backgroundColor: "rgba(0, 180, 80, 0.18)",
     },
     resolvedBadge: {
-      backgroundColor: "rgba(140, 140, 140, 0.12)",
+      backgroundColor: "rgba(160, 160, 160, 0.18)",
     },
     statusText: {
       fontSize: 11,
@@ -488,68 +552,114 @@ const createStyles = ({ darkMode }: any) => {
     summaryText: {
       fontFamily: "Poppins-Light",
       fontSize: 12,
-      opacity: 0.72,
+      opacity: 0.8,
     },
     medicationsContent: {
       paddingHorizontal: 18,
-      paddingTop: 4,
-      paddingBottom: 18,
-      backgroundColor: darkMode ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.55)",
+      paddingTop: 8,
+      paddingBottom: 16,
+      backgroundColor: darkMode
+        ? "rgba(255,255,255,0.02)"
+        : "rgba(255,255,255,0.58)",
     },
-    medicationsHeading: {
+    medicationsHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10,
+      gap: 12,
+    },
+    medicationsHeaderTitle: {
       fontFamily: "Poppins-SemiBold",
-      fontSize: 15,
-      marginBottom: 1,
+      fontSize: 14,
     },
-    medicationsSubheading: {
+    medicationsHeaderCount: {
       fontFamily: "Poppins-Light",
       fontSize: 12,
-      lineHeight: 17,
-      opacity: 0.72,
-      marginBottom: 10,
+      opacity: 0.75,
+      textAlign: "right",
     },
     medicationCard: {
-      gap: 10,
-      paddingVertical: 14,
-      paddingHorizontal: 14,
+      gap: 12,
+      padding: 14,
       marginBottom: 10,
       borderRadius: 16,
-      backgroundColor: darkMode ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.76)",
+      backgroundColor: darkMode
+        ? "rgba(255,255,255,0.035)"
+        : "rgba(255,255,255,0.78)",
     },
-    medicationDetails: {
-      gap: 10,
-    },
-    medicationHeader: {
+    medicationTopRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
-      gap: 10,
+      width: "100%",
+      gap: 12,
+    },
+    medicationName: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 15,
+    },
+    medicationHeadingBlock: {
+      flex: 1,
+      gap: 4,
+    },
+    medicationSupportText: {
+      fontFamily: "Poppins-Light",
+      fontSize: 12,
+      opacity: 0.68,
+      lineHeight: 18,
     },
     medicationStatusBadge: {
       paddingHorizontal: 10,
-      paddingVertical: 4,
+      paddingVertical: 6,
       borderRadius: 999,
+      alignSelf: "flex-start",
     },
-    medicationStatusDueToday: {
-      backgroundColor: "rgba(7, 125, 39, 0.16)",
+    medicationStatusBadgeDue: {
+      backgroundColor: darkMode ? "rgba(242, 168, 151, 0.18)" : "#fde7de",
     },
-    medicationStatusActive: {
-      backgroundColor: darkMode
-        ? "rgba(255,255,255,0.08)"
-        : "rgba(29,29,29,0.06)",
+    medicationStatusBadgeActive: {
+      backgroundColor: darkMode ? "rgba(135, 179, 150, 0.2)" : "#e3f2e7",
     },
-    medicationStatusInactive: {
-      backgroundColor: "rgba(140, 140, 140, 0.12)",
+    medicationStatusBadgeInactive: {
+      backgroundColor: darkMode ? "rgba(228, 228, 228, 0.12)" : "#ececec",
     },
     medicationStatusText: {
       fontFamily: "Poppins-Medium",
       fontSize: 11,
-      color: darkMode ? colors.white : colors.veryDarkGrey,
+    },
+    medicationStatusTextDue: {
+      color: darkMode ? "#ffd0c3" : "#a8563d",
+    },
+    medicationStatusTextActive: {
+      color: darkMode ? "#cce7d3" : "#24603a",
+    },
+    medicationStatusTextInactive: {
+      color: darkMode ? "#e4e4e4" : "#5f5f5f",
+    },
+    medicationChipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    medicationChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: darkMode
+        ? "rgba(255,255,255,0.06)"
+        : "rgba(7,125,39,0.08)",
+    },
+    medicationChipText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 11,
+      opacity: 0.82,
+    },
+    medicationDetailsStack: {
+      gap: 10,
     },
     medicationDetailRow: {
-      flexDirection: "column",
-      alignItems: "flex-start",
-      gap: 4,
+      gap: 3,
     },
     medicationDetailLabel: {
       fontFamily: "Poppins-Medium",
@@ -557,42 +667,45 @@ const createStyles = ({ darkMode }: any) => {
       opacity: 0.56,
     },
     medicationDetailValue: {
-      fontFamily: "Poppins-Regular",
-      fontSize: 13,
-      lineHeight: 19,
-      opacity: 0.95,
+      fontFamily: "Poppins-Light",
+      fontSize: 12,
+      lineHeight: 18,
     },
     medicationInstructionBlock: {
+      marginTop: 2,
       gap: 4,
     },
     medicationInstructionValue: {
-      fontFamily: "Poppins-Regular",
-      fontSize: 13,
-      lineHeight: 19,
-      opacity: 0.92,
+      fontFamily: "Poppins-Light",
+      fontSize: 12,
+      lineHeight: 18,
+      opacity: 0.9,
     },
-    medicationName: {
-      fontFamily: "Poppins-SemiBold",
-      fontSize: 15,
-      flex: 1,
+    noMedicationsCard: {
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: darkMode
+        ? "rgba(255,255,255,0.035)"
+        : "rgba(255,255,255,0.75)",
     },
     noMedicationsText: {
       fontFamily: "Poppins-Light",
       fontSize: 12,
-      opacity: 0.7,
-      marginTop: 2,
-      marginBottom: 4,
+      opacity: 0.68,
+      lineHeight: 18,
     },
     innerActionButton: {
-      marginTop: 8,
-      backgroundColor: colors.green,
-      paddingVertical: 12,
-      borderRadius: 14,
+      marginTop: 14,
+      backgroundColor: darkMode
+        ? "rgba(135,179,150,0.16)"
+        : "rgba(7,125,39,0.10)",
+      paddingVertical: 10,
+      borderRadius: 999,
       alignItems: "center",
     },
     innerActionButtonText: {
       fontFamily: "Poppins-Medium",
-      color: colors.white,
+      color: darkMode ? "#d4edd9" : colors.green,
     },
     addButton: {
       alignSelf: "center",
