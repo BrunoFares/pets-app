@@ -85,3 +85,10 @@ public enum ReportPriority
     Medium = 2,
     High = 3
 }
+
+public enum PlaceOwnerApplicationStatus
+{
+    Pending = 1,
+    Approved = 2,
+    Rejected = 3
+}

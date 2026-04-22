@@ -14,6 +14,7 @@ public class AppUser
     public string? AvatarUrl { get; set; }
     public string? Description { get; set; }
     public bool IsBanned { get; set; }
+    public bool IsApprovedPlaceOwner { get; set; }
     public DateTimeOffset? BannedAt { get; set; }
     public string? BanReason { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -25,6 +26,8 @@ public class AppUser
     public List<ForumPostBookmarkModel> BookmarkedPosts { get; set; } = new();
     public List<ForumPostLikeModel> LikedPosts { get; set; } = new();
     public List<PetPlaceReviewModel> PlaceReviews { get; set; } = new();
+    public List<PetPlaceModel> OwnedPlaces { get; set; } = new();
+    public List<PlaceOwnerApplicationModel> PlaceOwnerApplications { get; set; } = new();
     public List<ReportModel> SubmittedReports { get; set; } = new();
     public List<ChatSessionModel> Chats { get; set; } = new();
 }

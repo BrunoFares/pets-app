@@ -6,6 +6,7 @@ using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
 using PetCare.Api.Services;
+using System.Security.Claims;
 
 namespace PetCare.Api.Controllers;
 
@@ -82,15 +83,21 @@ public class PlacesController : ControllerBase
         return Ok(items);
     }
 
-    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Create([FromBody] CreatePlaceRequest request)
     {
-        var adminUserId = User.GetAdminId();
+        var access = await ResolvePlaceWriteAccessAsync();
+        if (access is null)
+        {
+            return Forbid();
+        }
+
         var placeId = Guid.NewGuid();
         var entity = new PetPlaceModel
         {
             Id = placeId,
+            OwnerUserId = access.UserId,
             Name = request.Name.Trim(),
             Phone = request.Phone.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
@@ -109,13 +116,16 @@ public class PlacesController : ControllerBase
         };
 
         _db.PetPlaces.Add(entity);
-        _auditLogger.Log(
-            adminUserId,
-            "CreatePlace",
-            "Place",
-            entity.Id.ToString(),
-            $"Created place '{entity.Name}' with type '{entity.Type}'."
-        );
+        if (access.AdminUserId.HasValue)
+        {
+            _auditLogger.Log(
+                access.AdminUserId.Value,
+                "CreatePlace",
+                "Place",
+                entity.Id.ToString(),
+                $"Created place '{entity.Name}' with type '{entity.Type}'."
+            );
+        }
         await _db.SaveChangesAsync();
 
         var response = await ProjectToPlaceResponse(_db.PetPlaces
@@ -126,16 +136,25 @@ public class PlacesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, response);
     }
 
-    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     [HttpPut("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePlaceRequest request)
     {
-        var adminUserId = User.GetAdminId();
+        var access = await ResolvePlaceWriteAccessAsync();
+        if (access is null)
+        {
+            return Forbid();
+        }
+
         var entity = await _db.PetPlaces
             .Include(p => p.Schedules)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (entity is null) return NotFound();
+        if (!CanManagePlace(access, entity))
+        {
+            return Forbid();
+        }
 
         entity.Name = request.Name.Trim();
         entity.Phone = request.Phone.Trim();
@@ -154,13 +173,16 @@ public class PlacesController : ControllerBase
         _db.PetPlaceSchedules.RemoveRange(entity.Schedules);
         entity.Schedules = newSchedules;
         _db.PetPlaceSchedules.AddRange(newSchedules);
-        _auditLogger.Log(
-            adminUserId,
-            "UpdatePlace",
-            "Place",
-            entity.Id.ToString(),
-            $"Updated place '{entity.Name}' with type '{entity.Type}'."
-        );
+        if (access.AdminUserId.HasValue)
+        {
+            _auditLogger.Log(
+                access.AdminUserId.Value,
+                "UpdatePlace",
+                "Place",
+                entity.Id.ToString(),
+                $"Updated place '{entity.Name}' with type '{entity.Type}'."
+            );
+        }
 
         await _db.SaveChangesAsync();
         var response = await ProjectToPlaceResponse(_db.PetPlaces
@@ -171,25 +193,37 @@ public class PlacesController : ControllerBase
         return Ok(response);
     }
 
-    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     [HttpDelete("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var adminUserId = User.GetAdminId();
+        var access = await ResolvePlaceWriteAccessAsync();
+        if (access is null)
+        {
+            return Forbid();
+        }
+
         var entity = await _db.PetPlaces.FindAsync(id);
         if (entity is null) return NotFound();
+        if (!CanManagePlace(access, entity))
+        {
+            return Forbid();
+        }
 
         var usedByConsultations = await _db.Consultations.AnyAsync(c => c.VetPlaceId == id);
         if (usedByConsultations) return Conflict(new { message = "Cannot delete a place referenced by consultations." });
 
         _db.PetPlaces.Remove(entity);
-        _auditLogger.Log(
-            adminUserId,
-            "DeletePlace",
-            "Place",
-            entity.Id.ToString(),
-            $"Deleted place '{entity.Name}' with type '{entity.Type}'."
-        );
+        if (access.AdminUserId.HasValue)
+        {
+            _auditLogger.Log(
+                access.AdminUserId.Value,
+                "DeletePlace",
+                "Place",
+                entity.Id.ToString(),
+                $"Deleted place '{entity.Name}' with type '{entity.Type}'."
+            );
+        }
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -208,9 +242,56 @@ public class PlacesController : ControllerBase
             })
             .ToList();
 
+    private async Task<PlaceWriteAccess?> ResolvePlaceWriteAccessAsync()
+    {
+        var actorType = User.FindFirstValue(AuthConstants.Claims.ActorType);
+        if (string.Equals(actorType, AuthConstants.ActorTypes.Admin, StringComparison.Ordinal))
+        {
+            var rawAdminId = User.FindFirstValue(AuthConstants.Claims.AdminId)
+                ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub");
+            if (!long.TryParse(rawAdminId, out var adminId))
+            {
+                return null;
+            }
+
+            var admin = await _db.AdminUsers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a =>
+                    a.Id == adminId &&
+                    a.IsActive &&
+                    (a.Role == AdminRole.Admin || a.Role == AdminRole.Manager));
+
+            return admin is null ? null : new PlaceWriteAccess(null, admin.Id);
+        }
+
+        if (!string.Equals(actorType, AuthConstants.ActorTypes.User, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var rawUserId = User.FindFirstValue(AuthConstants.Claims.UserId)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (!long.TryParse(rawUserId, out var userId))
+        {
+            return null;
+        }
+
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsBanned && u.IsApprovedPlaceOwner);
+
+        return user is null ? null : new PlaceWriteAccess(user.Id, null);
+    }
+
+    private static bool CanManagePlace(PlaceWriteAccess access, PetPlaceModel place) =>
+        access.AdminUserId.HasValue || (access.UserId.HasValue && place.OwnerUserId == access.UserId.Value);
+
     private static IQueryable<PlaceResponse> ProjectToPlaceResponse(IQueryable<PetPlaceModel> query) =>
         query.Select(place => new PlaceResponse(
             place.Id,
+            place.OwnerUserId,
             place.Name,
             place.Phone,
             place.Email,
@@ -240,4 +321,6 @@ public class PlacesController : ControllerBase
             place.Reviews.Average(r => (double?)r.Rating),
             place.Reviews.Count()
         ));
+
+    private sealed record PlaceWriteAccess(long? UserId, long? AdminUserId);
 }
