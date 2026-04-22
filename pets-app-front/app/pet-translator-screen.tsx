@@ -3,11 +3,11 @@ import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { PetSound, TRANSLATIONS } from "@/data/translations";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   PetTranslatorAnalysis,
   analyzePetAudio,
 } from "@/lib/pet-translator-api";
-import { presentApiError } from "@/lib/api-feedback";
 import { Feather } from "@expo/vector-icons";
 import {
   RecordingPresets,
@@ -22,11 +22,12 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  useColorScheme,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -47,7 +48,9 @@ function getRandomTranslation(sound: PetSound) {
 
 type DetectedAnimal = "cat" | "dog" | "neither";
 
-function getRandomTranslationForAnimal(animal: Extract<DetectedAnimal, "cat" | "dog">) {
+function getRandomTranslationForAnimal(
+  animal: Extract<DetectedAnimal, "cat" | "dog">,
+) {
   return getRandomTranslation(animal === "cat" ? "meow" : "bark");
 }
 
@@ -107,8 +110,7 @@ export default function PetTranslatorScreen() {
       try {
         const status = await getRecordingPermissionsAsync();
         const granted =
-          status.granted ||
-          (await requestRecordingPermissionsAsync()).granted;
+          status.granted || (await requestRecordingPermissionsAsync()).granted;
 
         if (!isMounted) {
           return;
@@ -285,14 +287,14 @@ export default function PetTranslatorScreen() {
                 {isAnalyzing
                   ? "Uploading the recording and waiting for the model result."
                   : detectedAnimal === "cat"
-                  ? "Latest result: cat audio detected."
-                  : detectedAnimal === "dog"
-                    ? "Latest result: dog audio detected."
-                    : detectedAnimal === "neither"
-                      ? "Latest result: neither cat nor dog."
-                      : hasMicrophonePermission === false
-                        ? "Microphone access is required before recording."
-                        : "The model will classify the sound after you stop recording."}
+                    ? "Latest result: cat audio detected."
+                    : detectedAnimal === "dog"
+                      ? "Latest result: dog audio detected."
+                      : detectedAnimal === "neither"
+                        ? "Latest result: neither cat nor dog."
+                        : hasMicrophonePermission === false
+                          ? "Microphone access is required before recording."
+                          : "The model will classify the sound after you stop recording."}
               </AdaptiveText>
             </View>
             <View
@@ -307,7 +309,11 @@ export default function PetTranslatorScreen() {
                   (isRecording || isAnalyzing) && styles.statusPillTextActive,
                 ]}
               >
-                {isRecording ? "Recording" : isAnalyzing ? "Analyzing" : "Ready"}
+                {isRecording
+                  ? "Recording"
+                  : isAnalyzing
+                    ? "Analyzing"
+                    : "Ready"}
               </AdaptiveText>
             </View>
           </View>
@@ -334,21 +340,27 @@ export default function PetTranslatorScreen() {
             {isAnalyzing
               ? "Analyzing the recording..."
               : isRecording
-              ? "Listening for cat or dog cues..."
-              : detectedAnimal === "cat"
-                ? `Detected: Cat${
-                    analysis ? ` (${Math.round(analysis.confidence * 100)}%)` : ""
-                  }`
-                : detectedAnimal === "dog"
-                  ? `Detected: Dog${
-                      analysis ? ` (${Math.round(analysis.confidence * 100)}%)` : ""
+                ? "Listening for cat or dog cues..."
+                : detectedAnimal === "cat"
+                  ? `Detected: Cat${
+                      analysis
+                        ? ` (${Math.round(analysis.confidence * 100)}%)`
+                        : ""
                     }`
-                  : detectedAnimal === "neither"
-                    ? "Detected: Neither cat nor dog"
-                    : "Ready to analyze pet audio."}
+                  : detectedAnimal === "dog"
+                    ? `Detected: Dog${
+                        analysis
+                          ? ` (${Math.round(analysis.confidence * 100)}%)`
+                          : ""
+                      }`
+                    : detectedAnimal === "neither"
+                      ? "Detected: Neither cat nor dog"
+                      : "Ready to analyze pet audio."}
           </AdaptiveText>
           <AdaptiveText style={styles.recordingTimer}>
-            {formatSeconds(Math.floor((recorderState.durationMillis ?? 0) / 1000))}
+            {formatSeconds(
+              Math.floor((recorderState.durationMillis ?? 0) / 1000),
+            )}
           </AdaptiveText>
 
           <View style={styles.visualizerRow}>
@@ -411,8 +423,8 @@ export default function PetTranslatorScreen() {
                 Waiting for a recording
               </AdaptiveText>
               <AdaptiveText style={styles.resultMessageBody}>
-                Record a sound and stop the session to let the model classify
-                it before showing a result.
+                Record a sound and stop the session to let the model classify it
+                before showing a result.
               </AdaptiveText>
             </View>
           )}
@@ -423,8 +435,8 @@ export default function PetTranslatorScreen() {
             What this actually does
           </AdaptiveText>
           <AdaptiveText style={styles.footerNoteText}>
-            This screen now records a real audio clip, uploads it to the
-            backend model, and only shows a playful translation when the model
+            This screen now records a real audio clip, uploads it to the backend
+            model, and only shows a playful translation when the model
             classifies the recording as cat or dog audio.
           </AdaptiveText>
         </AdaptiveView>
@@ -508,12 +520,17 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) => {
     recorderHint: {
       fontFamily: "Poppins-Regular",
       fontSize: 13,
+      width: "60%",
       color: darkMode ? colors.lightGrey : colors.mildDarkGrey,
       marginTop: 2,
     },
     statusPill: {
       paddingHorizontal: 12,
       paddingVertical: 8,
+      right: Platform.select({
+        ios: 120,
+        android: 130,
+      }),
       borderRadius: 999,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
     },
