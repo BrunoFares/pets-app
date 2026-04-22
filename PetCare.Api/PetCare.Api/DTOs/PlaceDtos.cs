@@ -80,7 +80,38 @@ public record PlaceResponse(
     decimal? Latitude,
     decimal? Longitude,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<PlaceScheduleResponse> Schedule
+    IReadOnlyList<PlaceScheduleResponse> Schedule,
+    double? AverageRating,
+    int ReviewsCount
+);
+
+public record CreatePlaceReviewRequest(
+    [Required, Range(1, 5)] int Rating,
+    [MaxLength(2000)] string? Comment
+);
+
+public record UpdatePlaceReviewRequest(
+    [Required, Range(1, 5)] int Rating,
+    [MaxLength(2000)] string? Comment
+);
+
+public record PlaceReviewResponse(
+    Guid Id,
+    Guid PlaceId,
+    long UserId,
+    string UserDisplayName,
+    int Rating,
+    string? Comment,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt
+);
+
+public record PlaceReviewListResponse(
+    IReadOnlyList<PlaceReviewResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages
 );
 
 internal static class PlaceScheduleValidation

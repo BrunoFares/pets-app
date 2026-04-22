@@ -248,6 +248,28 @@ public class AdminModerationController : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("place-reviews/{id:guid}")]
+    public async Task<IActionResult> DeletePlaceReview(Guid id)
+    {
+        var adminUserId = User.GetAdminId();
+        var review = await _db.PetPlaceReviews.FirstOrDefaultAsync(r => r.Id == id);
+        if (review is null)
+        {
+            return NotFound();
+        }
+
+        _db.PetPlaceReviews.Remove(review);
+        _auditLogger.Log(
+            adminUserId,
+            "DeletePlaceReview",
+            "PlaceReview",
+            review.Id.ToString(),
+            $"Deleted place review '{review.Id}' for place '{review.PlaceId}' created by user '{review.UserId}'."
+        );
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpGet("forum-posts")]
     public async Task<IActionResult> SearchForumPosts(
         [FromQuery] string? content,

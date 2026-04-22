@@ -19,5 +19,6 @@ public class PetPlaceModel
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public List<PetPlaceScheduleModel> Schedules { get; set; } = new();
+    public List<PetPlaceReviewModel> Reviews { get; set; } = new();
     public List<ConsultationModel> Consultations { get; set; } = new();
 }

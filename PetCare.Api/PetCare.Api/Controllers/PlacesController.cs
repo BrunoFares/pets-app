@@ -28,28 +28,28 @@ public class PlacesController : ControllerBase
     {
         var query = _db.PetPlaces
             .AsNoTracking()
-            .Include(p => p.Schedules)
             .AsQueryable();
 
         if (type.HasValue) query = query.Where(p => p.Type == type.Value);
 
-        var items = await query
+        var items = await ProjectToPlaceResponse(query
             .OrderBy(p => p.Name)
+            .ThenBy(p => p.Id))
             .ToListAsync();
 
-        return Ok(items.Select(ToResponse));
+        return Ok(items);
     }
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var item = await _db.PetPlaces
+        var item = await ProjectToPlaceResponse(_db.PetPlaces
             .AsNoTracking()
-            .Include(p => p.Schedules)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .Where(p => p.Id == id))
+            .FirstOrDefaultAsync();
 
-        return item is null ? NotFound() : Ok(ToResponse(item));
+        return item is null ? NotFound() : Ok(item);
     }
 
     [HttpGet("vets")]
@@ -71,14 +71,15 @@ public class PlacesController : ControllerBase
         var lonMin = lon - (radiusKm / 111m);
         var lonMax = lon + (radiusKm / 111m);
 
-        var items = await _db.PetPlaces
+        var items = await ProjectToPlaceResponse(_db.PetPlaces
             .AsNoTracking()
-            .Include(p => p.Schedules)
             .Where(p => p.Latitude.HasValue && p.Longitude.HasValue)
             .Where(p => p.Latitude >= latMin && p.Latitude <= latMax && p.Longitude >= lonMin && p.Longitude <= lonMax)
+            .OrderBy(p => p.Name)
+            .ThenBy(p => p.Id))
             .ToListAsync();
 
-        return Ok(items.Select(ToResponse));
+        return Ok(items);
     }
 
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
@@ -117,7 +118,12 @@ public class PlacesController : ControllerBase
         );
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToResponse(entity));
+        var response = await ProjectToPlaceResponse(_db.PetPlaces
+            .AsNoTracking()
+            .Where(p => p.Id == entity.Id))
+            .FirstAsync();
+
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, response);
     }
 
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
@@ -157,7 +163,12 @@ public class PlacesController : ControllerBase
         );
 
         await _db.SaveChangesAsync();
-        return Ok(ToResponse(entity));
+        var response = await ProjectToPlaceResponse(_db.PetPlaces
+            .AsNoTracking()
+            .Where(p => p.Id == entity.Id))
+            .FirstAsync();
+
+        return Ok(response);
     }
 
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
@@ -197,33 +208,36 @@ public class PlacesController : ControllerBase
             })
             .ToList();
 
-    private static PlaceResponse ToResponse(PetPlaceModel place) => new(
-        place.Id,
-        place.Name,
-        place.Phone,
-        place.Email,
-        place.Photo,
-        place.Description,
-        place.AddressLine1,
-        place.AddressLine2,
-        place.City,
-        place.Country,
-        place.Status,
-        place.Type,
-        place.Latitude,
-        place.Longitude,
-        place.CreatedAt,
-        place.Schedules
-            .OrderBy(s => s.DayOfWeek)
-            .Select(s => new PlaceScheduleResponse(
-                s.Id,
-                s.DayOfWeek,
-                s.IsClosed,
-                s.OpenTime,
-                s.CloseTime,
-                s.BreakStartTime,
-                s.BreakEndTime
-            ))
-            .ToList()
-    );
+    private static IQueryable<PlaceResponse> ProjectToPlaceResponse(IQueryable<PetPlaceModel> query) =>
+        query.Select(place => new PlaceResponse(
+            place.Id,
+            place.Name,
+            place.Phone,
+            place.Email,
+            place.Photo,
+            place.Description,
+            place.AddressLine1,
+            place.AddressLine2,
+            place.City,
+            place.Country,
+            place.Status,
+            place.Type,
+            place.Latitude,
+            place.Longitude,
+            place.CreatedAt,
+            place.Schedules
+                .OrderBy(s => s.DayOfWeek)
+                .Select(s => new PlaceScheduleResponse(
+                    s.Id,
+                    s.DayOfWeek,
+                    s.IsClosed,
+                    s.OpenTime,
+                    s.CloseTime,
+                    s.BreakStartTime,
+                    s.BreakEndTime
+                ))
+                .ToList(),
+            place.Reviews.Average(r => (double?)r.Rating),
+            place.Reviews.Count()
+        ));
 }
