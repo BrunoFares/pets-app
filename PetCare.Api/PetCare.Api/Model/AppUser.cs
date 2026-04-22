@@ -29,5 +29,4 @@ public class AppUser
     public List<PetPlaceModel> OwnedPlaces { get; set; } = new();
     public List<PlaceOwnerApplicationModel> PlaceOwnerApplications { get; set; } = new();
     public List<ReportModel> SubmittedReports { get; set; } = new();
-    public List<ChatSessionModel> Chats { get; set; } = new();
 }

@@ -21,8 +21,6 @@ public class AppDbContext : DbContext
     public DbSet<ForumPostLikeModel> ForumPostLikes => Set<ForumPostLikeModel>();
     public DbSet<PlaceOwnerApplicationModel> PlaceOwnerApplications => Set<PlaceOwnerApplicationModel>();
     public DbSet<ReportModel> Reports => Set<ReportModel>();
-    public DbSet<ChatSessionModel> ChatSessions => Set<ChatSessionModel>();
-    public DbSet<ChatMessageModel> ChatMessages => Set<ChatMessageModel>();
     public DbSet<PetPlaceModel> PetPlaces => Set<PetPlaceModel>();
     public DbSet<PetPlaceScheduleModel> PetPlaceSchedules => Set<PetPlaceScheduleModel>();
     public DbSet<PetPlaceReviewModel> PetPlaceReviews => Set<PetPlaceReviewModel>();
@@ -403,33 +401,6 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.UserId, x.Status })
                 .IsUnique()
                 .HasFilter("\"status\" = 'Pending'");
-        });
-
-        b.Entity<ChatSessionModel>(e =>
-        {
-            e.ToTable("chat_sessions", "public");
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasColumnName("id");
-            e.Property(x => x.UserId).HasColumnName("user_id");
-            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
-
-            e.HasOne(x => x.User).WithMany(u => u.Chats).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(x => x.UserId);
-        });
-
-        b.Entity<ChatMessageModel>(e =>
-        {
-            e.ToTable("chat_messages", "public");
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasColumnName("id");
-            e.Property(x => x.ChatSessionId).HasColumnName("chat_session_id");
-            e.Property(x => x.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(10).IsRequired();
-            e.Property(x => x.Content).HasColumnName("content").HasMaxLength(5000).IsRequired();
-            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-
-            e.HasOne(x => x.ChatSession).WithMany(c => c.Messages).HasForeignKey(x => x.ChatSessionId).OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(x => new { x.ChatSessionId, x.CreatedAt });
         });
 
         b.Entity<VaccineRecordModel>(e =>
