@@ -54,3 +54,34 @@ public enum AdminRole
     Admin = 1,
     Manager = 2
 }
+
+public enum ReportTargetType
+{
+    ForumPost = 1,
+    User = 2
+}
+
+public enum ReportReasonType
+{
+    Spam = 1,
+    Harassment = 2,
+    Abuse = 3,
+    Scam = 4,
+    InappropriateContent = 5,
+    Other = 6
+}
+
+public enum ReportStatus
+{
+    Pending = 1,
+    Reviewed = 2,
+    Dismissed = 3,
+    ActionTaken = 4
+}
+
+public enum ReportPriority
+{
+    Low = 1,
+    Medium = 2,
+    High = 3
+}

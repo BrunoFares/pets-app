@@ -15,4 +15,5 @@ public class AdminUser
     public DateTimeOffset? LastLogin { get; set; }
 
     public List<AdminActionLog> ActionLogs { get; set; } = new();
+    public List<ReportModel> ReviewedReports { get; set; } = new();
 }
