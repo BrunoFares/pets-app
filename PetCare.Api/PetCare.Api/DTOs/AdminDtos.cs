@@ -88,6 +88,11 @@ public record AdminUserDetailsResponse(
 
 public record BanUserRequest([MaxLength(500)] string? Reason);
 
+public record RevokePlaceOwnerApprovalRequest(
+    [MaxLength(1000)] string? Reason,
+    [MaxLength(1000)] string? AdminNotes
+);
+
 public record ModeratedUserListItemResponse(
     long Id,
     string Username,
