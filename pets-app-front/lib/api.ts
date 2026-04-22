@@ -4,6 +4,7 @@ import { showSoftErrorNotice } from "@/lib/soft-error-notice";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+const API_PORT = "5063";
 const ACCESS_TOKEN_KEY = "access_token";
 const USER_ID_KEY = "user_id";
 const LAST_OPENED_AT_KEY = "auth_last_opened_at";
@@ -50,22 +51,98 @@ export class ApiRequestError extends Error {
   }
 }
 
+function removeTrailingSlash(url: string) {
+  return url.replace(/\/+$/, "");
+}
+
 function getDefaultApiBaseUrl() {
   if (Platform.OS === "android") {
-    return "http://10.0.2.2:5063";
+    return `http://10.0.2.2:${API_PORT}`;
   }
 
-  return "http://localhost:5063";
+  return `http://localhost:${API_PORT}`;
 }
 
 function normalizeApiBaseUrl(url?: string | null) {
-  if (!url) return getDefaultApiBaseUrl();
+  if (!url) return null;
+
+  const trimmed = url.trim();
+
+  if (!trimmed) return null;
+
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `http://${trimmed}`;
 
   if (Platform.OS === "android") {
-    return url.replace("://localhost", "://10.0.2.2");
+    return removeTrailingSlash(
+      withScheme.replace("://localhost", "://10.0.2.2"),
+    );
   }
 
-  return url;
+  return removeTrailingSlash(withScheme);
+}
+
+function extractHostFromHostUri(hostUri?: string | null) {
+  if (!hostUri) return null;
+
+  const withoutScheme = hostUri.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  const authority = withoutScheme.split("/")[0] ?? "";
+  const hostAndPort = authority.includes("@")
+    ? authority.split("@").at(-1) ?? ""
+    : authority;
+
+  if (!hostAndPort) return null;
+
+  if (hostAndPort.startsWith("[")) {
+    const closingBracketIndex = hostAndPort.indexOf("]");
+    return closingBracketIndex >= 0
+      ? hostAndPort.slice(1, closingBracketIndex)
+      : null;
+  }
+
+  return hostAndPort.split(":")[0] ?? null;
+}
+
+function getExpoHostApiBaseUrl() {
+  const expoHost = extractHostFromHostUri(
+    Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost,
+  );
+
+  if (!expoHost || expoHost === "localhost" || expoHost === "127.0.0.1") {
+    return null;
+  }
+
+  return normalizeApiBaseUrl(`http://${expoHost}:${API_PORT}`);
+}
+
+function dedupeApiBaseUrls(urls: (string | null | undefined)[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const url of urls) {
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    result.push(url);
+  }
+
+  return result;
+}
+
+function getApiBaseUrlCandidates() {
+  return dedupeApiBaseUrls([
+    normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL),
+    getDefaultApiBaseUrl(),
+    normalizeApiBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl),
+    getExpoHostApiBaseUrl(),
+  ]);
+}
+
+function buildApiUrl(baseUrl: string, path?: string | null) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 function extractApiErrorMessage(payload: ApiErrorPayload | null) {
@@ -85,12 +162,13 @@ function extractApiErrorMessage(payload: ApiErrorPayload | null) {
   return payload.message ?? payload.detail ?? payload.title ?? null;
 }
 
-export const API_BASE_URL =
-  normalizeApiBaseUrl(
-    process.env.EXPO_PUBLIC_API_BASE_URL ||
-      Constants.expoConfig?.extra?.apiBaseUrl ||
-      getDefaultApiBaseUrl(),
-  );
+export const API_BASE_URL = getApiBaseUrlCandidates()[0] ?? getDefaultApiBaseUrl();
+
+let activeApiBaseUrl = API_BASE_URL;
+
+function getOrderedApiBaseUrls() {
+  return dedupeApiBaseUrls([activeApiBaseUrl, ...getApiBaseUrlCandidates()]);
+}
 
 export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
   unauthorizedHandler = handler;
@@ -212,10 +290,7 @@ export async function getProfileCacheUpdatedAt() {
 }
 
 export function resolveApiUrl(path?: string | null) {
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  return buildApiUrl(activeApiBaseUrl, path);
 }
 
 export function resolveApiUrlWithCacheBust(
@@ -240,7 +315,6 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const url = resolveApiUrl(path);
   const token = await getAccessToken();
   const headers = new Headers(init.headers);
   const isFormData =
@@ -258,26 +332,51 @@ export async function apiRequest<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  let response: Response;
+  let response: Response | null = null;
+  let resolvedUrl = "";
+  let lastNetworkError: unknown = null;
+  const attemptedUrls: string[] = [];
 
-  try {
-    response = await fetch(url, {
-      ...init,
-      headers,
-    });
-  } catch (error) {
-    const localhostHint = url.includes("localhost")
+  // Try emulator, simulator, and LAN-friendly hosts until one is reachable.
+  for (const baseUrl of getOrderedApiBaseUrls()) {
+    const url = buildApiUrl(baseUrl, path);
+    attemptedUrls.push(url);
+
+    try {
+      response = await fetch(url, {
+        ...init,
+        headers,
+      });
+      resolvedUrl = url;
+      activeApiBaseUrl = baseUrl;
+      break;
+    } catch (error) {
+      lastNetworkError = error;
+
+      console.warn("[apiRequest] Network failure", {
+        url,
+        method: init.method ?? "GET",
+        error,
+      });
+    }
+  }
+
+  if (!response) {
+    const localhostHint = attemptedUrls.some(
+      (url) => url.includes("localhost") || url.includes("10.0.2.2"),
+    )
       ? " This usually means the app cannot reach your computer's localhost. On Android emulator use 10.0.2.2, and on a physical device use your computer's LAN IP."
       : "";
 
-    console.error("[apiRequest] Network failure", {
-      url,
+    console.error("[apiRequest] All API base URLs failed", {
+      path,
       method: init.method ?? "GET",
-      error,
+      attemptedUrls,
+      error: lastNetworkError,
     });
     showSoftErrorNotice();
     throw new ApiRequestError(
-      `Network request failed while calling ${url}.${localhostHint}`,
+      `Network request failed while calling ${path}. Tried: ${attemptedUrls.join(", ")}.${localhostHint}`,
       {
         status: 0,
         payload: null,
@@ -291,7 +390,7 @@ export async function apiRequest<T>(
   const isJsonResponse = contentType.includes("application/json");
 
   console.log("[apiRequest] Response received", {
-    url,
+    url: resolvedUrl,
     method: init.method ?? "GET",
     status: response.status,
     ok: response.ok,
@@ -307,7 +406,7 @@ export async function apiRequest<T>(
         parsedBody = JSON.parse(rawBody);
       } catch {
         console.error("[apiRequest] Invalid JSON response", {
-          url,
+          url: resolvedUrl,
           status: response.status,
           contentType,
           rawBody,
@@ -338,7 +437,7 @@ export async function apiRequest<T>(
       `Request failed with status ${response.status}.`;
 
     console.error("[apiRequest] Request failed", {
-      url,
+      url: resolvedUrl,
       method: init.method ?? "GET",
       status: response.status,
       detail,
@@ -367,7 +466,7 @@ export async function apiRequest<T>(
 
   if (!isJsonResponse) {
     console.error("[apiRequest] Unexpected content type", {
-      url,
+      url: resolvedUrl,
       status: response.status,
       contentType,
       rawBody,
