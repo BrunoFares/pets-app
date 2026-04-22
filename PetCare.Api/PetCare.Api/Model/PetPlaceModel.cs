@@ -3,6 +3,7 @@ namespace PetCare.Api.Model;
 public class PetPlaceModel
 {
     public Guid Id { get; set; }
+    public long? OwnerUserId { get; set; }
     public string Name { get; set; } = default!;
     public string Phone { get; set; } = default!;
     public string Email { get; set; } = default!;
@@ -18,6 +19,7 @@ public class PetPlaceModel
     public decimal? Longitude { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    public AppUser? OwnerUser { get; set; }
     public List<PetPlaceScheduleModel> Schedules { get; set; } = new();
     public List<PetPlaceReviewModel> Reviews { get; set; } = new();
     public List<ConsultationModel> Consultations { get; set; } = new();

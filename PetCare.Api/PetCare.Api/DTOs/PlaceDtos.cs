@@ -66,6 +66,7 @@ public record UpdatePlaceRequest(
 
 public record PlaceResponse(
     Guid Id,
+    long? OwnerUserId,
     string Name,
     string Phone,
     string Email,

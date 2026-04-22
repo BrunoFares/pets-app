@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<ForumPostAttachmentModel> ForumPostAttachments => Set<ForumPostAttachmentModel>();
     public DbSet<ForumPostBookmarkModel> ForumPostBookmarks => Set<ForumPostBookmarkModel>();
     public DbSet<ForumPostLikeModel> ForumPostLikes => Set<ForumPostLikeModel>();
+    public DbSet<PlaceOwnerApplicationModel> PlaceOwnerApplications => Set<PlaceOwnerApplicationModel>();
     public DbSet<ReportModel> Reports => Set<ReportModel>();
     public DbSet<ChatSessionModel> ChatSessions => Set<ChatSessionModel>();
     public DbSet<ChatMessageModel> ChatMessages => Set<ChatMessageModel>();
@@ -49,6 +50,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(1024);
             e.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000);
             e.Property(x => x.IsBanned).HasColumnName("is_banned").IsRequired().HasDefaultValue(false);
+            e.Property(x => x.IsApprovedPlaceOwner).HasColumnName("is_approved_place_owner").IsRequired().HasDefaultValue(false);
             e.Property(x => x.BannedAt).HasColumnName("banned_at");
             e.Property(x => x.BanReason).HasColumnName("ban_reason").HasMaxLength(500);
             e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
@@ -166,6 +168,7 @@ public class AppDbContext : DbContext
             e.ToTable("pet_places", "public");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OwnerUserId).HasColumnName("owner_user_id");
             e.Property(x => x.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
             e.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(50).IsRequired();
             e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
@@ -181,6 +184,12 @@ public class AppDbContext : DbContext
             e.Property(x => x.Longitude).HasColumnName("lon").HasPrecision(9, 6);
             e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
 
+            e.HasOne(x => x.OwnerUser)
+                .WithMany(x => x.OwnedPlaces)
+                .HasForeignKey(x => x.OwnerUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.OwnerUserId);
             e.HasIndex(x => x.Type);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => new { x.City, x.Country });
@@ -350,6 +359,48 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.TargetType, x.TargetId });
             e.HasIndex(x => new { x.TargetType, x.TargetId, x.Status });
             e.HasIndex(x => new { x.ReporterUserId, x.TargetType, x.TargetId })
+                .IsUnique()
+                .HasFilter("\"status\" = 'Pending'");
+        });
+
+        b.Entity<PlaceOwnerApplicationModel>(e =>
+        {
+            e.ToTable("place_owner_applications", "public");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+            e.Property(x => x.BusinessName).HasColumnName("business_name").HasMaxLength(200).IsRequired();
+            e.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(50).IsRequired();
+            e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
+            e.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+            e.Property(x => x.AddressLine1).HasColumnName("address_line1").HasMaxLength(200).IsRequired();
+            e.Property(x => x.AddressLine2).HasColumnName("address_line2").HasMaxLength(200);
+            e.Property(x => x.City).HasColumnName("city").HasMaxLength(100).IsRequired();
+            e.Property(x => x.Country).HasColumnName("country").HasMaxLength(100).IsRequired();
+            e.Property(x => x.RequestedPlaceType).HasColumnName("requested_place_type").HasConversion<string>().HasMaxLength(30).IsRequired();
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(1000);
+            e.Property(x => x.AdminNotes).HasColumnName("admin_notes").HasMaxLength(1000);
+            e.Property(x => x.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");
+            e.Property(x => x.ReviewedAt).HasColumnName("reviewed_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+            e.HasOne(x => x.User)
+                .WithMany(x => x.PlaceOwnerApplications)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.ReviewedByAdmin)
+                .WithMany(x => x.ReviewedPlaceOwnerApplications)
+                .HasForeignKey(x => x.ReviewedByAdminId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.RequestedPlaceType);
+            e.HasIndex(x => new { x.UserId, x.Status })
                 .IsUnique()
                 .HasFilter("\"status\" = 'Pending'");
         });
