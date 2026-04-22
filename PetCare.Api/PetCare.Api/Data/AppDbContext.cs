@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<ForumPostAttachmentModel> ForumPostAttachments => Set<ForumPostAttachmentModel>();
     public DbSet<ForumPostBookmarkModel> ForumPostBookmarks => Set<ForumPostBookmarkModel>();
     public DbSet<ForumPostLikeModel> ForumPostLikes => Set<ForumPostLikeModel>();
+    public DbSet<ReportModel> Reports => Set<ReportModel>();
     public DbSet<ChatSessionModel> ChatSessions => Set<ChatSessionModel>();
     public DbSet<ChatMessageModel> ChatMessages => Set<ChatMessageModel>();
     public DbSet<PetPlaceModel> PetPlaces => Set<PetPlaceModel>();
@@ -314,6 +315,43 @@ public class AppDbContext : DbContext
 
             e.HasOne(x => x.User).WithMany(u => u.LikedPosts).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.ForumPost).WithMany(p => p.Likes).HasForeignKey(x => x.ForumPostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ReportModel>(e =>
+        {
+            e.ToTable("reports", "public");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.ReporterUserId).HasColumnName("reporter_user_id").IsRequired();
+            e.Property(x => x.TargetType).HasColumnName("target_type").HasConversion<string>().HasMaxLength(30).IsRequired();
+            e.Property(x => x.TargetId).HasColumnName("target_id").HasMaxLength(100).IsRequired();
+            e.Property(x => x.ReasonType).HasColumnName("reason_type").HasConversion<string>().HasMaxLength(40).IsRequired();
+            e.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");
+            e.Property(x => x.ReviewedAt).HasColumnName("reviewed_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            e.HasOne(x => x.ReporterUser)
+                .WithMany(x => x.SubmittedReports)
+                .HasForeignKey(x => x.ReporterUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.ReviewedByAdmin)
+                .WithMany(x => x.ReviewedReports)
+                .HasForeignKey(x => x.ReviewedByAdminId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.ReporterUserId);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.TargetType);
+            e.HasIndex(x => x.ReasonType);
+            e.HasIndex(x => new { x.TargetType, x.TargetId });
+            e.HasIndex(x => new { x.TargetType, x.TargetId, x.Status });
+            e.HasIndex(x => new { x.ReporterUserId, x.TargetType, x.TargetId })
+                .IsUnique()
+                .HasFilter("\"status\" = 'Pending'");
         });
 
         b.Entity<ChatSessionModel>(e =>
