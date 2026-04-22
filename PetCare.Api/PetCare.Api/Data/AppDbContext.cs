@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<ChatMessageModel> ChatMessages => Set<ChatMessageModel>();
     public DbSet<PetPlaceModel> PetPlaces => Set<PetPlaceModel>();
     public DbSet<PetPlaceScheduleModel> PetPlaceSchedules => Set<PetPlaceScheduleModel>();
+    public DbSet<PetPlaceReviewModel> PetPlaceReviews => Set<PetPlaceReviewModel>();
     public DbSet<VaccineRecordModel> VaccineRecords => Set<VaccineRecordModel>();
     public DbSet<IllnessRecordModel> IllnessRecords => Set<IllnessRecordModel>();
     public DbSet<MedicationRecordModel> MedicationRecords => Set<MedicationRecordModel>();
@@ -203,6 +204,37 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             e.HasIndex(x => new { x.PetPlaceId, x.DayOfWeek }).IsUnique();
+        });
+
+        b.Entity<PetPlaceReviewModel>(e =>
+        {
+            e.ToTable("pet_place_reviews", "public", table =>
+            {
+                table.HasCheckConstraint("CK_pet_place_reviews_rating_range", "rating >= 1 AND rating <= 5");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.PlaceId).HasColumnName("place_id").IsRequired();
+            e.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+            e.Property(x => x.Rating).HasColumnName("rating").IsRequired();
+            e.Property(x => x.Comment).HasColumnName("comment").HasMaxLength(2000);
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
+            e.HasOne(x => x.Place)
+                .WithMany(x => x.Reviews)
+                .HasForeignKey(x => x.PlaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+                .WithMany(x => x.PlaceReviews)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.PlaceId);
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => new { x.PlaceId, x.UserId }).IsUnique();
         });
 
         b.Entity<ConsultationModel>(e =>

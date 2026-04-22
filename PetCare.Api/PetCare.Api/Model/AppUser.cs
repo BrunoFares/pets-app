@@ -24,5 +24,6 @@ public class AppUser
     public List<ForumPostModel> ForumPosts { get; set; } = new();
     public List<ForumPostBookmarkModel> BookmarkedPosts { get; set; } = new();
     public List<ForumPostLikeModel> LikedPosts { get; set; } = new();
+    public List<PetPlaceReviewModel> PlaceReviews { get; set; } = new();
     public List<ChatSessionModel> Chats { get; set; } = new();
 }
