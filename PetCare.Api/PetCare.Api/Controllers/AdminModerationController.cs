@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
+using PetCare.Api.Model;
 using PetCare.Api.Security;
 using PetCare.Api.Services;
 
@@ -226,6 +227,63 @@ public class AdminModerationController : ControllerBase
         return Ok(new { message = "User unbanned." });
     }
 
+    [HttpPost("users/{id:long}/revoke-place-owner")]
+    public async Task<IActionResult> RevokePlaceOwnerApproval(long id, [FromBody] RevokePlaceOwnerApprovalRequest request)
+    {
+        var adminUserId = User.GetAdminId();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        if (!user.IsApprovedPlaceOwner)
+        {
+            return Conflict(new { message = "User is not currently an approved place owner." });
+        }
+
+        user.IsApprovedPlaceOwner = false;
+
+        var ownedPlaces = await _db.PetPlaces
+            .Where(p => p.OwnerUserId == user.Id)
+            .ToListAsync();
+
+        var deactivatedPlacesCount = 0;
+        foreach (var place in ownedPlaces)
+        {
+            if (place.Status == PlaceStatus.Inactive)
+            {
+                continue;
+            }
+
+            place.Status = PlaceStatus.Inactive;
+            deactivatedPlacesCount++;
+        }
+
+        var normalizedReason = NormalizeOptionalText(request.Reason);
+        var normalizedAdminNotes = NormalizeOptionalText(request.AdminNotes);
+        var notesSuffix = string.IsNullOrWhiteSpace(normalizedAdminNotes)
+            ? string.Empty
+            : $" Notes: {normalizedAdminNotes}";
+
+        _auditLogger.Log(
+            adminUserId,
+            "RevokePlaceOwnerApproval",
+            "User",
+            user.Id.ToString(),
+            $"Revoked place owner approval for user '{user.Username}' and deactivated {deactivatedPlacesCount} owned place(s).{notesSuffix}",
+            normalizedReason
+        );
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Place owner approval revoked.",
+            deactivatedPlacesCount
+        });
+    }
+
     [HttpDelete("forum-posts/{id:guid}")]
     public async Task<IActionResult> DeleteForumPost(Guid id)
     {
@@ -373,5 +431,16 @@ public class AdminModerationController : ControllerBase
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
         return Ok(new AdminForumPostSearchListResponse(items, page, pageSize, totalCount, totalPages));
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length == 0 ? null : trimmed;
     }
 }
