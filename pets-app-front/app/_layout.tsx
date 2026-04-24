@@ -35,7 +35,8 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
     const firstSegment = segments[0];
     const isIndexRoute = pathname === "/" && firstSegment !== "(tabs)";
     const isPublicRoute =
-      firstSegment === "login-screen" || firstSegment === "register-screen";
+      firstSegment === "login-screen" ||
+      firstSegment === "register-screen";
 
     if (!isAuthenticated && !isIndexRoute && !isPublicRoute) {
       appRouter.replace("/login-screen");

@@ -38,7 +38,9 @@ const state = {
   userId: parseStoredNumber(localStorage.getItem(STORAGE_KEYS.userId)),
   me: null,
   places: [],
+  placeOwnerApplications: [],
   editingPlaceId: null,
+  editingPlaceSchedule: [],
   createdUserSession: null,
   apiReachable: null,
   lastSyncAt: null,
@@ -64,6 +66,11 @@ const elements = {
   placeStatusFilter: document.querySelector("#placeStatusFilter"),
   placesTableBody: document.querySelector("#placesTableBody"),
   placesEmptyState: document.querySelector("#placesEmptyState"),
+  applicationStatusFilter: document.querySelector("#applicationStatusFilter"),
+  applicationTypeFilter: document.querySelector("#applicationTypeFilter"),
+  refreshApplicationsButton: document.querySelector("#refreshApplicationsButton"),
+  applicationsList: document.querySelector("#applicationsList"),
+  applicationsEmptyState: document.querySelector("#applicationsEmptyState"),
   profileHeadline: document.querySelector("#profileHeadline"),
   profileSummary: document.querySelector("#profileSummary"),
   profileUserId: document.querySelector("#profileUserId"),
@@ -214,12 +221,66 @@ function formatDateTime(value) {
   }).format(parsed);
 }
 
+function buildDefaultWeeklySchedule() {
+  const weekdays = {
+    Monday: true,
+    Tuesday: true,
+    Wednesday: true,
+    Thursday: true,
+    Friday: true,
+  };
+
+  return [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ].map((dayOfWeek) => {
+    const isOpenWeekday = Boolean(weekdays[dayOfWeek]);
+
+    return {
+      dayOfWeek,
+      isClosed: !isOpenWeekday,
+      openTime: isOpenWeekday ? "09:00" : null,
+      closeTime: isOpenWeekday ? "17:00" : null,
+      breakStartTime: null,
+      breakEndTime: null,
+    };
+  });
+}
+
+function normalizeScheduleEntry(entry) {
+  return {
+    dayOfWeek: String(entry?.dayOfWeek || "Monday"),
+    isClosed: Boolean(entry?.isClosed),
+    openTime: entry?.openTime || null,
+    closeTime: entry?.closeTime || null,
+    breakStartTime: entry?.breakStartTime || null,
+    breakEndTime: entry?.breakEndTime || null,
+  };
+}
+
+function applicationToneForStatus(status) {
+  if (status === "Approved") return "success";
+  if (status === "Rejected") return "danger";
+  return "warning";
+}
+
 function renderStats() {
   const stats = {
     totalPlaces: state.places.length,
     activePlaces: state.places.filter((place) => place.status === "Active").length,
     vetPlaces: state.places.filter((place) => place.type === "Vet").length,
     petShops: state.places.filter((place) => place.type === "PetShop").length,
+    pendingApplications: state.placeOwnerApplications.filter(
+      (application) => application.status === "Pending",
+    ).length,
+    approvedApplications: state.placeOwnerApplications.filter(
+      (application) => application.status === "Approved",
+    ).length,
   };
 
   elements.statTargets.forEach((target) => {
@@ -234,7 +295,7 @@ function renderConnection() {
     : "Not yet synced";
 
   elements.tokenStatus.textContent = state.token
-    ? `Token stored for user #${state.userId ?? "?"}`
+    ? `Admin token stored for #${state.userId ?? "?"}`
     : "No token stored";
 
   if (state.apiReachable === null) {
@@ -260,7 +321,7 @@ function renderSession() {
     elements.profileSummary.textContent =
       state.token
         ? "A token is stored, but the profile could not be loaded. Please sign in again if this continues."
-        : "Sign in to create or update places. Public endpoints will still load the directory list.";
+        : "Sign in as an admin to review place-owner requests and manage places. Public endpoints will still load the directory list.";
     elements.profileUserId.textContent = state.userId ? String(state.userId) : "Not signed in";
     elements.profileEmail.textContent = "Not signed in";
     elements.profileLastLogin.textContent = "Unknown";
@@ -268,13 +329,12 @@ function renderSession() {
   }
 
   const displayName =
-    state.me.name ||
     `${state.me.firstName || ""} ${state.me.lastName || ""}`.trim() ||
     state.me.username ||
-    `User #${state.me.id}`;
+    `Admin #${state.me.id}`;
 
   elements.profileHeadline.textContent = displayName;
-  elements.profileSummary.textContent = `Signed in as ${state.me.username}. Protected place management is ready.`;
+  elements.profileSummary.textContent = `Signed in as ${state.me.username} (${state.me.role}). Admin request review and place management are ready.`;
   elements.profileUserId.textContent = String(state.me.id);
   elements.profileEmail.textContent = state.me.email || "No email";
   elements.profileLastLogin.textContent = formatDateTime(state.me.lastLogin);
@@ -283,12 +343,15 @@ function renderSession() {
 function renderCreatedUserPanel() {
   if (!state.createdUserSession) {
     elements.createdUserPanel.classList.add("hidden");
+    elements.useCreatedSessionButton.classList.add("hidden");
     return;
   }
 
-  const { userId, email, username } = state.createdUserSession;
+  const { userId, email, username, message } = state.createdUserSession;
   elements.createdUserHeadline.textContent = `User #${userId} created`;
-  elements.createdUserMessage.textContent = `${email} (${username}) was created successfully.`;
+  elements.createdUserMessage.textContent =
+    message || `${email} (${username}) was created successfully.`;
+  elements.useCreatedSessionButton.classList.add("hidden");
   elements.createdUserPanel.classList.remove("hidden");
 }
 
@@ -412,17 +475,146 @@ function renderPlaces() {
     .join("");
 }
 
+function getFilteredPlaceOwnerApplications() {
+  const selectedStatus = elements.applicationStatusFilter?.value || "";
+  const selectedType = elements.applicationTypeFilter?.value || "";
+
+  return [...state.placeOwnerApplications]
+    .filter(
+      (application) =>
+        !selectedStatus || application.status === selectedStatus,
+    )
+    .filter(
+      (application) =>
+        !selectedType || application.requestedPlaceType === selectedType,
+    )
+    .sort((left, right) => {
+      const leftTime = new Date(left.createdAt).getTime();
+      const rightTime = new Date(right.createdAt).getTime();
+      return rightTime - leftTime;
+    });
+}
+
+function renderPlaceOwnerApplications() {
+  if (!elements.applicationsList || !elements.applicationsEmptyState) {
+    return;
+  }
+
+  const applications = getFilteredPlaceOwnerApplications();
+  const emptyMessage = state.token
+    ? "No place-owner requests match the current filters."
+    : "Sign in as an admin to review place-owner requests.";
+
+  elements.applicationStatusFilter.disabled = !state.token;
+  elements.applicationTypeFilter.disabled = !state.token;
+  elements.refreshApplicationsButton.disabled = !state.token;
+  elements.applicationsEmptyState.textContent = emptyMessage;
+  elements.applicationsEmptyState.classList.toggle(
+    "hidden",
+    applications.length !== 0,
+  );
+
+  elements.applicationsList.innerHTML = applications
+    .map((application) => {
+      const applicantLabel =
+        application.displayName || application.username || `User #${application.userId}`;
+      const notes = application.adminNotes || application.rejectionReason || "";
+      const isPending = application.status === "Pending";
+
+      return `
+        <article class="request-card">
+          <div class="place-card-top">
+            <div>
+              <h3 class="place-title">${escapeHtml(application.businessName)}</h3>
+              <p class="place-subtitle">
+                ${escapeHtml(applicantLabel)} · @${escapeHtml(application.username || "user")}
+              </p>
+            </div>
+            <div class="pill-row">
+              <span class="pill">${escapeHtml(application.requestedPlaceType)}</span>
+              <span class="pill" data-tone="${applicationToneForStatus(application.status)}">
+                ${escapeHtml(application.status)}
+              </span>
+            </div>
+          </div>
+
+          <div class="place-grid">
+            <div class="place-meta-block">
+              <span class="place-label">Contact</span>
+              <p class="place-meta">${escapeHtml(application.email || "No email")}</p>
+              <p class="place-meta">${escapeHtml(application.phone || "No phone")}</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Location</span>
+              <p class="place-meta">${escapeHtml(
+                [application.city, application.country].filter(Boolean).join(", ") || "Unknown",
+              )}</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Submitted</span>
+              <p class="place-meta">${escapeHtml(formatDateTime(application.createdAt))}</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Reviewed</span>
+              <p class="place-meta">${escapeHtml(formatDateTime(application.reviewedAt))}</p>
+            </div>
+          </div>
+
+          ${
+            notes
+              ? `<p class="request-notes">${escapeHtml(notes)}</p>`
+              : ""
+          }
+
+          <div class="place-actions">
+            ${
+              isPending
+                ? `
+                  <button
+                    class="primary-button"
+                    type="button"
+                    data-action="approve-application"
+                    data-id="${escapeHtml(application.id)}"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    class="secondary-button danger"
+                    type="button"
+                    data-action="reject-application"
+                    data-id="${escapeHtml(application.id)}"
+                  >
+                    Reject
+                  </button>
+                `
+                : `
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    disabled
+                  >
+                    Review Complete
+                  </button>
+                `
+            }
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderPlaceFormState() {
   if (state.editingPlaceId) {
     elements.placeFormMode.textContent = "Editing an existing place";
     elements.placeFormHint.textContent =
-      "Submitting now will update the selected place record.";
+      "Submitting now will update the selected place record and keep its current weekly schedule.";
     return;
   }
 
   elements.placeFormMode.textContent = "Creating a new place";
   elements.placeFormHint.textContent =
-    "Sign in first, then submit the form to publish a new place.";
+    "Sign in first, then submit the form to publish a new place. New places start with a default weekday schedule.";
 }
 
 function renderAll() {
@@ -431,6 +623,7 @@ function renderAll() {
   renderCreatedUserPanel();
   renderStats();
   renderPlaces();
+  renderPlaceOwnerApplications();
   renderPlaceFormState();
 }
 
@@ -459,6 +652,7 @@ function clearSession() {
   state.token = "";
   state.userId = null;
   state.me = null;
+  state.placeOwnerApplications = [];
   persistSession();
 }
 
@@ -469,7 +663,7 @@ async function loadProfile({ quiet = false } = {}) {
   }
 
   try {
-    state.me = await apiRequest("/api/users/me");
+    state.me = await apiRequest("/api/admin/profile/me");
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       clearSession();
@@ -487,13 +681,29 @@ async function loadPlaces() {
   state.places = await apiRequest("/api/places");
 }
 
+async function loadPlaceOwnerApplications() {
+  if (!state.token) {
+    state.placeOwnerApplications = [];
+    return;
+  }
+
+  const response = await apiRequest(
+    "/api/admin/place-owner-applications?page=1&pageSize=200",
+  );
+
+  state.placeOwnerApplications = Array.isArray(response?.items)
+    ? response.items
+    : [];
+}
+
 async function refreshDashboard({ quiet = false } = {}) {
   try {
     setApiStatus("Refreshing...", "pending");
     await loadPlaces();
+    await loadProfile({ quiet: true });
+    await loadPlaceOwnerApplications();
     state.apiReachable = true;
     state.lastSyncAt = new Date().toISOString();
-    await loadProfile({ quiet: true });
     renderAll();
 
     if (!quiet) {
@@ -515,7 +725,7 @@ async function refreshDashboard({ quiet = false } = {}) {
 
 async function applySession(session) {
   state.token = session.accessToken || "";
-  state.userId = Number(session.userId) || null;
+  state.userId = Number(session.adminId ?? session.userId) || null;
   persistSession();
   await loadProfile({ quiet: true });
   renderAll();
@@ -526,11 +736,15 @@ function resetPlaceForm() {
   getField(elements.placeForm, "type").value = "Vet";
   getField(elements.placeForm, "status").value = "Active";
   state.editingPlaceId = null;
+  state.editingPlaceSchedule = buildDefaultWeeklySchedule();
   renderPlaceFormState();
 }
 
 function populatePlaceForm(place) {
   state.editingPlaceId = place.id;
+  state.editingPlaceSchedule = Array.isArray(place.schedule) && place.schedule.length
+    ? place.schedule.map(normalizeScheduleEntry)
+    : buildDefaultWeeklySchedule();
   getField(elements.placeForm, "name").value = place.name || "";
   getField(elements.placeForm, "type").value = place.type || "Vet";
   getField(elements.placeForm, "status").value = place.status || "Active";
@@ -602,7 +816,7 @@ async function handleLoginSubmit(event) {
   const formData = new FormData(elements.loginForm);
 
   try {
-    const session = await apiRequest("/api/auth/login", {
+    const session = await apiRequest("/api/admin/auth/login", {
       method: "POST",
       body: {
         email: String(formData.get("email") || "").trim(),
@@ -612,7 +826,7 @@ async function handleLoginSubmit(event) {
 
     await applySession(session);
     elements.loginForm.reset();
-    showToast("Signed in successfully.", "success");
+    showToast("Admin session ready.", "success");
   } catch (error) {
     showToast(error.message || "Unable to sign in.", "error");
   } finally {
@@ -622,12 +836,6 @@ async function handleLoginSubmit(event) {
 
 async function handleLogout() {
   if (!state.token) return;
-
-  try {
-    await apiRequest("/api/auth/logout", { method: "POST" });
-  } catch {
-    // The local session should still be cleared even if the API call fails.
-  }
 
   clearSession();
   renderAll();
@@ -651,29 +859,124 @@ async function handleRegisterSubmit(event) {
   };
 
   try {
-    const session = await apiRequest("/api/auth/register", {
+    const response = await apiRequest("/api/auth/register", {
       method: "POST",
       body: payload,
     });
 
     state.createdUserSession = {
-      accessToken: session.accessToken,
-      userId: session.userId,
+      userId: response.userId,
       email: payload.email,
       username: payload.username,
+      message: response.message,
     };
 
     elements.registerForm.reset();
-
-    if (!state.token) {
-      await applySession(session);
-      showToast(`Created account for ${payload.email} and signed in.`, "success");
-    } else {
-      renderCreatedUserPanel();
-      showToast(`Created user #${session.userId}. Your current session stayed active.`, "success");
-    }
+    renderCreatedUserPanel();
+    showToast(`Created user #${response.userId}. Your admin session stayed active.`, "success");
   } catch (error) {
     showToast(error.message || "Unable to create the account.", "error");
+  } finally {
+    restore();
+  }
+}
+
+async function handleApplicationsListClick(event) {
+  const actionButton = event.target.closest("button[data-action]");
+  if (!actionButton) return;
+
+  if (!state.token) {
+    showToast("Sign in as an admin before reviewing requests.", "warning");
+    return;
+  }
+
+  const applicationId = Number(actionButton.dataset.id);
+  const action = actionButton.dataset.action;
+  const selectedApplication = state.placeOwnerApplications.find(
+    (application) => Number(application.id) === applicationId,
+  );
+
+  if (!selectedApplication) {
+    showToast("The selected request could not be found.", "warning");
+    return;
+  }
+
+  if (selectedApplication.status !== "Pending") {
+    showToast("Only pending requests can be reviewed.", "warning");
+    return;
+  }
+
+  const restore = withBusyState(
+    actionButton,
+    action === "approve-application" ? "Approving..." : "Rejecting...",
+  );
+
+  try {
+    if (action === "approve-application") {
+      const adminNotes = window.prompt(
+        `Approve "${selectedApplication.businessName}"?\n\nOptional admin notes:`,
+        selectedApplication.adminNotes || "",
+      );
+
+      if (adminNotes === null) {
+        return;
+      }
+
+      await apiRequest(
+        `/api/admin/place-owner-applications/${applicationId}/approve`,
+        {
+          method: "POST",
+          body: {
+            adminNotes: adminNotes.trim() || null,
+          },
+        },
+      );
+
+      await refreshDashboard({ quiet: true });
+      showToast("Request approved successfully.", "success");
+      return;
+    }
+
+    if (action === "reject-application") {
+      const rejectionReason = window.prompt(
+        `Reject "${selectedApplication.businessName}"?\n\nRejection reason:`,
+        selectedApplication.rejectionReason || "",
+      );
+
+      if (rejectionReason === null) {
+        return;
+      }
+
+      if (!rejectionReason.trim()) {
+        showToast("A rejection reason is required.", "warning");
+        return;
+      }
+
+      const adminNotes = window.prompt(
+        "Optional admin notes:",
+        selectedApplication.adminNotes || "",
+      );
+
+      if (adminNotes === null) {
+        return;
+      }
+
+      await apiRequest(
+        `/api/admin/place-owner-applications/${applicationId}/reject`,
+        {
+          method: "POST",
+          body: {
+            rejectionReason: rejectionReason.trim(),
+            adminNotes: adminNotes.trim() || null,
+          },
+        },
+      );
+
+      await refreshDashboard({ quiet: true });
+      showToast("Request rejected successfully.", "success");
+    }
+  } catch (error) {
+    showToast(error.message || "Unable to review the request.", "error");
   } finally {
     restore();
   }
@@ -710,6 +1013,10 @@ async function handlePlaceSubmit(event) {
       country: String(formData.get("country") || "").trim(),
       latitude: parseOptionalNumber(String(formData.get("latitude") || "")),
       longitude: parseOptionalNumber(String(formData.get("longitude") || "")),
+      schedule:
+        state.editingPlaceSchedule.length > 0
+          ? state.editingPlaceSchedule.map(normalizeScheduleEntry)
+          : buildDefaultWeeklySchedule(),
     };
 
     if (state.editingPlaceId) {
@@ -787,20 +1094,24 @@ function bindEvents() {
   elements.placeForm.addEventListener("submit", handlePlaceSubmit);
   elements.refreshAllButton.addEventListener("click", () => refreshDashboard());
   elements.refreshPlacesButton.addEventListener("click", () => refreshDashboard());
+  elements.refreshApplicationsButton.addEventListener("click", () => refreshDashboard());
   elements.resetPlaceFormButton.addEventListener("click", resetPlaceForm);
   elements.sidebarLogoutButton.addEventListener("click", handleLogout);
   elements.mainLogoutButton.addEventListener("click", handleLogout);
-  elements.useCreatedSessionButton.addEventListener("click", async () => {
-    if (!state.createdUserSession) return;
-
-    await applySession(state.createdUserSession);
-    showToast("Switched to the newly created account.", "success");
-  });
 
   elements.placeSearchInput.addEventListener("input", renderPlaces);
   elements.placeTypeFilter.addEventListener("change", renderPlaces);
   elements.placeStatusFilter.addEventListener("change", renderPlaces);
+  elements.applicationStatusFilter.addEventListener(
+    "change",
+    renderPlaceOwnerApplications,
+  );
+  elements.applicationTypeFilter.addEventListener(
+    "change",
+    renderPlaceOwnerApplications,
+  );
   elements.placesTableBody.addEventListener("click", handlePlaceTableClick);
+  elements.applicationsList.addEventListener("click", handleApplicationsListClick);
 }
 
 async function init() {

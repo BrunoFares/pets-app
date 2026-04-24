@@ -28,6 +28,7 @@ public record UserProfileResponse(
     string Email,
     string? Image,
     string? Description,
+    bool IsApprovedPlaceOwner,
     DateTimeOffset CreatedAt,
     DateTimeOffset? LastLogin
 );
