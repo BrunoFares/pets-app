@@ -4,7 +4,7 @@ using PetCare.Api.Model;
 namespace PetCare.Api.DTOs;
 
 public record AdminLoginRequest(
-    [Required, EmailAddress] string Email,
+    [Required, MaxLength(320)] string Email,
     [Required] string Password
 );
 
