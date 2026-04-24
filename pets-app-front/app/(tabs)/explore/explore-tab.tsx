@@ -6,6 +6,7 @@ import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PlaceModel } from "@/data/models";
 import { formatPlaceLocation } from "@/lib/discovery-api";
+import { formatPlaceReviewSummaryLabel } from "@/lib/place-reviews";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -149,6 +150,10 @@ const ExploreTab = ({
                 name={item.Name}
                 location={formatPlaceLocation(item)}
                 image={item.Photo}
+                rating={formatPlaceReviewSummaryLabel({
+                  AverageRating: item.AverageRating,
+                  ReviewsCount: item.ReviewsCount,
+                })}
               />
             </TouchableOpacity>
           );
@@ -202,6 +207,7 @@ const createStyles = ({ darkMode }: any) => {
     },
     list: {
       flex: 1,
+      marginBottom: 20,
     },
   });
 };

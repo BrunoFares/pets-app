@@ -95,8 +95,8 @@ export default function ChatbotScreen() {
       });
     } catch (error) {
       presentApiError("Could not start chat", error, {
-        networkMessage:
-          "We couldn't reach the server, so your new chat was not started.",
+        fallbackMessage:
+          "We couldn't start a new local chat right now.",
       });
     } finally {
       setIsSubmitting(false);
@@ -203,7 +203,7 @@ export default function ChatbotScreen() {
             <ProfileEmptyState
               style={{ width: "98%", marginTop: 0 }}
               title="No conversations yet"
-              subtitle="Start a new prompt above and your saved chats will appear here."
+              subtitle="Start a new prompt above and your saved chats will appear here on this device."
             />
           }
         />

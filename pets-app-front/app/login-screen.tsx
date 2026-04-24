@@ -54,7 +54,7 @@ export default function LoginScreen() {
 
     if (error.status === 400 || error.status === 401) {
       if (combinedMessage.includes("verify") && combinedMessage.includes("email")) {
-        return "Please verify your email before logging in. Check your inbox for the verification link.";
+        return "Please verify your email before logging in. Check your inbox for the verification code.";
       }
 
       if (

@@ -34,13 +34,12 @@ const PROFILE_CACHE_TTL_MS = 10 * 60 * 1000;
 type ApiUserResponse = {
   id: number;
   username: string;
-  name?: string | null;
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string;
   image?: string | null;
   description?: string | null;
+  isApprovedPlaceOwner?: boolean;
   createdAt: string;
   lastLogin?: string | null;
 };
@@ -53,7 +52,7 @@ type ApiPetResponse = {
   species: string;
   breedId?: number | null;
   breed?: string | null;
-  sex: "Male" | "Female";
+  sex: "Male" | "Female" | "Unknown";
   birthDate?: string | null;
   weightKg?: number | null;
   color: string;
@@ -80,18 +79,21 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function mapUserToModel(user: ApiUserResponse): AppUsersModel {
+  const fullName = `${user.firstName} ${user.lastName}`.trim();
+
   return {
     Id: user.id,
-    Name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+    Name: fullName || user.username,
     Username: user.username,
     FirstName: user.firstName,
     LastName: user.lastName,
     Email: user.email,
-    PhoneNumber: user.phoneNumber,
+    PhoneNumber: "",
     PasswordHash: "",
     Image: resolveApiUrl(user.image ?? null),
     CreatedAt: user.createdAt,
     LastLogin: user.lastLogin ?? null,
+    IsApprovedPlaceOwner: user.isApprovedPlaceOwner ?? false,
     Description: user.description ?? "",
     BookmarkedPostID: [],
   };

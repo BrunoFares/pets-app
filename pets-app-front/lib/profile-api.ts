@@ -15,13 +15,12 @@ import { normalizeMedicationReminderRecord } from "@/lib/medication-reminders";
 type ApiUserResponse = {
   id: number;
   username: string;
-  name?: string | null;
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string;
   image?: string | null;
   description?: string | null;
+  isApprovedPlaceOwner?: boolean;
   createdAt: string;
   lastLogin?: string | null;
 };
@@ -141,18 +140,21 @@ export function parseRoutePayload<T>(payload?: unknown): T | null {
 }
 
 export function mapApiUserToModel(user: ApiUserResponse): AppUsersModel {
+  const fullName = `${user.firstName} ${user.lastName}`.trim();
+
   return {
     Id: user.id,
-    Name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+    Name: fullName || user.username,
     Username: user.username,
     FirstName: user.firstName,
     LastName: user.lastName,
     Email: user.email,
-    PhoneNumber: user.phoneNumber,
+    PhoneNumber: "",
     PasswordHash: "",
     Image: resolveApiUrl(user.image ?? null),
     CreatedAt: user.createdAt,
     LastLogin: user.lastLogin ?? null,
+    IsApprovedPlaceOwner: user.isApprovedPlaceOwner ?? false,
     Description: user.description ?? "",
     BookmarkedPostID: [],
   };
@@ -165,7 +167,7 @@ export function mapApiPetToModel(pet: ApiPetResponse): PetModel {
     Name: pet.name,
     SpeciesId: pet.speciesId,
     BreedId: pet.breedId ?? null,
-    Sex: pet.sex === "Female" ? "Female" : "Male",
+    Sex: pet.sex,
     BirthDate: pet.birthDate ?? null,
     WeightKg: pet.weightKg ?? null,
     Color: pet.color,
@@ -270,6 +272,7 @@ export function mapApiBreedToModel(breed: ApiBreedResponse): BreedModel {
 
 export function toApiPetSex(value?: string | null) {
   if (value === "Female") return "Female";
+  if (value === "Unknown") return "Unknown";
   return "Male";
 }
 
@@ -346,7 +349,7 @@ export async function fetchIllnessMedications(illnessId: string | number) {
 
 export async function fetchMedicationReminders() {
   const response = await apiRequest<ApiMedicationResponse[]>(
-    "/api/Medications/active",
+    "/api/Medications/needs-reminders",
   );
   return response.map((medication) =>
     normalizeMedicationReminderRecord(mapApiMedicationToModel(medication)),
