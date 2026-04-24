@@ -21,6 +21,7 @@ using System.Threading.RateLimiting;
 
 const string AdminUiCorsPolicy = "AdminUiCors";
 const string AdminUiRoutePrefix = "/admin";
+const string AdminUiLoginPath = "/admin/login";
 const string AuthRateLimitPolicy = "auth";
 const string UploadRateLimitPolicy = "uploads";
 
@@ -192,6 +193,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrWhiteSpace(context.Token) &&
+                    context.Request.Cookies.TryGetValue(AuthConstants.Cookies.AdminAccessToken, out var cookieToken))
+                {
+                    context.Token = cookieToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -285,6 +299,78 @@ app.UseExceptionHandler(exceptionHandlerApp =>
 
 app.UseCors(AdminUiCorsPolicy);
 app.UseHttpsRedirection();
+app.UseAuthentication();
+
+if (hasAdminUi)
+{
+    app.Use(async (context, next) =>
+    {
+        if (!context.Request.Path.StartsWithSegments(AdminUiRoutePrefix, out var remainingPath))
+        {
+            await next();
+            return;
+        }
+
+        var remainingPathValue = remainingPath.Value ?? string.Empty;
+        var isRootAdminRequest =
+            string.IsNullOrEmpty(remainingPathValue) ||
+            string.Equals(remainingPathValue, "/", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(remainingPathValue, "/index.html", StringComparison.OrdinalIgnoreCase);
+        var isLoginRequest =
+            string.Equals(remainingPathValue, "/login", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(remainingPathValue, "/login/", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(remainingPathValue, "/login.html", StringComparison.OrdinalIgnoreCase);
+        var isDashboardRequest =
+            string.Equals(remainingPathValue, "/home", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(remainingPathValue, "/home/", StringComparison.OrdinalIgnoreCase);
+        var isStaticAssetRequest =
+            remainingPathValue.StartsWith("/assets", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(remainingPathValue, "/login.js", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(remainingPathValue, "/app.js", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(remainingPathValue, "/styles.css", StringComparison.OrdinalIgnoreCase);
+
+        if (isStaticAssetRequest)
+        {
+            await next();
+            return;
+        }
+
+        if (isRootAdminRequest)
+        {
+            context.Response.Redirect(AdminUiLoginPath);
+            return;
+        }
+
+        var authorizationService = context.RequestServices.GetRequiredService<IAuthorizationService>();
+        var authorizationResult = await authorizationService.AuthorizeAsync(
+            context.User,
+            resource: null,
+            policyName: AuthConstants.Policies.AdminOnly);
+
+        if (isLoginRequest)
+        {
+            if (!string.Equals(remainingPathValue, "/login.html", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Request.Path = $"{AdminUiRoutePrefix}/login.html";
+            }
+            await next();
+            return;
+        }
+
+        if (!authorizationResult.Succeeded)
+        {
+            context.Response.Redirect(AdminUiLoginPath);
+            return;
+        }
+
+        if (isDashboardRequest)
+        {
+            context.Request.Path = $"{AdminUiRoutePrefix}/index.html";
+        }
+
+        await next();
+    });
+}
 
 if (hasAdminUi)
 {
@@ -305,7 +391,6 @@ if (hasAdminUi)
 }
 
 app.UseStaticFiles();
-app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
