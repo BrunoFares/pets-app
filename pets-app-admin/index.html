@@ -6,7 +6,7 @@
     <title>PetsApp Admin Console</title>
     <meta
       name="description"
-      content="Admin dashboard for PetsApp user accounts and pet-friendly place management."
+      content="Admin dashboard for PetsApp request review, account creation, and pet-friendly place management."
     />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
@@ -25,6 +25,7 @@
         <a href="#connection">Connection</a>
         <a href="#auth">Access</a>
         <a href="#users">New User</a>
+        <a href="#requests">Requests</a>
         <a href="#places">Places</a>
       </nav>
 
@@ -36,7 +37,8 @@
             <p>
               This dashboard is the browser companion to the existing mobile
               experience. It connects directly to the current .NET API so you can
-              create accounts, publish places, and keep the directory updated.
+              review place-owner requests, create accounts, publish places, and
+              keep the directory updated.
             </p>
           </div>
 
@@ -72,6 +74,14 @@
           <article class="mini-card accent-blue">
             <span>Pet Shops</span>
             <strong data-stat="petShops">0</strong>
+          </article>
+          <article class="mini-card accent-peach">
+            <span>Pending Requests</span>
+            <strong data-stat="pendingApplications">0</strong>
+          </article>
+          <article class="mini-card accent-violet">
+            <span>Approved Owners</span>
+            <strong data-stat="approvedApplications">0</strong>
           </article>
         </section>
 
@@ -119,7 +129,10 @@
             <div class="section-heading">
               <span class="section-tag">Access</span>
               <h2>Sign in</h2>
-              <p>Protected place management follows the same auth flow as the app.</p>
+              <p>
+                Request review and protected place management use the dedicated
+                admin auth flow.
+              </p>
             </div>
 
             <form id="loginForm" class="stack-form">
@@ -198,7 +211,10 @@
             <div class="section-heading">
               <span class="section-tag">User setup</span>
               <h2>Create a new user account</h2>
-              <p>This uses the same registration endpoint as the mobile app.</p>
+              <p>
+                This uses the same registration endpoint as the mobile app while
+                keeping your admin session active.
+              </p>
             </div>
 
             <form id="registerForm" class="stack-form">
@@ -260,6 +276,53 @@
               </button>
             </div>
           </article>
+        </section>
+
+        <section id="requests" class="screen-card">
+          <div class="section-heading">
+            <span class="section-tag">Requests</span>
+            <h2>Review place-owner applications</h2>
+            <p>
+              Approve or reject vet, pet shop, and charity requests so place
+              managers can publish and maintain their listings from the app.
+            </p>
+          </div>
+
+          <div class="filter-row request-filter-row">
+            <label class="form-field compact">
+              <span>Status</span>
+              <select id="applicationStatusFilter">
+                <option value="">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </label>
+
+            <label class="form-field compact">
+              <span>Place type</span>
+              <select id="applicationTypeFilter">
+                <option value="">All</option>
+                <option value="Vet">Vet</option>
+                <option value="PetShop">Pet Shop</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <button
+              id="refreshApplicationsButton"
+              type="button"
+              class="secondary-button align-end"
+            >
+              Refresh requests
+            </button>
+          </div>
+
+          <div id="applicationsList" class="places-list"></div>
+
+          <p id="applicationsEmptyState" class="empty-state hidden">
+            No place-owner requests match the current filters.
+          </p>
         </section>
 
         <section id="places" class="screen-card">

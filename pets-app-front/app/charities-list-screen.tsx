@@ -12,6 +12,7 @@ import {
   fetchCharityOrganisations,
   formatPlaceLocation,
 } from "@/lib/discovery-api";
+import { formatPlaceReviewSummaryLabel } from "@/lib/place-reviews";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -168,6 +169,10 @@ const CharitiesListScreen = () => {
                 name={item.Name}
                 location={formatPlaceLocation(item)}
                 image={item.Photo}
+                rating={formatPlaceReviewSummaryLabel({
+                  AverageRating: item.AverageRating,
+                  ReviewsCount: item.ReviewsCount,
+                })}
               />
             </TouchableOpacity>
           );
@@ -209,6 +214,7 @@ const createStyles = ({ darkMode }: any) => {
       flex: 1,
       alignItems: "center",
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+      marginBottom: -90,
     },
     utilityBar: {
       flexDirection: "row",

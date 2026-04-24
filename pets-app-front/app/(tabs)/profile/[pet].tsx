@@ -173,7 +173,13 @@ const Pet = () => {
                     ]}
                   >
                     <Ionicons
-                      name={displayedPet.Sex === "Male" ? "male" : "female"}
+                      name={
+                        displayedPet.Sex === "Male"
+                          ? "male"
+                          : displayedPet.Sex === "Female"
+                            ? "female"
+                            : "help-circle-outline"
+                      }
                       size={48}
                       color={darkMode ? colors.white : colors.black}
                       style={{ paddingVertical: 24 }}

@@ -311,6 +311,33 @@ const createStyles = ({ darkMode, translateY }: any) => {
       fontFamily: "Poppins-Regular",
       fontSize: 16,
     },
+    placeManagerCard: {
+      width: "95%",
+      alignSelf: "center",
+      marginTop: 4,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderRadius: 20,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 16,
+    },
+    placeManagerCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    placeManagerTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 18,
+    },
+    placeManagerSubtitle: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      lineHeight: 20,
+      opacity: 0.8,
+    },
     pfp: {
       height: 120,
       width: 120,

@@ -12,6 +12,7 @@ export interface AppUsersModel {
 
   CreatedAt: number | string;
   LastLogin: number | string | null;
+  IsApprovedPlaceOwner?: boolean;
 
   // forum info
   Description: string;
@@ -62,6 +63,7 @@ export interface ChatModel {
 
 export interface PlaceModel {
   Id: string;
+  OwnerUserId?: string | number | null;
   Name: string;
   Phone: string;
   Email: string;
@@ -76,6 +78,57 @@ export interface PlaceModel {
   Latitude: number | null;
   Longitude: number | null;
   CreatedAt: number | string;
+  Schedule: PlaceScheduleModel[];
+  AverageRating: number | null;
+  ReviewsCount: number;
+}
+
+export interface PlaceScheduleModel {
+  Id: string;
+  DayOfWeek: string | number;
+  IsClosed: boolean;
+  OpenTime?: string | null;
+  CloseTime?: string | null;
+  BreakStartTime?: string | null;
+  BreakEndTime?: string | null;
+}
+
+export interface PlaceReviewModel {
+  Id: string;
+  PlaceId: string;
+  UserId: string;
+  UserName: string;
+  UserImage?: string | null;
+  Rating: number;
+  Comment: string;
+  CreatedAt: number | string;
+  UpdatedAt?: number | string | null;
+}
+
+export interface PlaceReviewSummaryModel {
+  AverageRating: number | null;
+  ReviewsCount: number;
+}
+
+export interface PlaceOwnerApplicationModel {
+  Id: string | number;
+  UserId: string | number;
+  BusinessName: string;
+  Phone: string;
+  Email: string;
+  Description?: string | null;
+  AddressLine1: string;
+  AddressLine2?: string | null;
+  City: string;
+  Country: string;
+  RequestedPlaceType: "Vet" | "PetShop" | "Other";
+  Status: "Pending" | "Approved" | "Rejected";
+  RejectionReason?: string | null;
+  AdminNotes?: string | null;
+  ReviewedByAdminId?: string | number | null;
+  ReviewedAt?: number | string | null;
+  CreatedAt: number | string;
+  UpdatedAt: number | string;
 }
 
 export interface PetModel {
@@ -84,7 +137,7 @@ export interface PetModel {
   Name: string;
   SpeciesId: number;
   BreedId: number | null;
-  Sex: "Male" | "Female";
+  Sex: "Male" | "Female" | "Unknown";
   BirthDate: Date | string | null;
   WeightKg: number | null;
   Color: string;
@@ -196,9 +249,11 @@ export const Color = Object.freeze({
   ORANGE: "Orange",
   BLACK: "Black",
   WHITE: "White",
+  UNKNOWN: "Unknown",
 });
 
 export const Sex = Object.freeze({
   MALE: "Male",
   FEMALE: "Female",
+  UNKNOWN: "Unknown",
 });

@@ -425,10 +425,7 @@ const ForumPost = ({
         </View>
 
         <View style={styles.additionalRowBig}>
-          <TouchableOpacity
-            onPress={handlePostPress}
-            style={styles.actionButton}
-          >
+          <TouchableOpacity style={styles.actionButton}>
             <EvilIcons
               name="comment"
               size={26}

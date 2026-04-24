@@ -1,8 +1,19 @@
-import { PlaceModel } from "@/data/models";
+import { PlaceModel, PlaceScheduleModel } from "@/data/models";
 import { apiRequest, resolveApiUrl } from "@/lib/api";
+
+type ApiPlaceScheduleResponse = {
+  id: number;
+  dayOfWeek: string | number;
+  isClosed: boolean;
+  openTime?: string | null;
+  closeTime?: string | null;
+  breakStartTime?: string | null;
+  breakEndTime?: string | null;
+};
 
 type ApiPlaceResponse = {
   id: string;
+  ownerUserId?: number | null;
   name: string;
   phone: string;
   email: string;
@@ -17,13 +28,31 @@ type ApiPlaceResponse = {
   latitude?: number | null;
   longitude?: number | null;
   createdAt: string;
+  schedule?: ApiPlaceScheduleResponse[] | null;
+  averageRating?: number | null;
+  reviewsCount?: number;
 };
 
 type PlaceType = ApiPlaceResponse["type"];
 
+function mapApiPlaceScheduleToModel(
+  schedule: ApiPlaceScheduleResponse,
+): PlaceScheduleModel {
+  return {
+    Id: String(schedule.id),
+    DayOfWeek: schedule.dayOfWeek,
+    IsClosed: schedule.isClosed,
+    OpenTime: schedule.openTime ?? null,
+    CloseTime: schedule.closeTime ?? null,
+    BreakStartTime: schedule.breakStartTime ?? null,
+    BreakEndTime: schedule.breakEndTime ?? null,
+  };
+}
+
 export function mapApiPlaceToModel(place: ApiPlaceResponse): PlaceModel {
   return {
     Id: place.id,
+    OwnerUserId: place.ownerUserId ?? null,
     Name: place.name,
     Phone: place.phone,
     Email: place.email,
@@ -38,6 +67,11 @@ export function mapApiPlaceToModel(place: ApiPlaceResponse): PlaceModel {
     Latitude: place.latitude ?? null,
     Longitude: place.longitude ?? null,
     CreatedAt: place.createdAt,
+    Schedule: (place.schedule ?? []).map(mapApiPlaceScheduleToModel),
+    AverageRating:
+      typeof place.averageRating === "number" ? place.averageRating : null,
+    ReviewsCount:
+      typeof place.reviewsCount === "number" ? place.reviewsCount : 0,
   };
 }
 

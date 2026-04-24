@@ -42,7 +42,6 @@ const RegisterScreen = () => {
       !username.trim() ||
       !firstName.trim() ||
       !lastName.trim() ||
-      !phoneNumber.trim() ||
       !email.trim() ||
       !password
     ) {
@@ -65,9 +64,7 @@ const RegisterScreen = () => {
         method: "POST",
         body: JSON.stringify({
           username: username.trim(),
-          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           email: email.trim(),
-          phoneNumber: phoneNumber.trim(),
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           password,
