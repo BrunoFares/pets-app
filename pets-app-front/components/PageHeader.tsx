@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import type { ReactNode } from "react";
 import {
   StyleSheet,
   TouchableOpacity,
@@ -16,10 +16,12 @@ export const PageHeader = ({
   title,
   style,
   onBackBtnPressed,
+  rightElement,
 }: {
   title: string;
   style?: ViewStyle;
   onBackBtnPressed?: () => void;
+  rightElement?: ReactNode;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
@@ -27,19 +29,29 @@ export const PageHeader = ({
 
   return (
     <AdaptiveView style={[styles.header, style]}>
-      <TouchableOpacity 
-        onPress={onBackBtnPressed ? onBackBtnPressed : () => router.back()} // allows the dev to add custom functions to the back btn
+      <View style={styles.sideSlot}>
+        <TouchableOpacity
+          onPress={onBackBtnPressed ? onBackBtnPressed : () => router.back()} // allows the dev to add custom functions to the back btn
+        >
+          <AntDesign
+            name="left"
+            size={24}
+            color={darkMode ? colors.white : colors.veryDarkGrey}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <AdaptiveText
+        style={{
+          fontFamily: "Poppins-Regular",
+        }}
       >
-        <AntDesign
-          name="left"
-          size={24}
-          color={darkMode ? colors.white : colors.veryDarkGrey}
-        />
-      </TouchableOpacity>
-      <AdaptiveText style={{
-        fontFamily: 'Poppins-Regular'
-      }}>{title}</AdaptiveText>
-      <View style={{ width: 24 }} />
+        {title}
+      </AdaptiveText>
+
+      <View style={[styles.sideSlot, styles.rightSlot]}>
+        {rightElement ?? <View style={styles.sideSlotPlaceholder} />}
+      </View>
     </AdaptiveView>
   );
 };
@@ -56,8 +68,17 @@ const createStyles = ({ darkMode }: any) => {
       height: 50,
       width: "100%",
     },
-    icon: {
-      marginRight: 12,
+    sideSlot: {
+      width: 32,
+      alignItems: "flex-start",
+      justifyContent: "center",
+    },
+    rightSlot: {
+      alignItems: "flex-end",
+    },
+    sideSlotPlaceholder: {
+      width: 24,
+      height: 24,
     },
   });
 };

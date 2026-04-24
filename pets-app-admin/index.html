@@ -23,9 +23,10 @@
 
       <nav class="quick-links" aria-label="Section shortcuts">
         <a href="#connection">Connection</a>
-        <a href="#auth">Access</a>
+        <a href="#session">Session</a>
         <a href="#users">New User</a>
         <a href="#requests">Requests</a>
+        <a href="#reports">Reports</a>
         <a href="#places">Places</a>
       </nav>
 
@@ -53,7 +54,7 @@
             </div>
             <div class="status-card">
               <span>Auth</span>
-              <strong id="tokenStatus">No token stored</strong>
+              <strong id="tokenStatus">Checking access</strong>
             </div>
           </div>
         </section>
@@ -85,7 +86,7 @@
           </article>
         </section>
 
-        <section class="two-up">
+        <section>
           <article id="connection" class="screen-card">
             <div class="section-heading">
               <span class="section-tag">Connection</span>
@@ -124,72 +125,29 @@
               only a fallback for standalone UI testing.
             </p>
           </article>
-
-          <article id="auth" class="screen-card">
-            <div class="section-heading">
-              <span class="section-tag">Access</span>
-              <h2>Sign in</h2>
-              <p>
-                Request review and protected place management use the dedicated
-                admin auth flow.
-              </p>
-            </div>
-
-            <form id="loginForm" class="stack-form">
-              <label class="form-field">
-                <span>Email</span>
-                <input
-                  name="email"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="admin@example.com"
-                  required
-                />
-              </label>
-
-              <label class="form-field">
-                <span>Password</span>
-                <input
-                  name="password"
-                  type="password"
-                  autocomplete="current-password"
-                  placeholder="StrongPassword123!"
-                  required
-                />
-              </label>
-
-              <div class="button-row">
-                <button type="submit" class="primary-button">Login</button>
-                <button id="mainLogoutButton" type="button" class="secondary-button" disabled>
-                  Log out
-                </button>
-              </div>
-            </form>
-          </article>
         </section>
 
         <section class="two-up">
-          <article class="screen-card">
+          <article id="session" class="screen-card">
             <div class="section-heading">
               <span class="section-tag">Session</span>
               <h2>Current operator</h2>
-              <p>The stored token and profile state for this browser session.</p>
+              <p>The active admin session for this browser.</p>
             </div>
 
             <div id="profileCard" class="profile-card">
-              <strong id="profileHeadline">Guest mode</strong>
+              <strong id="profileHeadline">Checking access</strong>
               <p id="profileSummary">
-                Sign in to create or update places. Public endpoints will still load
-                the directory list.
+                Verifying the active admin session before loading the dashboard.
               </p>
               <dl class="profile-list">
                 <div>
                   <dt>User ID</dt>
-                  <dd id="profileUserId">Not signed in</dd>
+                  <dd id="profileUserId">Checking</dd>
                 </div>
                 <div>
                   <dt>Email</dt>
-                  <dd id="profileEmail">Not signed in</dd>
+                  <dd id="profileEmail">Checking</dd>
                 </div>
                 <div>
                   <dt>Last login</dt>
@@ -322,6 +280,73 @@
 
           <p id="applicationsEmptyState" class="empty-state hidden">
             No place-owner requests match the current filters.
+          </p>
+        </section>
+
+        <section id="reports" class="screen-card">
+          <div class="section-heading">
+            <span class="section-tag">Reports</span>
+            <h2>Review reported users and forum posts</h2>
+            <p>
+              Check incoming reports, inspect the reported target, and resolve
+              each case directly from the admin dashboard.
+            </p>
+          </div>
+
+          <div class="filter-row report-filter-row">
+            <label class="form-field compact">
+              <span>Status</span>
+              <select id="reportStatusFilter">
+                <option value="">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Reviewed">Reviewed</option>
+                <option value="Dismissed">Dismissed</option>
+                <option value="ActionTaken">Action taken</option>
+              </select>
+            </label>
+
+            <label class="form-field compact">
+              <span>Target</span>
+              <select id="reportTargetTypeFilter">
+                <option value="">All</option>
+                <option value="User">User</option>
+                <option value="ForumPost">Forum post</option>
+              </select>
+            </label>
+
+            <label class="form-field compact">
+              <span>Priority</span>
+              <select id="reportPriorityFilter">
+                <option value="">All</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </label>
+
+            <label class="form-field compact">
+              <span>Sort</span>
+              <select id="reportSortFilter">
+                <option value="highestPriority">Highest priority</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="mostReported">Most reported targets</option>
+              </select>
+            </label>
+
+            <button
+              id="refreshReportsButton"
+              type="button"
+              class="secondary-button align-end"
+            >
+              Refresh reports
+            </button>
+          </div>
+
+          <div id="reportsList" class="places-list"></div>
+
+          <p id="reportsEmptyState" class="empty-state hidden">
+            No reports match the current filters.
           </p>
         </section>
 

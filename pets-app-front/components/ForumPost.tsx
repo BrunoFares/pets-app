@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import {
   Alert,
   Keyboard,
+  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -21,6 +22,41 @@ import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
 import CustomImage from "./CustomImage";
 import CustomModal from "./CustomModal";
+
+const REPORT_REASONS = [
+  {
+    value: "Spam",
+    label: "Spam",
+    description: "Promotional, repetitive, or misleading content.",
+  },
+  {
+    value: "Harassment",
+    label: "Harassment",
+    description: "Targeted bullying, threats, or hostile behavior.",
+  },
+  {
+    value: "Abuse",
+    label: "Abuse",
+    description: "Cruel, violent, or exploitative content.",
+  },
+  {
+    value: "Scam",
+    label: "Scam",
+    description: "Fraudulent, deceptive, or money-seeking behavior.",
+  },
+  {
+    value: "InappropriateContent",
+    label: "Inappropriate content",
+    description: "Content that is graphic, offensive, or unsafe.",
+  },
+  {
+    value: "Other",
+    label: "Other",
+    description: "Something else that should be reviewed.",
+  },
+] as const;
+
+type ReportReasonValue = (typeof REPORT_REASONS)[number]["value"];
 
 function formatPostTimestamp(
   createdAt: ForumPostsModel["CreatedAt"],
@@ -74,6 +110,12 @@ const ForumPost = ({
   const [isReplySubmitting, setIsReplySubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
+  const [optionsStep, setOptionsStep] = useState<"menu" | "report">("menu");
+  const [selectedReason, setSelectedReason] = useState<ReportReasonValue>(
+    "Spam",
+  );
+  const [reportDescription, setReportDescription] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const { setShowFooter } = useGlobal();
   const compactTimestamp = formatPostTimestamp(item.CreatedAt, "compact");
   const detailedTimestamp = formatPostTimestamp(item.CreatedAt, "detailed");
@@ -100,12 +142,20 @@ const ForumPost = ({
     setBookmarked(item.IsBookmarked ?? false);
   }, [item.Id, item.IsBookmarked, item.IsLikedByCurrentUser, item.LikesCount]);
 
+  const resetReportDraft = () => {
+    setOptionsStep("menu");
+    setSelectedReason("Spam");
+    setReportDescription("");
+    setIsSubmittingReport(false);
+  };
+
   const closeOptionsModal = () => {
-    if (isDeleting) {
+    if (isDeleting || isSubmittingReport) {
       return;
     }
 
     setIsOptionsVisible(false);
+    resetReportDraft();
   };
 
   const syncBookmark = async (nextBookmarked: boolean) => {
@@ -221,51 +271,195 @@ const ForumPost = ({
     }
   };
 
+  const submitPostReport = async () => {
+    try {
+      setIsSubmittingReport(true);
+      await apiRequest("/api/Reports", {
+        method: "POST",
+        body: JSON.stringify({
+          targetType: "ForumPost",
+          targetId: item.Id,
+          reasonType: selectedReason,
+          description: reportDescription.trim() || null,
+        }),
+      });
+
+      setIsOptionsVisible(false);
+      resetReportDraft();
+      Keyboard.dismiss();
+      Alert.alert(
+        "Report submitted",
+        "Thanks for the report. We'll review this post.",
+      );
+    } catch (error) {
+      presentApiError("Unable to submit report", error, {
+        networkMessage:
+          "We couldn't reach the server, so the report was not submitted.",
+      });
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
   const renderOptionsModal = () => (
     <CustomModal visible={isOptionsVisible} onClose={closeOptionsModal}>
-      <View style={styles.optionsModalContent}>
-        <AdaptiveText style={styles.optionsModalTitle}>
-          Post options
-        </AdaptiveText>
-
-        {isOwnPost ? (
-          <AdaptiveText style={styles.optionsModalSubtitle}>
-            You can delete this post from the forum.
-          </AdaptiveText>
-        ) : (
-          <AdaptiveText style={styles.optionsModalSubtitle}>
-            You can only delete posts that belong to your account.
-          </AdaptiveText>
-        )}
-
-        {isOwnPost ? (
-          <TouchableOpacity
-            onPress={deletePost}
-            disabled={isDeleting}
-            style={[
-              styles.modalActionButton,
-              styles.deleteActionButton,
-              isDeleting ? styles.modalActionButtonDisabled : null,
-            ]}
-          >
-            <AdaptiveText style={styles.deleteActionText}>
-              {isDeleting ? "Deleting..." : "Delete post"}
+      <ScrollView
+        style={styles.optionsModalScroll}
+        contentContainerStyle={styles.optionsModalContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {optionsStep === "menu" ? (
+          <>
+            <AdaptiveText style={styles.optionsModalTitle}>
+              Post options
             </AdaptiveText>
-          </TouchableOpacity>
-        ) : null}
 
-        <TouchableOpacity
-          onPress={closeOptionsModal}
-          disabled={isDeleting}
-          style={[
-            styles.modalActionButton,
-            styles.closeActionButton,
-            isDeleting ? styles.modalActionButtonDisabled : null,
-          ]}
-        >
-          <AdaptiveText style={styles.closeActionText}>Close</AdaptiveText>
-        </TouchableOpacity>
-      </View>
+            {isOwnPost ? (
+              <AdaptiveText style={styles.optionsModalSubtitle}>
+                You can delete this post from the forum.
+              </AdaptiveText>
+            ) : (
+              <AdaptiveText style={styles.optionsModalSubtitle}>
+                Report this post if it breaks the forum rules.
+              </AdaptiveText>
+            )}
+
+            {isOwnPost ? (
+              <TouchableOpacity
+                onPress={deletePost}
+                disabled={isDeleting}
+                style={[
+                  styles.modalActionButton,
+                  styles.deleteActionButton,
+                  isDeleting ? styles.modalActionButtonDisabled : null,
+                ]}
+              >
+                <AdaptiveText style={styles.deleteActionText}>
+                  {isDeleting ? "Deleting..." : "Delete post"}
+                </AdaptiveText>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setOptionsStep("report")}
+                style={[styles.modalActionButton, styles.reportActionButton]}
+              >
+                <AdaptiveText style={styles.reportActionText}>
+                  Report post
+                </AdaptiveText>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              onPress={closeOptionsModal}
+              disabled={isDeleting || isSubmittingReport}
+              style={[
+                styles.modalActionButton,
+                styles.closeActionButton,
+                isDeleting || isSubmittingReport
+                  ? styles.modalActionButtonDisabled
+                  : null,
+              ]}
+            >
+              <AdaptiveText style={styles.closeActionText}>Close</AdaptiveText>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <AdaptiveText style={styles.optionsModalTitle}>
+              Report post
+            </AdaptiveText>
+            <AdaptiveText style={styles.optionsModalSubtitle}>
+              Choose a reason and add any helpful details for the moderation
+              team.
+            </AdaptiveText>
+
+            <View style={styles.reportReasonList}>
+              {REPORT_REASONS.map((reason) => {
+                const isSelected = reason.value === selectedReason;
+
+                return (
+                  <TouchableOpacity
+                    key={reason.value}
+                    onPress={() => setSelectedReason(reason.value)}
+                    style={[
+                      styles.reportReasonButton,
+                      isSelected ? styles.reportReasonButtonSelected : null,
+                    ]}
+                  >
+                    <AdaptiveText
+                      style={[
+                        styles.reportReasonLabel,
+                        isSelected ? styles.reportReasonLabelSelected : null,
+                      ]}
+                    >
+                      {reason.label}
+                    </AdaptiveText>
+                    <AdaptiveText
+                      style={[
+                        styles.reportReasonDescription,
+                        isSelected
+                          ? styles.reportReasonDescriptionSelected
+                          : null,
+                      ]}
+                    >
+                      {reason.description}
+                    </AdaptiveText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TextInput
+              value={reportDescription}
+              onChangeText={setReportDescription}
+              multiline
+              editable={!isSubmittingReport}
+              textAlignVertical="top"
+              placeholder="Additional details (optional)"
+              placeholderTextColor={
+                darkMode ? colors.lightGrey : colors.darkGrey
+              }
+              style={styles.reportDescriptionInput}
+            />
+
+            <AdaptiveText style={styles.reportDescriptionHint}>
+              A short explanation helps moderators review the report faster.
+            </AdaptiveText>
+
+            <TouchableOpacity
+              onPress={submitPostReport}
+              disabled={isSubmittingReport}
+              style={[
+                styles.modalActionButton,
+                styles.submitActionButton,
+                isSubmittingReport ? styles.modalActionButtonDisabled : null,
+              ]}
+            >
+              <AdaptiveText style={styles.submitActionText}>
+                {isSubmittingReport ? "Submitting..." : "Submit report"}
+              </AdaptiveText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (isSubmittingReport) {
+                  return;
+                }
+
+                setOptionsStep("menu");
+              }}
+              disabled={isSubmittingReport}
+              style={[
+                styles.modalActionButton,
+                styles.closeActionButton,
+                isSubmittingReport ? styles.modalActionButtonDisabled : null,
+              ]}
+            >
+              <AdaptiveText style={styles.closeActionText}>Back</AdaptiveText>
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
     </CustomModal>
   );
 
@@ -638,6 +832,9 @@ const createStyles = ({ darkMode }: any) => {
       paddingBottom: 32,
       alignItems: "center",
     },
+    optionsModalScroll: {
+      width: "100%",
+    },
     optionsModalTitle: {
       fontFamily: "Poppins-Bold",
       fontSize: 24,
@@ -668,6 +865,79 @@ const createStyles = ({ darkMode }: any) => {
     },
     deleteActionText: {
       color: "#B3261E",
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    reportActionButton: {
+      backgroundColor: darkMode ? "#243327" : "#E8F4EA",
+    },
+    reportActionText: {
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    reportReasonList: {
+      width: "100%",
+      gap: 10,
+      marginBottom: 18,
+    },
+    reportReasonButton: {
+      width: "100%",
+      borderRadius: 18,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
+      borderWidth: 1,
+      borderColor: "transparent",
+      gap: 4,
+    },
+    reportReasonButtonSelected: {
+      borderColor: colors.green,
+      backgroundColor: darkMode ? "#1E2A20" : "#EEF7EF",
+    },
+    reportReasonLabel: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 15,
+      color: darkMode ? colors.white : colors.black,
+    },
+    reportReasonLabelSelected: {
+      color: colors.green,
+    },
+    reportReasonDescription: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 12,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+      lineHeight: 18,
+    },
+    reportReasonDescriptionSelected: {
+      color: darkMode ? "#CFE7D3" : "#47624C",
+    },
+    reportDescriptionInput: {
+      width: "100%",
+      minHeight: 112,
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginBottom: 10,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-Regular",
+      fontSize: 15,
+      textAlignVertical: "top",
+    },
+    reportDescriptionHint: {
+      width: "100%",
+      marginBottom: 22,
+      fontFamily: "Poppins-Regular",
+      fontSize: 12,
+      lineHeight: 18,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    submitActionButton: {
+      backgroundColor: colors.green,
+    },
+    submitActionText: {
+      color: colors.white,
       fontFamily: "Poppins-SemiBold",
       fontSize: 16,
     },
