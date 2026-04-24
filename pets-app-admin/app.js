@@ -1378,12 +1378,10 @@ async function handleRegisterSubmit(event) {
   const formData = new FormData(elements.registerForm);
 
   const payload = {
-    username: String(formData.get("username") || "").trim(),
-    name: String(formData.get("name") || "").trim() || null,
-    email: String(formData.get("email") || "").trim(),
-    phoneNumber: String(formData.get("phoneNumber") || "").trim(),
     firstName: String(formData.get("firstName") || "").trim(),
     lastName: String(formData.get("lastName") || "").trim(),
+    username: String(formData.get("username") || "").trim(),
+    email: String(formData.get("email") || "").trim(),
     password: String(formData.get("password") || ""),
   };
 
@@ -1397,12 +1395,17 @@ async function handleRegisterSubmit(event) {
       userId: response.userId,
       email: payload.email,
       username: payload.username,
-      message: response.message,
+      message: response.message
+        ? `${response.message} Account: ${payload.email} (@${payload.username}).`
+        : `${payload.email} (@${payload.username}) was registered successfully.`,
     };
 
     elements.registerForm.reset();
     renderCreatedUserPanel();
-    showToast(`Created user #${response.userId}. Your admin session stayed active.`, "success");
+    showToast(
+      `Created user #${response.userId}. Email verification is still required before login.`,
+      "success",
+    );
   } catch (error) {
     showToast(error.message || "Unable to create the account.", "error");
   } finally {

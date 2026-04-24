@@ -17,12 +17,14 @@ type CustomInputProps = Omit<TextInputProps, "style"> & {
   label?: string;
   style?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
+  styleLabel?: StyleProp<TextStyle>;
 };
 
 const CustomInput = ({
   label,
   style,
   inputStyle,
+  styleLabel,
   value: controlledValue,
   onChangeText,
   ...textInputProps
@@ -35,9 +37,7 @@ const CustomInput = ({
   );
   const [textInputFocus, setTextInputFocus] = useState(false);
   const value = controlledValue ?? uncontrolledValue;
-  const labelAnim = useRef(
-    new Animated.Value(controlledValue ? 1 : 0),
-  ).current;
+  const labelAnim = useRef(new Animated.Value(controlledValue ? 1 : 0)).current;
 
   const animateLabel = (toValue: number) => {
     Animated.timing(labelAnim, {
@@ -99,7 +99,7 @@ const CustomInput = ({
             inputRef.current?.focus();
             handleFocus();
           }}
-          style={labelStyle}
+          style={[labelStyle, styleLabel]}
         >
           {label}
         </Animated.Text>

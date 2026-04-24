@@ -3,10 +3,10 @@ import CustomInput from "@/components/CustomInput";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
-import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest, ApiRequestError } from "@/lib/api";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { presentApiError } from "@/lib/api-feedback";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -22,12 +22,46 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const { signIn } = useAuth();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof emailParam !== "string") {
+      return;
+    }
+
+    const trimmedEmail = emailParam.trim();
+    if (trimmedEmail) {
+      setEmail(trimmedEmail);
+    }
+  }, [emailParam]);
+
+  const isVerificationRequiredError = (error: unknown) => {
+    if (!(error instanceof ApiRequestError)) {
+      return false;
+    }
+
+    const combinedMessage = [
+      error.message,
+      error.payload?.message,
+      error.payload?.detail,
+      error.payload?.title,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      (error.status === 400 || error.status === 401) &&
+      combinedMessage.includes("verify") &&
+      combinedMessage.includes("email")
+    );
+  };
 
   const getLoginErrorMessage = (error: unknown) => {
     if (!(error instanceof Error)) {
@@ -53,7 +87,10 @@ export default function LoginScreen() {
       .toLowerCase();
 
     if (error.status === 400 || error.status === 401) {
-      if (combinedMessage.includes("verify") && combinedMessage.includes("email")) {
+      if (
+        combinedMessage.includes("verify") &&
+        combinedMessage.includes("email")
+      ) {
         return "Please verify your email before logging in. Check your inbox for the verification code.";
       }
 
@@ -124,6 +161,25 @@ export default function LoginScreen() {
         return;
       }
 
+      if (isVerificationRequiredError(error)) {
+        Alert.alert(
+          "Verify your email",
+          "Please verify your email before logging in. Enter the 6-digit code we sent to your inbox.",
+          [
+            { text: "Not now" },
+            {
+              text: "Enter code",
+              onPress: () =>
+                router.push({
+                  pathname: "/verify-email-screen",
+                  params: { email: email.trim().toLowerCase() || undefined },
+                }),
+            },
+          ],
+        );
+        return;
+      }
+
       Alert.alert("Login failed", getLoginErrorMessage(error));
     } finally {
       setIsSubmitting(false);
@@ -190,6 +246,21 @@ export default function LoginScreen() {
             </AdaptiveText>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: "/verify-email-screen",
+              params: { email: email.trim().toLowerCase() || undefined },
+            })
+          }
+        >
+          <AdaptiveText
+            style={{ fontFamily: "Poppins-SemiBold", color: colors.green }}
+          >
+            Have a verification code?
+          </AdaptiveText>
+        </TouchableOpacity>
 
         {isSubmitting && <LoadingOverlay />}
       </SafeAreaView>
