@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PetsApp Admin Login</title>
+    <meta
+      name="description"
+      content="Secure login for the PetsApp admin dashboard."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./login.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="main-header">
+        <img
+          class="main-header-logo"
+          src="./assets/images/petsapp-logo-light-text.png"
+          alt="PetsApp"
+        />
+      </header>
+
+      <main class="screen-stack">
+        <section class="hero-card screen-card">
+          <div class="hero-copy">
+            <span class="section-tag">Admin access</span>
+            <h1>Sign in to open the PetsApp admin console.</h1>
+            <p>
+              This page blocks the dashboard until an active admin account has
+              logged in successfully.
+            </p>
+          </div>
+
+          <div class="status-card">
+            <span>Session</span>
+            <strong id="sessionStatus">Checking access</strong>
+          </div>
+        </section>
+
+        <section class="two-up">
+          <article class="screen-card">
+            <div class="section-heading">
+              <span class="section-tag">Login</span>
+              <h2>Admin credentials</h2>
+              <p>
+                Use your admin email or username together with your password.
+              </p>
+            </div>
+
+            <form id="loginForm" class="stack-form">
+              <label class="form-field">
+                <span>Email or username</span>
+                <input
+                  name="identifier"
+                  type="text"
+                  autocomplete="username"
+                  placeholder="admin@example.com"
+                  required
+                />
+              </label>
+
+              <label class="form-field">
+                <span>Password</span>
+                <input
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="StrongPassword123!"
+                  required
+                />
+              </label>
+
+              <div class="button-row">
+                <button type="submit" class="primary-button">Login</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="screen-card">
+            <div class="section-heading">
+              <span class="section-tag">Help</span>
+              <h2>What happens next</h2>
+              <p id="statusMessage" class="helper-copy">
+                After a successful login, you will be routed directly to the
+                admin home page.
+              </p>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  </body>
+</html>

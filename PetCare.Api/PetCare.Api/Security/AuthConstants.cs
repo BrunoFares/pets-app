@@ -19,6 +19,11 @@ public static class AuthConstants
         public const string AdminRole = "admin_role";
     }
 
+    public static class Cookies
+    {
+        public const string AdminAccessToken = "pets_admin_access_token";
+    }
+
     public static class Policies
     {
         public const string UserOnly = "UserOnly";

@@ -29,14 +29,17 @@ public class AdminAuthController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return BadRequest(new { message = "Email and password are required." });
+            return BadRequest(new { message = "Email or username and password are required." });
         }
 
-        var email = request.Email.Trim().ToLowerInvariant();
-        var admin = await _db.AdminUsers.FirstOrDefaultAsync(a => a.Email == email);
+        var identifier = request.Email.Trim();
+        var normalizedIdentifier = identifier.ToLowerInvariant();
+        var admin = await _db.AdminUsers.FirstOrDefaultAsync(a =>
+            a.Email == normalizedIdentifier ||
+            a.Username.ToLower() == normalizedIdentifier);
         if (admin is null)
         {
-            return Unauthorized();
+            return Unauthorized(new { message = "Invalid admin email/username or password." });
         }
 
         if (!admin.IsActive)
@@ -46,7 +49,7 @@ public class AdminAuthController : ControllerBase
 
         if (!PasswordHasher.Verify(request.Password, admin.PasswordHash))
         {
-            return Unauthorized();
+            return Unauthorized(new { message = "Invalid admin email/username or password." });
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -61,6 +64,7 @@ public class AdminAuthController : ControllerBase
         );
         await _db.SaveChangesAsync();
 
+        var tokenLifetimeMinutes = int.Parse(_cfg["Jwt:Minutes"] ?? "60");
         var token = JwtIssuer.CreateAdminToken(
             admin.Id.ToString(),
             admin.Username,
@@ -69,9 +73,37 @@ public class AdminAuthController : ControllerBase
             _cfg["Jwt:Secret"]!,
             _cfg["Jwt:Issuer"]!,
             _cfg["Jwt:Audience"]!,
-            int.Parse(_cfg["Jwt:Minutes"] ?? "60")
+            tokenLifetimeMinutes
         );
 
+        Response.Cookies.Append(
+            AuthConstants.Cookies.AdminAccessToken,
+            token,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                IsEssential = true,
+                Path = "/",
+                SameSite = SameSiteMode.Lax,
+                Secure = Request.IsHttps,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(tokenLifetimeMinutes)
+            });
+
         return Ok(new AdminAuthResponse(admin.Id, token, admin.Role));
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete(
+            AuthConstants.Cookies.AdminAccessToken,
+            new CookieOptions
+            {
+                Path = "/",
+                SameSite = SameSiteMode.Lax,
+                Secure = Request.IsHttps
+            });
+
+        return NoContent();
     }
 }

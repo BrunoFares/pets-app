@@ -5,7 +5,7 @@ const HAS_BROWSER_RUNTIME =
 
 if (!HAS_BROWSER_RUNTIME) {
   const runtimeMessage =
-    'pets-app-admin/app.js is a browser-only script. Start the backend with "dotnet run --project PetCare.Api/PetCare.Api/PetCare.Api.csproj" and open "http://localhost:5063/admin/" in your browser, or serve "pets-app-admin" with a local static server for standalone UI testing.';
+    'pets-app-admin/app.js is a browser-only script. Start the backend with "dotnet run --project PetCare.Api/PetCare.Api/PetCare.Api.csproj" and open "http://localhost:5063/admin" in your browser, or serve "pets-app-admin" with a local static server for standalone UI testing.';
 
   if (typeof console !== "undefined" && typeof console.error === "function") {
     console.error(runtimeMessage);
@@ -19,6 +19,8 @@ const DEFAULT_FALLBACK_API_BASE_URL = "http://localhost:5063";
 const IS_SERVED_BY_BACKEND =
   window.location.protocol.startsWith("http") &&
   /^\/admin(\/|$)/.test(window.location.pathname);
+const IS_ADMIN_LOGIN_ROUTE =
+  IS_SERVED_BY_BACKEND && /^\/admin\/login\/?$/.test(window.location.pathname);
 const DEFAULT_API_BASE_URL = IS_SERVED_BY_BACKEND
   ? window.location.origin
   : DEFAULT_FALLBACK_API_BASE_URL;
@@ -28,17 +30,26 @@ const STORAGE_KEYS = {
   userId: "pets-admin.user-id",
 };
 
+if (IS_SERVED_BY_BACKEND) {
+  localStorage.removeItem(STORAGE_KEYS.token);
+  localStorage.removeItem(STORAGE_KEYS.userId);
+}
+
 const state = {
   apiBaseUrl: IS_SERVED_BY_BACKEND
     ? normalizeApiBaseUrl(DEFAULT_API_BASE_URL)
     : normalizeApiBaseUrl(
         localStorage.getItem(STORAGE_KEYS.apiBaseUrl) || DEFAULT_API_BASE_URL,
       ),
-  token: localStorage.getItem(STORAGE_KEYS.token) || "",
-  userId: parseStoredNumber(localStorage.getItem(STORAGE_KEYS.userId)),
+  token: IS_SERVED_BY_BACKEND ? "" : localStorage.getItem(STORAGE_KEYS.token) || "",
+  userId: IS_SERVED_BY_BACKEND
+    ? null
+    : parseStoredNumber(localStorage.getItem(STORAGE_KEYS.userId)),
   me: null,
   places: [],
   placeOwnerApplications: [],
+  reports: [],
+  reportTargetDetails: {},
   editingPlaceId: null,
   editingPlaceSchedule: [],
   createdUserSession: null,
@@ -71,6 +82,13 @@ const elements = {
   refreshApplicationsButton: document.querySelector("#refreshApplicationsButton"),
   applicationsList: document.querySelector("#applicationsList"),
   applicationsEmptyState: document.querySelector("#applicationsEmptyState"),
+  reportStatusFilter: document.querySelector("#reportStatusFilter"),
+  reportTargetTypeFilter: document.querySelector("#reportTargetTypeFilter"),
+  reportPriorityFilter: document.querySelector("#reportPriorityFilter"),
+  reportSortFilter: document.querySelector("#reportSortFilter"),
+  refreshReportsButton: document.querySelector("#refreshReportsButton"),
+  reportsList: document.querySelector("#reportsList"),
+  reportsEmptyState: document.querySelector("#reportsEmptyState"),
   profileHeadline: document.querySelector("#profileHeadline"),
   profileSummary: document.querySelector("#profileSummary"),
   profileUserId: document.querySelector("#profileUserId"),
@@ -84,6 +102,15 @@ const elements = {
   placeFormHint: document.querySelector("#placeFormHint"),
   toast: document.querySelector("#toast"),
   statTargets: document.querySelectorAll("[data-stat]"),
+  quickLinks: document.querySelector(".quick-links"),
+  statsRow: document.querySelector(".stats-row"),
+  connectionSection: document.querySelector("#connection"),
+  sessionCard: document.querySelector("#profileCard")?.closest(".screen-card"),
+  userSetupSection: document.querySelector("#users"),
+  requestsSection: document.querySelector("#requests"),
+  reportsSection: document.querySelector("#reports"),
+  placesSection: document.querySelector("#places"),
+  directorySection: document.querySelector("#placesTableBody")?.closest(".screen-card"),
 };
 
 class ApiError extends Error {
@@ -117,6 +144,12 @@ function persistApiBaseUrl() {
 }
 
 function persistSession() {
+  if (IS_SERVED_BY_BACKEND) {
+    localStorage.removeItem(STORAGE_KEYS.token);
+    localStorage.removeItem(STORAGE_KEYS.userId);
+    return;
+  }
+
   if (state.token && state.userId !== null) {
     localStorage.setItem(STORAGE_KEYS.token, state.token);
     localStorage.setItem(STORAGE_KEYS.userId, String(state.userId));
@@ -125,6 +158,26 @@ function persistSession() {
 
   localStorage.removeItem(STORAGE_KEYS.token);
   localStorage.removeItem(STORAGE_KEYS.userId);
+}
+
+function hasAdminSession() {
+  return Boolean(state.me);
+}
+
+function redirectToAdminLogin() {
+  if (!IS_SERVED_BY_BACKEND) {
+    return;
+  }
+
+  window.location.replace("/admin/login");
+}
+
+function redirectToAdminDashboard() {
+  if (!IS_SERVED_BY_BACKEND) {
+    return;
+  }
+
+  window.location.replace("/admin/home");
 }
 
 function extractErrorMessage(payload) {
@@ -163,7 +216,7 @@ async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Accept", "application/json");
 
-  if (state.token) {
+  if (!IS_SERVED_BY_BACKEND && state.token) {
     headers.set("Authorization", `Bearer ${state.token}`);
   }
 
@@ -269,6 +322,123 @@ function applicationToneForStatus(status) {
   return "warning";
 }
 
+function reportToneForStatus(status) {
+  if (status === "Reviewed" || status === "ActionTaken") return "success";
+  if (status === "Dismissed") return "danger";
+  return "warning";
+}
+
+function reportToneForPriority(priority) {
+  if (priority === "High") return "danger";
+  if (priority === "Medium") return "warning";
+  return "success";
+}
+
+function formatReportTargetType(targetType) {
+  return targetType === "ForumPost" ? "Forum post" : "User";
+}
+
+function truncateText(value, maxLength = 220) {
+  const normalized = String(value || "").trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}...`;
+}
+
+function getReportTargetCacheKey(targetType, targetId) {
+  return `${targetType}:${targetId}`;
+}
+
+function getReportActionLabel(report, targetDetails) {
+  if (report.targetType === "User") {
+    if (targetDetails && targetDetails.state !== "ready") {
+      return "Mark action taken";
+    }
+
+    if (targetDetails?.state === "ready" && targetDetails.data?.isBanned) {
+      return "Mark action taken";
+    }
+
+    return "Ban user + resolve";
+  }
+
+  if (targetDetails?.state === "ready") {
+    return "Delete post + resolve";
+  }
+
+  return "Mark action taken";
+}
+
+function renderReportTargetSummary(report) {
+  const targetDetails =
+    state.reportTargetDetails[getReportTargetCacheKey(report.targetType, report.targetId)];
+  const targetLabel = formatReportTargetType(report.targetType);
+
+  if (!targetDetails || targetDetails.state === "loading") {
+    return `
+      <div class="report-target-panel">
+        <span class="place-label">Reported target</span>
+        <strong class="report-target-title">${escapeHtml(targetLabel)} ${escapeHtml(report.targetId)}</strong>
+        <p class="place-meta">Loading target details...</p>
+      </div>
+    `;
+  }
+
+  if (targetDetails.state === "missing") {
+    return `
+      <div class="report-target-panel">
+        <span class="place-label">Reported target</span>
+        <strong class="report-target-title">${escapeHtml(targetLabel)} ${escapeHtml(report.targetId)}</strong>
+        <p class="place-meta">This target is no longer available. You can still review or resolve the report.</p>
+      </div>
+    `;
+  }
+
+  if (targetDetails.state === "error") {
+    return `
+      <div class="report-target-panel">
+        <span class="place-label">Reported target</span>
+        <strong class="report-target-title">${escapeHtml(targetLabel)} ${escapeHtml(report.targetId)}</strong>
+        <p class="place-meta">${escapeHtml(targetDetails.message || "Unable to load target details right now.")}</p>
+      </div>
+    `;
+  }
+
+  if (report.targetType === "User") {
+    const user = targetDetails.data;
+    const displayName =
+      `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+      user.username ||
+      `User #${user.id}`;
+    const body = user.isBanned
+      ? `Account is currently banned${user.banReason ? `: ${user.banReason}` : "."}`
+      : user.description || "No profile description was added.";
+
+    return `
+      <div class="report-target-panel">
+        <span class="place-label">Reported target</span>
+        <strong class="report-target-title">${escapeHtml(displayName)} · @${escapeHtml(user.username || "user")}</strong>
+        <p class="place-meta">${escapeHtml(user.email || "No email")} · ${escapeHtml(user.isBanned ? "Banned" : "Active")}</p>
+        <p class="report-target-body">${escapeHtml(body)}</p>
+      </div>
+    `;
+  }
+
+  const post = targetDetails.data;
+  const replyLabel = post.isAReply ? "Reply" : "Post";
+
+  return `
+    <div class="report-target-panel">
+      <span class="place-label">Reported target</span>
+      <strong class="report-target-title">${escapeHtml(replyLabel)} by ${escapeHtml(post.userName || "Unknown user")}</strong>
+      <p class="place-meta">${escapeHtml(formatDateTime(post.createdAt))} · ${escapeHtml(String(post.likesCount || 0))} likes · ${escapeHtml(String(post.repliesCount || 0))} replies</p>
+      <p class="report-target-body">${escapeHtml(truncateText(post.content || "No content."))}</p>
+    </div>
+  `;
+}
+
 function renderStats() {
   const stats = {
     totalPlaces: state.places.length,
@@ -294,9 +464,13 @@ function renderConnection() {
     ? formatDateTime(state.lastSyncAt)
     : "Not yet synced";
 
-  elements.tokenStatus.textContent = state.token
-    ? `Admin token stored for #${state.userId ?? "?"}`
-    : "No token stored";
+  elements.tokenStatus.textContent = state.me
+    ? `Admin session active for #${state.me.id}`
+    : IS_SERVED_BY_BACKEND
+      ? "Checking secure admin session"
+    : state.token
+      ? `Admin token stored for #${state.userId ?? "?"}`
+      : "No token stored";
 
   if (state.apiReachable === null) {
     setApiStatus("Waiting to connect", "pending");
@@ -312,18 +486,31 @@ function renderConnection() {
 }
 
 function renderSession() {
-  const isSignedIn = Boolean(state.token && state.me);
-  elements.sidebarLogoutButton.disabled = !state.token;
-  elements.mainLogoutButton.disabled = !state.token;
+  const isSignedIn = Boolean(state.me);
+  const canLogout = isSignedIn || Boolean(state.token);
+
+  [elements.sidebarLogoutButton, elements.mainLogoutButton].forEach((button) => {
+    if (button) {
+      button.disabled = !canLogout;
+    }
+  });
 
   if (!isSignedIn) {
-    elements.profileHeadline.textContent = "Guest mode";
+    elements.profileHeadline.textContent = IS_SERVED_BY_BACKEND
+      ? "Checking access"
+      : "Guest mode";
     elements.profileSummary.textContent =
-      state.token
+      IS_SERVED_BY_BACKEND
+        ? "This dashboard uses the dedicated admin login page. If your session is not valid, you will be sent there automatically."
+        : state.token
         ? "A token is stored, but the profile could not be loaded. Please sign in again if this continues."
         : "Sign in as an admin to review place-owner requests and manage places. Public endpoints will still load the directory list.";
-    elements.profileUserId.textContent = state.userId ? String(state.userId) : "Not signed in";
-    elements.profileEmail.textContent = "Not signed in";
+    elements.profileUserId.textContent = state.userId
+      ? String(state.userId)
+      : IS_SERVED_BY_BACKEND
+        ? "Checking"
+        : "Not signed in";
+    elements.profileEmail.textContent = IS_SERVED_BY_BACKEND ? "Checking" : "Not signed in";
     elements.profileLastLogin.textContent = "Unknown";
     return;
   }
@@ -338,6 +525,27 @@ function renderSession() {
   elements.profileUserId.textContent = String(state.me.id);
   elements.profileEmail.textContent = state.me.email || "No email";
   elements.profileLastLogin.textContent = formatDateTime(state.me.lastLogin);
+}
+
+function renderAccessGate() {
+  const showDashboard = hasAdminSession() && !IS_ADMIN_LOGIN_ROUTE;
+
+  [
+    elements.quickLinks,
+    elements.statsRow,
+    elements.sessionCard,
+    elements.userSetupSection,
+    elements.requestsSection,
+    elements.reportsSection,
+    elements.placesSection,
+    elements.directorySection,
+  ].forEach((element) => {
+    element?.classList.toggle("hidden", !showDashboard);
+  });
+
+  if (elements.connectionSection) {
+    elements.connectionSection.classList.toggle("hidden", false);
+  }
 }
 
 function renderCreatedUserPanel() {
@@ -403,7 +611,7 @@ function renderPlaces() {
   elements.placesTableBody.innerHTML = places
     .map((place) => {
       const locationLabel = [place.city, place.country].filter(Boolean).join(", ");
-      const canEdit = Boolean(state.token);
+      const canEdit = hasAdminSession();
       const addressLine = [place.addressLine1, place.addressLine2]
         .filter(Boolean)
         .join(", ");
@@ -501,13 +709,13 @@ function renderPlaceOwnerApplications() {
   }
 
   const applications = getFilteredPlaceOwnerApplications();
-  const emptyMessage = state.token
+  const emptyMessage = hasAdminSession()
     ? "No place-owner requests match the current filters."
     : "Sign in as an admin to review place-owner requests.";
 
-  elements.applicationStatusFilter.disabled = !state.token;
-  elements.applicationTypeFilter.disabled = !state.token;
-  elements.refreshApplicationsButton.disabled = !state.token;
+  elements.applicationStatusFilter.disabled = !hasAdminSession();
+  elements.applicationTypeFilter.disabled = !hasAdminSession();
+  elements.refreshApplicationsButton.disabled = !hasAdminSession();
   elements.applicationsEmptyState.textContent = emptyMessage;
   elements.applicationsEmptyState.classList.toggle(
     "hidden",
@@ -604,6 +812,142 @@ function renderPlaceOwnerApplications() {
     .join("");
 }
 
+function renderReports() {
+  if (!elements.reportsList || !elements.reportsEmptyState) {
+    return;
+  }
+
+  const canReviewReports = hasAdminSession();
+  [
+    elements.reportStatusFilter,
+    elements.reportTargetTypeFilter,
+    elements.reportPriorityFilter,
+    elements.reportSortFilter,
+    elements.refreshReportsButton,
+  ].forEach((element) => {
+    if (element) {
+      element.disabled = !canReviewReports;
+    }
+  });
+
+  if (!canReviewReports) {
+    elements.reportsList.innerHTML = "";
+    elements.reportsEmptyState.textContent =
+      "Sign in as an admin to review reported users and forum posts.";
+    elements.reportsEmptyState.classList.remove("hidden");
+    return;
+  }
+
+  elements.reportsEmptyState.textContent = "No reports match the current filters.";
+  elements.reportsEmptyState.classList.toggle("hidden", state.reports.length !== 0);
+
+  elements.reportsList.innerHTML = state.reports
+    .map((report) => {
+      const reviewerLabel = report.reviewedByAdminUsername
+        ? `${report.reviewedByAdminUsername} · ${formatDateTime(report.reviewedAt)}`
+        : "Not reviewed yet";
+      const reporterLabel =
+        report.reporterDisplayName ||
+        report.reporterUsername ||
+        `User #${report.reporterUserId}`;
+      const targetDetails =
+        state.reportTargetDetails[getReportTargetCacheKey(report.targetType, report.targetId)] ||
+        null;
+      const isPending = report.status === "Pending";
+      const actionLabel = getReportActionLabel(report, targetDetails);
+      const canTakeAction = isPending && targetDetails?.state !== "loading";
+
+      return `
+        <article class="request-card report-card">
+          <div class="place-card-top">
+            <div>
+              <h3 class="place-title">${escapeHtml(formatReportTargetType(report.targetType))} report #${escapeHtml(report.id)}</h3>
+              <p class="place-subtitle">
+                Reported by ${escapeHtml(reporterLabel)} · @${escapeHtml(report.reporterUsername || "user")}
+              </p>
+            </div>
+            <div class="pill-row">
+              <span class="pill" data-tone="${reportToneForPriority(report.priority)}">${escapeHtml(report.priority)}</span>
+              <span class="pill">${escapeHtml(formatReportTargetType(report.targetType))}</span>
+              <span class="pill" data-tone="${reportToneForStatus(report.status)}">${escapeHtml(report.status)}</span>
+            </div>
+          </div>
+
+          <div class="place-grid">
+            <div class="place-meta-block">
+              <span class="place-label">Reason</span>
+              <p class="place-meta">${escapeHtml(report.reasonType)}</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Pending on target</span>
+              <p class="place-meta">${escapeHtml(String(report.pendingReportsForTarget))} total</p>
+              <p class="place-meta">${escapeHtml(String(report.distinctPendingReportersForTarget))} distinct reporters</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Reported at</span>
+              <p class="place-meta">${escapeHtml(formatDateTime(report.createdAt))}</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Review status</span>
+              <p class="place-meta">${escapeHtml(reviewerLabel)}</p>
+            </div>
+          </div>
+
+          ${renderReportTargetSummary(report)}
+
+          ${
+            report.description
+              ? `<p class="request-notes">Reporter note: ${escapeHtml(report.description)}</p>`
+              : ""
+          }
+
+          <div class="place-actions">
+            ${
+              isPending
+                ? `
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    data-action="review-report"
+                    data-id="${escapeHtml(report.id)}"
+                  >
+                    Mark reviewed
+                  </button>
+                  <button
+                    class="primary-button"
+                    type="button"
+                    data-action="take-report-action"
+                    data-id="${escapeHtml(report.id)}"
+                    ${canTakeAction ? "" : "disabled"}
+                  >
+                    ${escapeHtml(actionLabel)}
+                  </button>
+                  <button
+                    class="secondary-button danger"
+                    type="button"
+                    data-action="dismiss-report"
+                    data-id="${escapeHtml(report.id)}"
+                  >
+                    Dismiss
+                  </button>
+                `
+                : `
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    disabled
+                  >
+                    Review Complete
+                  </button>
+                `
+            }
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderPlaceFormState() {
   if (state.editingPlaceId) {
     elements.placeFormMode.textContent = "Editing an existing place";
@@ -614,16 +958,20 @@ function renderPlaceFormState() {
 
   elements.placeFormMode.textContent = "Creating a new place";
   elements.placeFormHint.textContent =
-    "Sign in first, then submit the form to publish a new place. New places start with a default weekday schedule.";
+    hasAdminSession()
+      ? "Submitting now will publish a new place with a default weekday schedule."
+      : "Sign in first, then submit the form to publish a new place. New places start with a default weekday schedule.";
 }
 
 function renderAll() {
+  renderAccessGate();
   renderConnection();
   renderSession();
   renderCreatedUserPanel();
   renderStats();
   renderPlaces();
   renderPlaceOwnerApplications();
+  renderReports();
   renderPlaceFormState();
 }
 
@@ -652,23 +1000,33 @@ function clearSession() {
   state.token = "";
   state.userId = null;
   state.me = null;
+  state.places = [];
   state.placeOwnerApplications = [];
+  state.reports = [];
+  state.reportTargetDetails = {};
+  state.createdUserSession = null;
+  state.lastSyncAt = null;
+  state.apiReachable = null;
   persistSession();
 }
 
 async function loadProfile({ quiet = false } = {}) {
-  if (!state.token) {
+  if (!state.token && !IS_SERVED_BY_BACKEND) {
     state.me = null;
     return;
   }
 
   try {
     state.me = await apiRequest("/api/admin/profile/me");
+    state.userId = Number(state.me?.id) || state.userId;
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       clearSession();
       if (!quiet) {
         showToast("The saved session is no longer valid. Please sign in again.", "warning");
+      }
+      if (!IS_ADMIN_LOGIN_ROUTE) {
+        redirectToAdminLogin();
       }
       return;
     }
@@ -682,7 +1040,7 @@ async function loadPlaces() {
 }
 
 async function loadPlaceOwnerApplications() {
-  if (!state.token) {
+  if (!hasAdminSession()) {
     state.placeOwnerApplications = [];
     return;
   }
@@ -696,18 +1054,133 @@ async function loadPlaceOwnerApplications() {
     : [];
 }
 
+async function fetchReportTargetDetails(report) {
+  try {
+    if (report.targetType === "User") {
+      const userId = Number(report.targetId);
+
+      if (!Number.isFinite(userId)) {
+        return {
+          state: "error",
+          message: "The reported user id is invalid.",
+        };
+      }
+
+      return {
+        state: "ready",
+        data: await apiRequest(`/api/admin/users/${userId}`),
+      };
+    }
+
+    return {
+      state: "ready",
+      data: await apiRequest(`/api/ForumPosts/${report.targetId}`),
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return { state: "missing" };
+    }
+
+    return {
+      state: "error",
+      message: error.message || "Unable to load target details.",
+    };
+  }
+}
+
+async function loadReports() {
+  if (!hasAdminSession()) {
+    state.reports = [];
+    state.reportTargetDetails = {};
+    return;
+  }
+
+  const params = new URLSearchParams({
+    page: "1",
+    pageSize: "50",
+    sort: elements.reportSortFilter?.value || "highestPriority",
+  });
+
+  const selectedStatus = elements.reportStatusFilter
+    ? elements.reportStatusFilter.value
+    : "";
+  const selectedTargetType = elements.reportTargetTypeFilter?.value || "";
+  const selectedPriority = elements.reportPriorityFilter?.value || "";
+
+  if (selectedStatus) {
+    params.set("status", selectedStatus);
+  }
+
+  if (selectedTargetType) {
+    params.set("targetType", selectedTargetType);
+  }
+
+  if (selectedPriority) {
+    params.set("priority", selectedPriority);
+  }
+
+  const response = await apiRequest(`/api/admin/reports?${params.toString()}`);
+  state.reports = Array.isArray(response?.items) ? response.items : [];
+
+  const uniqueTargets = [
+    ...new Map(
+      state.reports.map((report) => [
+        getReportTargetCacheKey(report.targetType, report.targetId),
+        report,
+      ]),
+    ).values(),
+  ];
+
+  state.reportTargetDetails = Object.fromEntries(
+    uniqueTargets.map((report) => [
+      getReportTargetCacheKey(report.targetType, report.targetId),
+      { state: "loading" },
+    ]),
+  );
+
+  renderReports();
+
+  const detailEntries = await Promise.all(
+    uniqueTargets.map(async (report) => [
+      getReportTargetCacheKey(report.targetType, report.targetId),
+      await fetchReportTargetDetails(report),
+    ]),
+  );
+
+  state.reportTargetDetails = {
+    ...state.reportTargetDetails,
+    ...Object.fromEntries(detailEntries),
+  };
+}
+
 async function refreshDashboard({ quiet = false } = {}) {
   try {
     setApiStatus("Refreshing...", "pending");
-    await loadPlaces();
     await loadProfile({ quiet: true });
-    await loadPlaceOwnerApplications();
-    state.apiReachable = true;
-    state.lastSyncAt = new Date().toISOString();
+
+    if (hasAdminSession()) {
+      await loadPlaces();
+      await loadPlaceOwnerApplications();
+      await loadReports();
+      state.lastSyncAt = new Date().toISOString();
+      state.apiReachable = true;
+    } else {
+      state.places = [];
+      state.placeOwnerApplications = [];
+      state.reports = [];
+      state.reportTargetDetails = {};
+      state.apiReachable = null;
+    }
+
     renderAll();
 
     if (!quiet) {
-      showToast("Dashboard data refreshed.", "success");
+      showToast(
+        hasAdminSession()
+          ? "Dashboard data refreshed."
+          : "Ready for admin sign-in.",
+        "success",
+      );
     }
 
     return true;
@@ -723,8 +1196,43 @@ async function refreshDashboard({ quiet = false } = {}) {
   }
 }
 
+async function refreshReports({ quiet = false } = {}) {
+  if (!hasAdminSession()) {
+    state.reports = [];
+    state.reportTargetDetails = {};
+    renderReports();
+    return false;
+  }
+
+  try {
+    await loadReports();
+    renderReports();
+
+    if (!quiet) {
+      showToast("Reports refreshed.", "success");
+    }
+
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      clearSession();
+      renderAll();
+      redirectToAdminLogin();
+      return false;
+    }
+
+    renderReports();
+
+    if (!quiet) {
+      showToast(error.message || "Unable to refresh reports.", "error");
+    }
+
+    return false;
+  }
+}
+
 async function applySession(session) {
-  state.token = session.accessToken || "";
+  state.token = IS_SERVED_BY_BACKEND ? "" : session.accessToken || "";
   state.userId = Number(session.adminId ?? session.userId) || null;
   persistSession();
   await loadProfile({ quiet: true });
@@ -826,6 +1334,12 @@ async function handleLoginSubmit(event) {
 
     await applySession(session);
     elements.loginForm.reset();
+
+    if (IS_SERVED_BY_BACKEND) {
+      redirectToAdminDashboard();
+      return;
+    }
+
     showToast("Admin session ready.", "success");
   } catch (error) {
     showToast(error.message || "Unable to sign in.", "error");
@@ -835,11 +1349,26 @@ async function handleLoginSubmit(event) {
 }
 
 async function handleLogout() {
-  if (!state.token) return;
+  if (!hasAdminSession() && !state.token) return;
+
+  try {
+    await apiRequest("/api/admin/auth/logout", { method: "POST" });
+  } catch (error) {
+    if (!(error instanceof ApiError && (error.status === 401 || error.status === 403))) {
+      showToast(error.message || "Unable to sign out right now.", "error");
+      return;
+    }
+  }
 
   clearSession();
   renderAll();
-  showToast("Signed out locally.", "success");
+
+  if (IS_SERVED_BY_BACKEND) {
+    redirectToAdminLogin();
+    return;
+  }
+
+  showToast("Signed out successfully.", "success");
 }
 
 async function handleRegisterSubmit(event) {
@@ -885,7 +1414,7 @@ async function handleApplicationsListClick(event) {
   const actionButton = event.target.closest("button[data-action]");
   if (!actionButton) return;
 
-  if (!state.token) {
+  if (!hasAdminSession()) {
     showToast("Sign in as an admin before reviewing requests.", "warning");
     return;
   }
@@ -982,10 +1511,226 @@ async function handleApplicationsListClick(event) {
   }
 }
 
+async function dismissReport(report) {
+  const note = window.prompt(
+    `Dismiss report #${report.id}?\n\nOptional admin note:`,
+    "",
+  );
+
+  if (note === null) {
+    return false;
+  }
+
+  await apiRequest(`/api/admin/reports/${report.id}/dismiss`, {
+    method: "POST",
+    body: {
+      note: note.trim() || null,
+    },
+  });
+
+  showToast(`Report #${report.id} dismissed.`, "success");
+  return true;
+}
+
+async function markReportReviewed(report) {
+  const note = window.prompt(
+    `Mark report #${report.id} as reviewed?\n\nOptional admin note:`,
+    report.description || "",
+  );
+
+  if (note === null) {
+    return false;
+  }
+
+  await apiRequest(`/api/admin/reports/${report.id}/resolve`, {
+    method: "POST",
+    body: {
+      status: "Reviewed",
+      note: note.trim() || null,
+    },
+  });
+
+  showToast(`Report #${report.id} marked as reviewed.`, "success");
+  return true;
+}
+
+async function takeUserReportAction(report, targetDetails) {
+  const userId = Number(report.targetId);
+  if (!Number.isFinite(userId)) {
+    throw new Error("The reported user id is invalid.");
+  }
+
+  if (targetDetails?.state === "ready" && !targetDetails.data?.isBanned) {
+    const username = targetDetails.data.username || `user-${userId}`;
+    const reason = window.prompt(
+      `Ban @${username} and resolve report #${report.id}?\n\nOptional ban reason:`,
+      report.description || "",
+    );
+
+    if (reason === null) {
+      return false;
+    }
+
+    await apiRequest(`/api/admin/users/${userId}/ban`, {
+      method: "POST",
+      body: {
+        reason: reason.trim() || null,
+      },
+    });
+
+    await apiRequest(`/api/admin/reports/${report.id}/resolve`, {
+      method: "POST",
+      body: {
+        status: "ActionTaken",
+        note: reason.trim() || "Banned reported user.",
+      },
+    });
+
+    showToast(`@${username} was banned and the report was resolved.`, "success");
+    return true;
+  }
+
+  const note = window.prompt(
+    `Mark report #${report.id} as action taken?\n\nOptional admin note:`,
+    targetDetails?.state === "ready" && targetDetails.data?.banReason
+      ? targetDetails.data.banReason
+      : "",
+  );
+
+  if (note === null) {
+    return false;
+  }
+
+  await apiRequest(`/api/admin/reports/${report.id}/resolve`, {
+    method: "POST",
+    body: {
+      status: "ActionTaken",
+      note: note.trim() || "Confirmed moderation action on reported user.",
+    },
+  });
+
+  showToast(`Report #${report.id} marked as action taken.`, "success");
+  return true;
+}
+
+async function takeForumPostReportAction(report, targetDetails) {
+  const note = window.prompt(
+    targetDetails?.state === "ready"
+      ? `Delete the reported forum post and resolve report #${report.id}?\n\nOptional admin note:`
+      : `Mark report #${report.id} as action taken?\n\nOptional admin note:`,
+    targetDetails?.state === "ready"
+      ? "Deleted reported forum post."
+      : "",
+  );
+
+  if (note === null) {
+    return false;
+  }
+
+  if (targetDetails?.state === "ready") {
+    const confirmed = window.confirm(
+      `Delete this reported forum post by ${targetDetails.data.userName || "the original author"}?`,
+    );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    try {
+      await apiRequest(`/api/admin/forum-posts/${report.targetId}`, {
+        method: "DELETE",
+      });
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 404)) {
+        throw error;
+      }
+    }
+  }
+
+  await apiRequest(`/api/admin/reports/${report.id}/resolve`, {
+    method: "POST",
+    body: {
+      status: "ActionTaken",
+      note: note.trim() || "Moderated reported forum post.",
+    },
+  });
+
+  showToast(`Report #${report.id} marked as action taken.`, "success");
+  return true;
+}
+
+async function takeReportAction(report) {
+  const targetDetails =
+    state.reportTargetDetails[getReportTargetCacheKey(report.targetType, report.targetId)] ||
+    null;
+
+  if (report.targetType === "User") {
+    return takeUserReportAction(report, targetDetails);
+  }
+
+  return takeForumPostReportAction(report, targetDetails);
+}
+
+async function handleReportsListClick(event) {
+  const actionButton = event.target.closest("button[data-action]");
+  if (!actionButton) return;
+
+  const action = actionButton.dataset.action;
+  if (!["dismiss-report", "review-report", "take-report-action"].includes(action)) {
+    return;
+  }
+
+  if (!hasAdminSession()) {
+    showToast("Sign in as an admin before reviewing reports.", "warning");
+    return;
+  }
+
+  const reportId = Number(actionButton.dataset.id);
+  const report = state.reports.find((item) => Number(item.id) === reportId);
+
+  if (!report) {
+    showToast("The selected report could not be found.", "warning");
+    return;
+  }
+
+  if (report.status !== "Pending") {
+    showToast("Only pending reports can be reviewed.", "warning");
+    return;
+  }
+
+  const restore = withBusyState(
+    actionButton,
+    action === "dismiss-report"
+      ? "Dismissing..."
+      : action === "review-report"
+        ? "Reviewing..."
+        : "Applying...",
+  );
+
+  try {
+    const didUpdate =
+      action === "dismiss-report"
+        ? await dismissReport(report)
+        : action === "review-report"
+          ? await markReportReviewed(report)
+          : await takeReportAction(report);
+
+    if (!didUpdate) {
+      return;
+    }
+
+    await refreshDashboard({ quiet: true });
+  } catch (error) {
+    showToast(error.message || "Unable to review the report.", "error");
+  } finally {
+    restore();
+  }
+}
+
 async function handlePlaceSubmit(event) {
   event.preventDefault();
 
-  if (!state.token) {
+  if (!hasAdminSession()) {
     showToast("Sign in before creating or updating places.", "warning");
     return;
   }
@@ -1053,7 +1798,7 @@ async function handlePlaceTableClick(event) {
   if (!selectedPlace) return;
 
   if (action === "edit-place") {
-    if (!state.token) {
+    if (!hasAdminSession()) {
       showToast("Sign in before editing places.", "warning");
       return;
     }
@@ -1063,7 +1808,7 @@ async function handlePlaceTableClick(event) {
   }
 
   if (action === "delete-place") {
-    if (!state.token) {
+    if (!hasAdminSession()) {
       showToast("Sign in before deleting places.", "warning");
       return;
     }
@@ -1089,15 +1834,16 @@ async function handlePlaceTableClick(event) {
 
 function bindEvents() {
   elements.settingsForm.addEventListener("submit", handleSettingsSubmit);
-  elements.loginForm.addEventListener("submit", handleLoginSubmit);
   elements.registerForm.addEventListener("submit", handleRegisterSubmit);
   elements.placeForm.addEventListener("submit", handlePlaceSubmit);
   elements.refreshAllButton.addEventListener("click", () => refreshDashboard());
   elements.refreshPlacesButton.addEventListener("click", () => refreshDashboard());
   elements.refreshApplicationsButton.addEventListener("click", () => refreshDashboard());
+  elements.refreshReportsButton?.addEventListener("click", () => refreshReports());
   elements.resetPlaceFormButton.addEventListener("click", resetPlaceForm);
   elements.sidebarLogoutButton.addEventListener("click", handleLogout);
-  elements.mainLogoutButton.addEventListener("click", handleLogout);
+  elements.loginForm?.addEventListener("submit", handleLoginSubmit);
+  elements.mainLogoutButton?.addEventListener("click", handleLogout);
 
   elements.placeSearchInput.addEventListener("input", renderPlaces);
   elements.placeTypeFilter.addEventListener("change", renderPlaces);
@@ -1110,8 +1856,13 @@ function bindEvents() {
     "change",
     renderPlaceOwnerApplications,
   );
+  elements.reportStatusFilter?.addEventListener("change", () => refreshReports({ quiet: true }));
+  elements.reportTargetTypeFilter?.addEventListener("change", () => refreshReports({ quiet: true }));
+  elements.reportPriorityFilter?.addEventListener("change", () => refreshReports({ quiet: true }));
+  elements.reportSortFilter?.addEventListener("change", () => refreshReports({ quiet: true }));
   elements.placesTableBody.addEventListener("click", handlePlaceTableClick);
   elements.applicationsList.addEventListener("click", handleApplicationsListClick);
+  elements.reportsList?.addEventListener("click", handleReportsListClick);
 }
 
 async function init() {
@@ -1125,6 +1876,10 @@ async function init() {
   bindEvents();
   renderAll();
   await refreshDashboard({ quiet: true });
+
+  if (IS_ADMIN_LOGIN_ROUTE && hasAdminSession()) {
+    redirectToAdminDashboard();
+  }
 }
 
 init();
