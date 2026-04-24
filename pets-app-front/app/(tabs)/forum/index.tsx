@@ -152,6 +152,7 @@ export default function ForumScreen() {
           <FlatList
             data={posts}
             refreshing={isRefreshing}
+            style={{ marginBottom: 20 }}
             onRefresh={onRefresh}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"

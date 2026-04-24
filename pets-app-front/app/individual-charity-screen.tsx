@@ -1,8 +1,10 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
+import { PlaceReviewsSection } from "@/components/PlaceReviewsSection";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthProvider";
 import { PlaceModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { presentApiError } from "@/lib/api-feedback";
@@ -12,13 +14,14 @@ import {
   formatPlaceLocation,
 } from "@/lib/discovery-api";
 import { Image } from "expo-image";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from "react-native";
@@ -28,6 +31,8 @@ export default function IndividualCharityScreen() {
   const { key } = useLocalSearchParams<{ key?: string }>();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
+  const router = useRouter();
+  const { user } = useAuth();
   const [organisation, setOrganisation] = useState<PlaceModel | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(key));
 
@@ -61,6 +66,10 @@ export default function IndividualCharityScreen() {
 
   const { isRefreshing, onRefresh } = usePullToRefresh(loadOrganisation);
   const showLoadingOverlay = isLoading && !isRefreshing;
+  const canManagePlace =
+    Boolean(organisation?.OwnerUserId) &&
+    Boolean(user?.IsApprovedPlaceOwner) &&
+    String(organisation?.OwnerUserId) === String(user?.Id);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -88,7 +97,9 @@ export default function IndividualCharityScreen() {
             )}
 
             <View style={styles.section}>
-              <AdaptiveText style={styles.name}>{organisation.Name}</AdaptiveText>
+              <AdaptiveText style={styles.name}>
+                {organisation.Name}
+              </AdaptiveText>
               <AdaptiveText style={styles.location}>
                 {formatPlaceLocation(organisation)}
               </AdaptiveText>
@@ -124,21 +135,40 @@ export default function IndividualCharityScreen() {
               </View>
             </View>
 
-            <View style={styles.section}>
-              <AdaptiveText style={styles.sectionTitle}>
-                Community Activity
-              </AdaptiveText>
-              <ProfileEmptyState
-                title="No community posts yet"
-                subtitle="This charity organisation does not have community feedback available right now."
-                compact
-                style={styles.emptyCard}
-              />
-            </View>
+            {canManagePlace ? (
+              <View style={styles.section}>
+                <AdaptiveText style={styles.sectionTitle}>Manage Listing</AdaptiveText>
+                <AdaptiveText style={styles.description}>
+                  This organisation belongs to your account, so you can update
+                  the listing details and public status from here.
+                </AdaptiveText>
+
+                <TouchableOpacity
+                  style={styles.manageButton}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/profile/place-editor",
+                      params: { id: organisation.Id },
+                    })
+                  }
+                  activeOpacity={0.85}
+                >
+                  <AdaptiveText style={styles.manageButtonText}>
+                    Edit Listing
+                  </AdaptiveText>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            <PlaceReviewsSection place={organisation} />
           </>
         ) : !isLoading ? (
           <ProfileEmptyState
-            title={key ? "Charity organisation unavailable" : "Missing charity organisation"}
+            title={
+              key
+                ? "Charity organisation unavailable"
+                : "Missing charity organisation"
+            }
             subtitle="We couldn't load this charity organisation right now."
           />
         ) : null}
@@ -209,11 +239,18 @@ const createStyles = ({ darkMode }: any) => {
       fontSize: 15,
       lineHeight: 22,
     },
-    emptyCard: {
-      width: "100%",
-      marginTop: 0,
-      marginBottom: 0,
-      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    manageButton: {
+      alignSelf: "flex-start",
+      marginTop: 8,
+      borderRadius: 18,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      backgroundColor: colors.green,
+    },
+    manageButtonText: {
+      color: colors.white,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 14,
     },
     emptyStateWrap: {
       flex: 1,

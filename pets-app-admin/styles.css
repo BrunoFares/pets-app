@@ -167,7 +167,8 @@ code {
 .inline-panel,
 .mode-panel,
 .status-card,
-.place-card {
+.place-card,
+.request-card {
   background: var(--white);
   border: 1px solid var(--light-grey);
   box-shadow: var(--shadow);
@@ -261,7 +262,7 @@ code {
 }
 
 .stats-row {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .mini-card {
@@ -287,6 +288,14 @@ code {
 
 .accent-blue {
   background: linear-gradient(180deg, #ffffff 0%, var(--turquoise-soft) 160%);
+}
+
+.accent-peach {
+  background: linear-gradient(180deg, #ffffff 0%, #fdf0e7 160%);
+}
+
+.accent-violet {
+  background: linear-gradient(180deg, #ffffff 0%, var(--violet-soft) 160%);
 }
 
 .two-up {
@@ -440,6 +449,10 @@ textarea {
   margin-bottom: 0.25rem;
 }
 
+.request-filter-row {
+  grid-template-columns: repeat(2, minmax(180px, 220px)) auto;
+}
+
 .form-field.compact span {
   margin-bottom: 0;
 }
@@ -545,6 +558,20 @@ textarea {
 
 .place-actions .danger {
   color: var(--red);
+}
+
+.request-card {
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.request-notes {
+  padding: 0.85rem 0.9rem;
+  border-radius: 22px;
+  background: var(--orange-soft);
+  color: var(--dark-grey);
 }
 
 .empty-state {

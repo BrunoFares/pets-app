@@ -7,8 +7,8 @@ import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PlaceModel } from "@/data/models";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { presentApiError } from "@/lib/api-feedback";
 import { fetchCharityOrganisations } from "@/lib/discovery-api";
 import {
@@ -115,54 +115,61 @@ export default function HomeScreen() {
     }, [pets]),
   );
 
-  const loadDashboard = useCallback(async (options?: { skipProfileRefresh?: boolean }) => {
-    if (!options?.skipProfileRefresh && shouldRefreshProfile()) {
-      try {
-        await refreshProfile();
-      } catch (error) {
-        presentApiError("Could not load home", error, {
-          fallbackMessage: "Unable to load your dashboard.",
-        });
-      } finally {
-        setIsLoadingDashboard(false);
+  const loadDashboard = useCallback(
+    async (options?: { skipProfileRefresh?: boolean }) => {
+      if (!options?.skipProfileRefresh && shouldRefreshProfile()) {
+        try {
+          await refreshProfile();
+        } catch (error) {
+          presentApiError("Could not load home", error, {
+            fallbackMessage: "Unable to load your dashboard.",
+          });
+        } finally {
+          setIsLoadingDashboard(false);
+        }
+
+        return;
       }
 
-      return;
-    }
+      if (!user) {
+        setReminderBoardItems([]);
+        setIsLoadingDashboard(false);
+        return;
+      }
 
-    if (!user) {
-      setReminderBoardItems([]);
-      setIsLoadingDashboard(false);
-      return;
-    }
+      setIsLoadingDashboard(true);
 
-    setIsLoadingDashboard(true);
-
-    try {
-      const [consultations, illnessRecords, medicationRecords, vaccineRecords] =
-        await Promise.all([
+      try {
+        const [
+          consultations,
+          illnessRecords,
+          medicationRecords,
+          vaccineRecords,
+        ] = await Promise.all([
           fetchUpcomingConsultations(),
           fetchOngoingIllnesses(),
           fetchMedicationReminders(),
           fetchDueVaccines(),
         ]);
 
-      setReminderBoardItems(
-        buildReminderBoardItems({
-          consultations,
-          illnessRecords,
-          medicationRecords,
-          pets,
-          vaccineRecords,
-        }),
-      );
-    } catch (error) {
-      setReminderBoardItems([]);
-      presentApiError("Could not load reminders", error);
-    } finally {
-      setIsLoadingDashboard(false);
-    }
-  }, [pets, refreshProfile, shouldRefreshProfile, user]);
+        setReminderBoardItems(
+          buildReminderBoardItems({
+            consultations,
+            illnessRecords,
+            medicationRecords,
+            pets,
+            vaccineRecords,
+          }),
+        );
+      } catch (error) {
+        setReminderBoardItems([]);
+        presentApiError("Could not load reminders", error);
+      } finally {
+        setIsLoadingDashboard(false);
+      }
+    },
+    [pets, refreshProfile, shouldRefreshProfile, user],
+  );
 
   const loadCharityOrganisations = useCallback(async () => {
     setIsLoadingCharities(true);
@@ -192,8 +199,7 @@ export default function HomeScreen() {
     useCallback(() => {
       void loadCharityOrganisations();
 
-      return () => {
-      };
+      return () => {};
     }, [loadCharityOrganisations]),
   );
 
@@ -519,6 +525,7 @@ const createStyles = ({ darkMode, componentWidth, width }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
+      marginBottom: -60,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
     },
     scrollView: {

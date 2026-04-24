@@ -2,6 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { goTo } from "@/utils";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -21,7 +22,7 @@ export default function SettingsScreen() {
 
   const settingsPage = (
     title: string,
-    imageTitle: "privacy-tip" | "account-circle" | "notifications",
+    imageTitle: "privacy-tip" | "account-circle" | "notifications" | "store",
     fn: () => void,
   ) => {
     return (
@@ -69,15 +70,28 @@ export default function SettingsScreen() {
         </AdaptiveText>
         <AdaptiveView style={styles.container}>
           {settingsPage("Account", "account-circle", () => {
-            router.push("/(tabs)/profile/settings/account-settings-screen");
+            goTo(
+              {},
+              "/(tabs)/profile/settings/account-settings-screen",
+              router,
+            );
           })}
           {settingsPage("Location", "privacy-tip", () => {
-            router.push("/(tabs)/profile/settings/location-settings-screen");
+            goTo(
+              {},
+              "/(tabs)/profile/settings/location-settings-screen",
+              router,
+            );
           })}
           {settingsPage("Notifications", "notifications", () => {
-            router.push(
+            goTo(
+              {},
               "/(tabs)/profile/settings/notifications-settings-screen",
+              router,
             );
+          })}
+          {settingsPage("Place Manager", "store", () => {
+            goTo({}, "/profile/place-manager", router);
           })}
         </AdaptiveView>
       </ScrollView>

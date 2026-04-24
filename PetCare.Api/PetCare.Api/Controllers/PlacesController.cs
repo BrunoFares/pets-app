@@ -83,6 +83,21 @@ public class PlacesController : ControllerBase
         return Ok(items);
     }
 
+    [HttpGet("mine")]
+    [Authorize(Policy = AuthConstants.Policies.UserOnly)]
+    public async Task<IActionResult> GetMine()
+    {
+        var userId = User.GetUserId();
+        var items = await ProjectToPlaceResponse(_db.PetPlaces
+            .AsNoTracking()
+            .Where(p => p.OwnerUserId == userId)
+            .OrderBy(p => p.Name)
+            .ThenBy(p => p.Id))
+            .ToListAsync();
+
+        return Ok(items);
+    }
+
     [HttpPost]
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreatePlaceRequest request)

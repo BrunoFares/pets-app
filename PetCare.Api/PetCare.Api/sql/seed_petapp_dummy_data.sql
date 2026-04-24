@@ -27,6 +27,9 @@ BEGIN;
 
 TRUNCATE TABLE
     public.admin_action_logs,
+    public.reports,
+    public.place_owner_applications,
+    public.pet_place_reviews,
     public.medication_records,
     public.illness_records,
     public.vaccine_records,
@@ -35,8 +38,6 @@ TRUNCATE TABLE
     public.forum_post_bookmarks,
     public.forum_post_likes,
     public.forum_posts,
-    public.chat_messages,
-    public.chat_sessions,
     public.pet_place_schedules,
     public.pets,
     public.pet_places,
@@ -95,6 +96,7 @@ INSERT INTO public.users (
     avatar_url,
     description,
     is_banned,
+    is_approved_place_owner,
     banned_at,
     ban_reason,
     created_at,
@@ -114,6 +116,7 @@ VALUES
         'https://randomuser.me/api/portraits/women/12.jpg',
         'Cat parent who keeps careful health notes and plans every vaccination reminder ahead of time.',
         false,
+        false,
         NULL,
         NULL,
         '2025-11-03T09:10:00Z',
@@ -132,6 +135,7 @@ VALUES
         'https://randomuser.me/api/portraits/women/24.jpg',
         'Rescue volunteer who shares adoption tips and keeps excellent follow-up notes after consultations.',
         false,
+        true,
         NULL,
         NULL,
         '2025-11-11T13:20:00Z',
@@ -149,6 +153,7 @@ VALUES
         NULL,
         'https://randomuser.me/api/portraits/women/36.jpg',
         'Rabbit owner focused on enrichment routines, feeding logs, and quiet recovery spaces.',
+        false,
         false,
         NULL,
         NULL,
@@ -168,6 +173,7 @@ VALUES
         'https://randomuser.me/api/portraits/women/44.jpg',
         'Tracks bird sleep and feeding windows carefully and posts practical care checklists in the forum.',
         false,
+        false,
         NULL,
         NULL,
         '2025-12-14T19:05:00Z',
@@ -186,6 +192,7 @@ VALUES
         'https://randomuser.me/api/portraits/women/58.jpg',
         'Keeps detailed tank logs and loves comparing product setups for small pets and aquariums.',
         false,
+        true,
         NULL,
         NULL,
         '2025-12-28T10:30:00Z',
@@ -204,6 +211,7 @@ VALUES
         'https://randomuser.me/api/portraits/men/11.jpg',
         'Weekend hiker with a shepherd mix and a habit of turning vet advice into step-by-step routines.',
         false,
+        true,
         NULL,
         NULL,
         '2026-01-06T11:40:00Z',
@@ -221,6 +229,7 @@ VALUES
         NULL,
         'https://randomuser.me/api/portraits/men/21.jpg',
         'Ferret owner and apartment-proofing nerd who saves every checklist before trying something new.',
+        false,
         false,
         NULL,
         NULL,
@@ -240,6 +249,7 @@ VALUES
         'https://randomuser.me/api/portraits/men/32.jpg',
         'Equine rider who uses the app to plan emergency vet contacts, medication schedules, and trail prep.',
         false,
+        false,
         NULL,
         NULL,
         '2026-01-21T07:55:00Z',
@@ -257,6 +267,7 @@ VALUES
         NULL,
         'https://randomuser.me/api/portraits/men/41.jpg',
         'Exotic pet enthusiast focused on turtles, parrots, and keeping long-term care notes consistent.',
+        false,
         false,
         NULL,
         NULL,
@@ -276,6 +287,7 @@ VALUES
         'https://randomuser.me/api/portraits/men/52.jpg',
         'Occasional forum poster whose account is left in the dataset as a moderation example.',
         true,
+        false,
         '2026-04-10T08:30:00Z',
         'Repeated promotional spam in the forum.',
         '2026-02-04T12:15:00Z',
@@ -309,6 +321,7 @@ VALUES
 
 INSERT INTO public.pet_places (
     id,
+    owner_user_id,
     name,
     phone,
     email,
@@ -325,16 +338,16 @@ INSERT INTO public.pet_places (
     created_at
 )
 VALUES
-    ('10000000-0000-4000-8000-000000000001', 'Happy Paws Veterinary Center', '+1-206-555-0101', 'hello@happypawsvet.test', 'https://picsum.photos/seed/petcare-place-01/1200/800.jpg', 'Full-service clinic for wellness visits, diagnostics, and regular vaccination appointments.', '1200 Pine Street', 'Suite 220', 'Seattle', 'United States', 'Active', 'Vet', 47.610126, -122.334842, '2025-11-05T08:00:00Z'),
-    ('10000000-0000-4000-8000-000000000002', 'Tail Market Pet Shop', '+1-206-555-0102', 'team@tailmarket.test', 'https://picsum.photos/seed/petcare-place-02/1200/800.jpg', 'Neighborhood shop for food, enrichment toys, carriers, and travel essentials.', '480 Union Street', NULL, 'Seattle', 'United States', 'Active', 'PetShop', 47.609650, -122.337132, '2025-11-07T10:00:00Z'),
-    ('10000000-0000-4000-8000-000000000003', 'Safe Haven Rescue Hub', '+1-425-555-0103', 'contact@safehavenrescue.test', 'https://picsum.photos/seed/petcare-place-03/1200/800.jpg', 'Adoption events, foster coordination, and intake support for local rescues.', '92 Lakeview Avenue', NULL, 'Bellevue', 'United States', 'Active', 'Other', 47.614512, -122.192739, '2025-11-09T09:30:00Z'),
-    ('10000000-0000-4000-8000-000000000004', 'Riverbend Animal Hospital', '+1-503-555-0104', 'appointments@riverbendvet.test', 'https://picsum.photos/seed/petcare-place-04/1200/800.jpg', 'General practice hospital with diagnostics, lab work, and day procedures.', '550 Hawthorne Blvd', NULL, 'Portland', 'United States', 'Active', 'Vet', 45.512348, -122.658394, '2025-11-12T08:45:00Z'),
-    ('10000000-0000-4000-8000-000000000005', 'Cedar Grove Pet Supply', '+1-503-555-0105', 'hello@cedargrovepets.test', 'https://picsum.photos/seed/petcare-place-05/1200/800.jpg', 'Pet supply store with grooming basics, tank accessories, and nutrition brands.', '740 Division Street', NULL, 'Portland', 'United States', 'Active', 'PetShop', 45.504852, -122.651013, '2025-11-15T11:15:00Z'),
-    ('10000000-0000-4000-8000-000000000006', 'Harbor Adoption Center', '+1-253-555-0106', 'team@harboradoption.test', 'https://picsum.photos/seed/petcare-place-06/1200/800.jpg', 'Adoption, foster intake, and volunteer orientation center with weekend events.', '18 Dockside Lane', NULL, 'Tacoma', 'United States', 'Inactive', 'Other', 47.252877, -122.444291, '2025-11-19T13:00:00Z'),
-    ('10000000-0000-4000-8000-000000000007', 'Lakeview Exotic Vet', '+1-509-555-0107', 'care@lakeviewexotic.test', 'https://picsum.photos/seed/petcare-place-07/1200/800.jpg', 'Exotics-focused clinic for birds, reptiles, rabbits, and small mammals.', '211 Summit Road', 'Floor 2', 'Spokane', 'United States', 'Active', 'Vet', 47.658780, -117.426048, '2025-11-24T09:20:00Z'),
-    ('10000000-0000-4000-8000-000000000008', 'Midtown Groom & Play', '+1-208-555-0108', 'service@midtowngroom.test', 'https://picsum.photos/seed/petcare-place-08/1200/800.jpg', 'Daycare and grooming business kept in the seed data as a closed-location example.', '66 Main Street', NULL, 'Boise', 'United States', 'Closed', 'Other', 43.615018, -116.202313, '2025-11-28T10:05:00Z'),
-    ('10000000-0000-4000-8000-000000000009', 'Green Trail Pet Outfitters', '+1-303-555-0109', 'sales@greentrailpets.test', 'https://picsum.photos/seed/petcare-place-09/1200/800.jpg', 'Outdoor pet gear, training tools, and long-hike supplies for active owners.', '1012 Pearl Street', NULL, 'Denver', 'United States', 'Active', 'PetShop', 39.750740, -104.999180, '2025-12-01T14:40:00Z'),
-    ('10000000-0000-4000-8000-000000000010', 'Sunset Emergency Animal Hospital', '+1-303-555-0110', 'triage@sunsetemergency.test', 'https://picsum.photos/seed/petcare-place-10/1200/800.jpg', 'Emergency clinic listed in the app as a 24/7 option for urgent visits.', '880 Colfax Avenue', NULL, 'Denver', 'United States', 'Active', 'Vet', 39.740230, -104.982460, '2025-12-04T18:15:00Z');
+    ('10000000-0000-4000-8000-000000000001', NULL, 'Happy Paws Veterinary Center', '+1-206-555-0101', 'hello@happypawsvet.test', 'https://picsum.photos/seed/petcare-place-01/1200/800.jpg', 'Full-service clinic for wellness visits, diagnostics, and regular vaccination appointments.', '1200 Pine Street', 'Suite 220', 'Seattle', 'United States', 'Active', 'Vet', 47.610126, -122.334842, '2025-11-05T08:00:00Z'),
+    ('10000000-0000-4000-8000-000000000002', NULL, 'Tail Market Pet Shop', '+1-206-555-0102', 'team@tailmarket.test', 'https://picsum.photos/seed/petcare-place-02/1200/800.jpg', 'Neighborhood shop for food, enrichment toys, carriers, and travel essentials.', '480 Union Street', NULL, 'Seattle', 'United States', 'Active', 'PetShop', 47.609650, -122.337132, '2025-11-07T10:00:00Z'),
+    ('10000000-0000-4000-8000-000000000003', 2, 'Safe Haven Rescue Hub', '+1-425-555-0103', 'contact@safehavenrescue.test', 'https://picsum.photos/seed/petcare-place-03/1200/800.jpg', 'Adoption events, foster coordination, and intake support for local rescues.', '92 Lakeview Avenue', NULL, 'Bellevue', 'United States', 'Active', 'Other', 47.614512, -122.192739, '2025-11-09T09:30:00Z'),
+    ('10000000-0000-4000-8000-000000000004', NULL, 'Riverbend Animal Hospital', '+1-503-555-0104', 'appointments@riverbendvet.test', 'https://picsum.photos/seed/petcare-place-04/1200/800.jpg', 'General practice hospital with diagnostics, lab work, and day procedures.', '550 Hawthorne Blvd', NULL, 'Portland', 'United States', 'Active', 'Vet', 45.512348, -122.658394, '2025-11-12T08:45:00Z'),
+    ('10000000-0000-4000-8000-000000000005', 5, 'Cedar Grove Pet Supply', '+1-503-555-0105', 'hello@cedargrovepets.test', 'https://picsum.photos/seed/petcare-place-05/1200/800.jpg', 'Pet supply store with grooming basics, tank accessories, and nutrition brands.', '740 Division Street', NULL, 'Portland', 'United States', 'Active', 'PetShop', 45.504852, -122.651013, '2025-11-15T11:15:00Z'),
+    ('10000000-0000-4000-8000-000000000006', NULL, 'Harbor Adoption Center', '+1-253-555-0106', 'team@harboradoption.test', 'https://picsum.photos/seed/petcare-place-06/1200/800.jpg', 'Adoption, foster intake, and volunteer orientation center with weekend events.', '18 Dockside Lane', NULL, 'Tacoma', 'United States', 'Inactive', 'Other', 47.252877, -122.444291, '2025-11-19T13:00:00Z'),
+    ('10000000-0000-4000-8000-000000000007', NULL, 'Lakeview Exotic Vet', '+1-509-555-0107', 'care@lakeviewexotic.test', 'https://picsum.photos/seed/petcare-place-07/1200/800.jpg', 'Exotics-focused clinic for birds, reptiles, rabbits, and small mammals.', '211 Summit Road', 'Floor 2', 'Spokane', 'United States', 'Active', 'Vet', 47.658780, -117.426048, '2025-11-24T09:20:00Z'),
+    ('10000000-0000-4000-8000-000000000008', NULL, 'Midtown Groom & Play', '+1-208-555-0108', 'service@midtowngroom.test', 'https://picsum.photos/seed/petcare-place-08/1200/800.jpg', 'Daycare and grooming business kept in the seed data as a closed-location example.', '66 Main Street', NULL, 'Boise', 'United States', 'Closed', 'Other', 43.615018, -116.202313, '2025-11-28T10:05:00Z'),
+    ('10000000-0000-4000-8000-000000000009', 6, 'Green Trail Pet Outfitters', '+1-303-555-0109', 'sales@greentrailpets.test', 'https://picsum.photos/seed/petcare-place-09/1200/800.jpg', 'Outdoor pet gear, training tools, and long-hike supplies for active owners.', '1012 Pearl Street', NULL, 'Denver', 'United States', 'Active', 'PetShop', 39.750740, -104.999180, '2025-12-01T14:40:00Z'),
+    ('10000000-0000-4000-8000-000000000010', NULL, 'Sunset Emergency Animal Hospital', '+1-303-555-0110', 'triage@sunsetemergency.test', 'https://picsum.photos/seed/petcare-place-10/1200/800.jpg', 'Emergency clinic listed in the app as a 24/7 option for urgent visits.', '880 Colfax Avenue', NULL, 'Denver', 'United States', 'Active', 'Vet', 39.740230, -104.982460, '2025-12-04T18:15:00Z');
 
 WITH place_templates AS (
     VALUES
@@ -408,6 +421,54 @@ SELECT
 FROM place_templates p
 JOIN schedule_templates s
     ON s.column1 = p.column2;
+
+INSERT INTO public.place_owner_applications (
+    id,
+    user_id,
+    business_name,
+    phone,
+    email,
+    description,
+    address_line1,
+    address_line2,
+    city,
+    country,
+    requested_place_type,
+    status,
+    rejection_reason,
+    admin_notes,
+    reviewed_by_admin_id,
+    reviewed_at,
+    created_at,
+    updated_at
+)
+VALUES
+    (1, 2, 'Safe Haven Rescue Hub', '+1-425-555-0103', 'contact@safehavenrescue.test', 'Submitted after Maya expanded her rescue coordination work and wanted to manage the listing directly.', '92 Lakeview Avenue', NULL, 'Bellevue', 'United States', 'Other', 'Approved', NULL, 'Approved after verifying rescue registration and contact details.', 2, '2026-02-18T10:15:00Z', '2026-02-14T09:00:00Z', '2026-02-18T10:15:00Z'),
+    (2, 5, 'Cedar Grove Pet Supply', '+1-503-555-0105', 'hello@cedargrovepets.test', 'Application for Yara''s retail listing with updated nutrition and aquarium inventory details.', '740 Division Street', NULL, 'Portland', 'United States', 'PetShop', 'Approved', NULL, 'Approved with a request to keep seasonal inventory info current.', 3, '2026-03-07T12:30:00Z', '2026-03-03T11:10:00Z', '2026-03-07T12:30:00Z'),
+    (3, 6, 'Green Trail Pet Outfitters', '+1-303-555-0109', 'sales@greentrailpets.test', 'Outdoor-focused pet supply shop application tied to Omar''s hiking and training recommendations.', '1012 Pearl Street', NULL, 'Denver', 'United States', 'PetShop', 'Approved', NULL, 'Approved after matching ownership documents to the public listing.', 5, '2026-03-24T15:20:00Z', '2026-03-20T14:05:00Z', '2026-03-24T15:20:00Z'),
+    (4, 7, 'Bandit Safe Playroom', '+1-425-555-0127', 'hello@banditsafeplayroom.test', 'Indoor ferret play space proposal with supervised booking slots and enrichment equipment.', '44 Maple Court', 'Unit B', 'Seattle', 'United States', 'Other', 'Rejected', 'Business documentation was incomplete and the location permit was missing.', 'Asked the applicant to reapply with finalized permits and insurance.', 1, '2026-04-02T10:00:00Z', '2026-03-30T09:30:00Z', '2026-04-02T10:00:00Z'),
+    (5, 8, 'Silver Creek Equine Support', '+1-303-555-0138', 'info@silvercreekequine.test', 'Pending application for a small equine support and transport service near Denver.', '220 Stable Road', NULL, 'Denver', 'United States', 'Other', 'Pending', NULL, NULL, NULL, NULL, '2026-04-19T08:45:00Z', '2026-04-19T08:45:00Z');
+
+INSERT INTO public.pet_place_reviews (
+    id,
+    place_id,
+    user_id,
+    rating,
+    comment,
+    created_at,
+    updated_at
+)
+VALUES
+    ('50000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 1, 5, 'Staff explained travel-stress options clearly and Luna recovered quickly after the visit.', '2026-02-12T17:10:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000004', 2, 4, 'Good follow-up visit for Milo. I would have loved a slightly longer recovery-plan printout.', '2026-03-03T14:10:00Z', '2026-03-03T18:00:00Z'),
+    ('50000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000007', 3, 5, 'Very patient with Kiwi and great about explaining lighting changes for birds.', '2026-03-18T12:00:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000005', 4, 4, 'Clean shop with reliable small-pet supplies and helpful feeding suggestions.', '2026-04-06T13:30:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000009', 7, 5, 'Found durable trail gear there and the staff actually knew what worked for active dogs.', '2026-04-11T18:20:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000006', '10000000-0000-4000-8000-000000000010', 8, 5, 'Clear emergency intake process and fast communication during a late-night horse call.', '2026-04-12T23:10:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000007', '10000000-0000-4000-8000-000000000003', 9, 4, 'The rescue team was organized and transparent about foster needs.', '2026-04-14T10:05:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000008', '10000000-0000-4000-8000-000000000001', 6, 5, 'Pepper''s booster visit was smooth and the team gave practical aftercare notes.', '2026-04-15T14:30:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000009', '10000000-0000-4000-8000-000000000002', 3, 4, 'Good selection of carriers and toys, though weekends get busy.', '2026-04-10T12:20:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000010', '10000000-0000-4000-8000-000000000007', 5, 5, 'Great exotics guidance for Nugget and very calm handling during exams.', '2026-04-20T11:00:00Z', NULL);
 
 INSERT INTO public.pets (
     id,
@@ -552,62 +613,25 @@ VALUES
     (7, '40000000-0000-4000-8000-000000000014', '2026-04-10T18:20:00Z'),
     (8, '40000000-0000-4000-8000-000000000015', '2026-04-11T21:25:00Z');
 
-INSERT INTO public.chat_sessions (
+INSERT INTO public.reports (
     id,
-    user_id,
-    created_at,
-    updated_at
-)
-VALUES
-    ('30000000-0000-4000-8000-000000000001', 1, '2026-04-18T08:00:00Z', '2026-04-18T08:03:00Z'),
-    ('30000000-0000-4000-8000-000000000002', 2, '2026-04-18T09:15:00Z', '2026-04-18T09:18:00Z'),
-    ('30000000-0000-4000-8000-000000000003', 3, '2026-04-18T10:20:00Z', '2026-04-18T10:24:00Z'),
-    ('30000000-0000-4000-8000-000000000004', 4, '2026-04-18T11:05:00Z', '2026-04-18T11:09:00Z'),
-    ('30000000-0000-4000-8000-000000000005', 5, '2026-04-18T12:40:00Z', '2026-04-18T12:43:00Z'),
-    ('30000000-0000-4000-8000-000000000006', 6, '2026-04-18T13:30:00Z', '2026-04-18T13:33:00Z'),
-    ('30000000-0000-4000-8000-000000000007', 7, '2026-04-18T14:10:00Z', '2026-04-18T14:14:00Z'),
-    ('30000000-0000-4000-8000-000000000008', 8, '2026-04-18T15:00:00Z', '2026-04-18T15:04:00Z'),
-    ('30000000-0000-4000-8000-000000000009', 9, '2026-04-18T16:25:00Z', '2026-04-18T16:29:00Z'),
-    ('30000000-0000-4000-8000-000000000010', 10, '2026-04-18T17:50:00Z', '2026-04-18T17:54:00Z');
-
-INSERT INTO public.chat_messages (
-    id,
-    chat_session_id,
-    role,
-    content,
+    reporter_user_id,
+    target_type,
+    target_id,
+    reason_type,
+    description,
+    status,
+    reviewed_by_admin_id,
+    reviewed_at,
     created_at
 )
 VALUES
-    (1, '30000000-0000-4000-8000-000000000001', 'User', 'Luna skipped breakfast today. What else should I watch for besides appetite?', '2026-04-18T08:01:00Z'),
-    (2, '30000000-0000-4000-8000-000000000001', 'Bot', 'Monitor hydration, vomiting, and energy levels. If the change lasts more than a day, schedule a vet visit.', '2026-04-18T08:01:15Z'),
-    (3, '30000000-0000-4000-8000-000000000001', 'User', 'I will track water intake this morning too.', '2026-04-18T08:03:00Z'),
-    (4, '30000000-0000-4000-8000-000000000002', 'User', 'What is a good recovery routine after a long hike for a big dog like Milo?', '2026-04-18T09:16:00Z'),
-    (5, '30000000-0000-4000-8000-000000000002', 'Bot', 'Offer water in small amounts, inspect paw pads, and keep activity light for the rest of the day.', '2026-04-18T09:16:20Z'),
-    (6, '30000000-0000-4000-8000-000000000002', 'User', 'Perfect. I will add a cooldown walk next time too.', '2026-04-18T09:18:00Z'),
-    (7, '30000000-0000-4000-8000-000000000003', 'User', 'Can a change in daylight make a budgie louder in the evening?', '2026-04-18T10:21:00Z'),
-    (8, '30000000-0000-4000-8000-000000000003', 'Bot', 'Yes, changes in light and room activity can affect noise levels. Try a calmer routine before lights-out.', '2026-04-18T10:21:25Z'),
-    (9, '30000000-0000-4000-8000-000000000003', 'User', 'That matches what I have been seeing this week.', '2026-04-18T10:24:00Z'),
-    (10, '30000000-0000-4000-8000-000000000004', 'User', 'Mochi has been less interested in hay today. Is that always urgent?', '2026-04-18T11:06:00Z'),
-    (11, '30000000-0000-4000-8000-000000000004', 'Bot', 'Reduced hay intake in rabbits can become urgent quickly. Monitor droppings and contact a rabbit-savvy vet if it continues.', '2026-04-18T11:06:20Z'),
-    (12, '30000000-0000-4000-8000-000000000004', 'User', 'I will keep a close eye on that and book if it continues.', '2026-04-18T11:09:00Z'),
-    (13, '30000000-0000-4000-8000-000000000005', 'User', 'How often should I rewrite a small tank maintenance checklist after adding new plants?', '2026-04-18T12:41:00Z'),
-    (14, '30000000-0000-4000-8000-000000000005', 'Bot', 'Update the checklist whenever equipment or cleaning order changes so routine steps stay consistent.', '2026-04-18T12:41:30Z'),
-    (15, '30000000-0000-4000-8000-000000000005', 'User', 'Makes sense. I keep forgetting the filter order otherwise.', '2026-04-18T12:43:00Z'),
-    (16, '30000000-0000-4000-8000-000000000006', 'User', 'Is daily observation enough while Bubbles recovers from fin irritation?', '2026-04-18T13:31:00Z'),
-    (17, '30000000-0000-4000-8000-000000000006', 'Bot', 'Daily observation helps, but pair it with water testing and gentle water changes until the fin edges look stable.', '2026-04-18T13:31:18Z'),
-    (18, '30000000-0000-4000-8000-000000000006', 'User', 'I am already logging water changes, so that fits my routine.', '2026-04-18T13:33:00Z'),
-    (19, '30000000-0000-4000-8000-000000000007', 'User', 'What is the most common apartment mistake new ferret owners make?', '2026-04-18T14:11:00Z'),
-    (20, '30000000-0000-4000-8000-000000000007', 'Bot', 'Leaving access to low gaps under furniture is a common issue. Ferrets will test every opening.', '2026-04-18T14:11:20Z'),
-    (21, '30000000-0000-4000-8000-000000000007', 'User', 'That is exactly what Bandit keeps proving to me.', '2026-04-18T14:14:00Z'),
-    (22, '30000000-0000-4000-8000-000000000008', 'User', 'Do you keep an emergency contact checklist in the trailer or on your phone?', '2026-04-18T15:01:00Z'),
-    (23, '30000000-0000-4000-8000-000000000008', 'Bot', 'Keeping both is best: a printed copy in the trailer and a digital copy for quick sharing.', '2026-04-18T15:01:22Z'),
-    (24, '30000000-0000-4000-8000-000000000008', 'User', 'I need to make the printed version more detailed, then.', '2026-04-18T15:04:00Z'),
-    (25, '30000000-0000-4000-8000-000000000009', 'User', 'How often do older ferrets usually need adrenal follow-ups once symptoms start?', '2026-04-18T16:26:00Z'),
-    (26, '30000000-0000-4000-8000-000000000009', 'Bot', 'That depends on severity, but regular rechecks every few months are common once symptoms appear.', '2026-04-18T16:26:28Z'),
-    (27, '30000000-0000-4000-8000-000000000009', 'User', 'That gives me a better timeline for planning visits.', '2026-04-18T16:29:00Z'),
-    (28, '30000000-0000-4000-8000-000000000010', 'User', 'Rio is chewing more on perch edges lately. Is that always a sign of stress?', '2026-04-18T17:51:00Z'),
-    (29, '30000000-0000-4000-8000-000000000010', 'Bot', 'Not always. It can also be routine beak maintenance, but watch for changes in appetite or feather condition too.', '2026-04-18T17:51:24Z'),
-    (30, '30000000-0000-4000-8000-000000000010', 'User', 'I will add those checks to my daily notes.', '2026-04-18T17:54:00Z');
+    (1, 1, 'ForumPost', '40000000-0000-4000-8000-000000000010', 'Spam', 'Looked promotional rather than a genuine care question.', 'Pending', NULL, NULL, '2026-04-13T17:30:00Z'),
+    (2, 2, 'ForumPost', '40000000-0000-4000-8000-000000000010', 'InappropriateContent', 'The discussion around this thread started to feel off-topic and promotional.', 'Pending', NULL, NULL, '2026-04-13T18:05:00Z'),
+    (3, 4, 'User', '10', 'Spam', 'This user kept posting store-like promotions without context.', 'ActionTaken', 1, '2026-04-20T09:28:00Z', '2026-04-13T19:00:00Z'),
+    (4, 5, 'ForumPost', '40000000-0000-4000-8000-000000000007', 'Harassment', 'I checked back later and it looked more heated than helpful.', 'Reviewed', 5, '2026-04-20T09:34:00Z', '2026-04-12T08:20:00Z'),
+    (5, 6, 'User', '10', 'Scam', 'The profile kept redirecting people to outside offers.', 'Pending', NULL, NULL, '2026-04-14T07:40:00Z'),
+    (6, 7, 'ForumPost', '40000000-0000-4000-8000-000000000006', 'Other', 'Turns out the discussion stayed useful after the follow-up, so this remains as a dismissed example.', 'Dismissed', 3, '2026-04-20T09:52:00Z', '2026-04-11T10:30:00Z');
 
 INSERT INTO public.vaccine_records (
     id,
@@ -713,7 +737,11 @@ VALUES
     (9, 6, 'UpdatePetPlace', 'PetPlace', '10000000-0000-4000-8000-000000000008', 'Updated Midtown Groom & Play to a closed status.', 'Licensing pause example for seed data.', '2026-04-20T09:40:00Z'),
     (10, 7, 'DeactivateAdminUser', 'AdminUser', '10', 'Marked admin ''mark.hanna'' as inactive.', 'Dormant demo account.', '2026-04-20T09:45:00Z'),
     (11, 8, 'ReviewUserProfile', 'User', '5', 'Reviewed Yara Rahal''s aquarium-advice profile and left it unchanged.', 'Routine moderation spot-check.', '2026-04-20T09:50:00Z'),
-    (12, 2, 'UpdatePetPlace', 'PetPlace', '10000000-0000-4000-8000-000000000010', 'Updated emergency listing details for Sunset Emergency Animal Hospital.', 'Expanded emergency-hours copy.', '2026-04-20T09:55:00Z');
+    (12, 2, 'UpdatePetPlace', 'PetPlace', '10000000-0000-4000-8000-000000000010', 'Updated emergency listing details for Sunset Emergency Animal Hospital.', 'Expanded emergency-hours copy.', '2026-04-20T09:55:00Z'),
+    (13, 2, 'ApprovePlaceOwnerApplication', 'PlaceOwnerApplication', '1', 'Approved Maya Khoury''s place-owner application for Safe Haven Rescue Hub.', 'Verified rescue information and ownership paperwork.', '2026-04-20T10:00:00Z'),
+    (14, 3, 'ApprovePlaceOwnerApplication', 'PlaceOwnerApplication', '2', 'Approved Yara Rahal''s place-owner application for Cedar Grove Pet Supply.', 'Verified shop ownership and contact information.', '2026-04-20T10:05:00Z'),
+    (15, 1, 'ResolveReport', 'Report', '3', 'Resolved report #3 against user ''rami.shaheen'' with ActionTaken status.', 'Matched repeated spam complaints to the banned account.', '2026-04-20T10:10:00Z'),
+    (16, 5, 'RejectPlaceOwnerApplication', 'PlaceOwnerApplication', '4', 'Rejected Karim Farah''s place-owner application due to missing permit documents.', 'Application was incomplete and could not be approved.', '2026-04-20T10:15:00Z');
 
 SELECT setval(pg_get_serial_sequence('public.users', 'id'), (SELECT MAX(id) FROM public.users), true);
 SELECT setval(pg_get_serial_sequence('public.admin_users', 'id'), (SELECT MAX(id) FROM public.admin_users), true);
@@ -721,9 +749,10 @@ SELECT setval(pg_get_serial_sequence('public.admin_action_logs', 'id'), (SELECT 
 SELECT setval(pg_get_serial_sequence('public.species', 'id'), (SELECT MAX(id) FROM public.species), true);
 SELECT setval(pg_get_serial_sequence('public.breeds', 'id'), (SELECT MAX(id) FROM public.breeds), true);
 SELECT setval(pg_get_serial_sequence('public.pet_place_schedules', 'id'), (SELECT MAX(id) FROM public.pet_place_schedules), true);
+SELECT setval(pg_get_serial_sequence('public.place_owner_applications', 'id'), (SELECT MAX(id) FROM public.place_owner_applications), true);
 SELECT setval(pg_get_serial_sequence('public.consultations', 'id'), (SELECT MAX(id) FROM public.consultations), true);
 SELECT setval(pg_get_serial_sequence('public.forum_post_attachments', 'id'), (SELECT MAX(id) FROM public.forum_post_attachments), true);
-SELECT setval(pg_get_serial_sequence('public.chat_messages', 'id'), (SELECT MAX(id) FROM public.chat_messages), true);
+SELECT setval(pg_get_serial_sequence('public.reports', 'id'), (SELECT MAX(id) FROM public.reports), true);
 SELECT setval(pg_get_serial_sequence('public.vaccine_records', 'id'), (SELECT MAX(id) FROM public.vaccine_records), true);
 SELECT setval(pg_get_serial_sequence('public.illness_records', 'id'), (SELECT MAX(id) FROM public.illness_records), true);
 SELECT setval(pg_get_serial_sequence('public.medication_records', 'id'), (SELECT MAX(id) FROM public.medication_records), true);

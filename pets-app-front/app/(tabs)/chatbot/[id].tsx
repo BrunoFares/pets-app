@@ -102,8 +102,8 @@ const ChatScreen = () => {
       setPrompt("");
     } catch (error) {
       presentApiError("Could not send message", error, {
-        networkMessage:
-          "We couldn't reach the server, so your message was not sent.",
+        fallbackMessage:
+          "We couldn't save your message to this local chat right now.",
       });
     } finally {
       setIsSending(false);
@@ -136,8 +136,8 @@ const ChatScreen = () => {
             <>
               {!hasBotReply && chat.Discussion.length > 0 ? (
                 <AdaptiveText style={styles.systemNote}>
-                  Messages are saving to the backend. Assistant replies will show
-                  up here as soon as the server returns them.
+                  Chats in this build are saved locally on your device. Assistant
+                  replies are not connected to the backend right now.
                 </AdaptiveText>
               ) : null}
 

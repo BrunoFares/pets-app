@@ -38,6 +38,7 @@ public class UsersController : ControllerBase
             user.Email,
             ToVersionedStaticFileUrl(user.AvatarUrl),
             user.Description,
+            user.IsApprovedPlaceOwner,
             user.CreatedAt,
             user.LastLogin
         ));
