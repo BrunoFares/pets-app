@@ -175,59 +175,108 @@
               </p>
             </div>
 
-            <form id="registerForm" class="stack-form">
-              <div class="field-grid">
-                <label class="form-field">
-                  <span>Username</span>
-                  <input name="username" type="text" autocomplete="username" required />
-                </label>
-                <label class="form-field">
-                  <span>Display name</span>
-                  <input name="name" type="text" placeholder="Optional" />
-                </label>
+            <div class="mode-panel register-intro-panel">
+              <span class="section-tag">API aligned</span>
+              <strong>Creates a standard app account</strong>
+              <p>
+                This form now matches <code>/api/auth/register</code> exactly.
+                New users will still need to verify their email before they can
+                sign in.
+              </p>
+            </div>
+
+            <form id="registerForm" class="stack-form register-form">
+              <div class="register-form-section">
+                <span class="form-section-title">Identity</span>
+
+                <div class="field-grid">
+                  <label class="form-field">
+                    <span>First name</span>
+                    <input
+                      name="firstName"
+                      type="text"
+                      autocomplete="given-name"
+                      maxlength="100"
+                      required
+                    />
+                  </label>
+                  <label class="form-field">
+                    <span>Last name</span>
+                    <input
+                      name="lastName"
+                      type="text"
+                      autocomplete="family-name"
+                      maxlength="100"
+                      required
+                    />
+                  </label>
+                </div>
               </div>
 
-              <div class="field-grid">
-                <label class="form-field">
-                  <span>First name</span>
-                  <input name="firstName" type="text" autocomplete="given-name" required />
-                </label>
-                <label class="form-field">
-                  <span>Last name</span>
-                  <input name="lastName" type="text" autocomplete="family-name" required />
-                </label>
+              <div class="register-form-section">
+                <span class="form-section-title">Sign-in details</span>
+
+                <div class="field-grid">
+                  <label class="form-field">
+                    <span>Username</span>
+                    <input
+                      name="username"
+                      type="text"
+                      autocomplete="username"
+                      autocapitalize="none"
+                      spellcheck="false"
+                      maxlength="100"
+                      required
+                    />
+                  </label>
+                  <label class="form-field">
+                    <span>Email</span>
+                    <input
+                      name="email"
+                      type="email"
+                      autocomplete="email"
+                      autocapitalize="none"
+                      spellcheck="false"
+                      maxlength="320"
+                      required
+                    />
+                  </label>
+                </div>
               </div>
 
-              <div class="field-grid">
+              <div class="register-form-section">
+                <span class="form-section-title">Security</span>
+
                 <label class="form-field">
-                  <span>Email</span>
-                  <input name="email" type="email" autocomplete="email" required />
+                  <span>Password</span>
+                  <input
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    minlength="8"
+                    maxlength="64"
+                    placeholder="Create a strong password"
+                    required
+                  />
                 </label>
-                <label class="form-field">
-                  <span>Phone number</span>
-                  <input name="phoneNumber" type="tel" autocomplete="tel" required />
-                </label>
+
+                <p class="field-hint">
+                  Use 8 to 64 characters with uppercase, lowercase, a number,
+                  and a symbol. Spaces are not allowed.
+                </p>
               </div>
 
-              <label class="form-field">
-                <span>Password</span>
-                <input
-                  name="password"
-                  type="password"
-                  autocomplete="new-password"
-                  minlength="8"
-                  placeholder="Min 8 chars with upper, lower, number, symbol"
-                  required
-                />
-              </label>
-
-              <button type="submit" class="primary-button full-width">Create account</button>
+              <div class="button-row">
+                <button type="submit" class="primary-button">Create account</button>
+                <button type="reset" class="secondary-button">Clear</button>
+              </div>
             </form>
 
             <div id="createdUserPanel" class="inline-panel hidden">
-              <strong id="createdUserHeadline">No new account yet</strong>
+              <strong id="createdUserHeadline">Account details will appear here</strong>
               <p id="createdUserMessage">
-                Create a user account to see the response details here.
+                After a successful registration, this panel will confirm the new
+                account and remind you that email verification is still required.
               </p>
               <button id="useCreatedSessionButton" type="button" class="secondary-button">
                 Use created account in this dashboard
