@@ -443,6 +443,40 @@ textarea {
   margin-top: 1rem;
 }
 
+.register-intro-panel {
+  margin-bottom: 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbf8 100%);
+}
+
+.register-form {
+  gap: 1rem;
+}
+
+.register-form-section {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid var(--light-grey);
+  background: #fcfdfc;
+}
+
+.form-section-title {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+.field-hint {
+  margin: -0.1rem 0 0;
+  color: var(--mild-dark-grey);
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
 .filter-row {
   grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, 180px)) auto;
   align-items: end;

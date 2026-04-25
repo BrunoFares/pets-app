@@ -141,7 +141,9 @@ export default function PlaceDetails() {
 
             {canManagePlace ? (
               <View style={styles.section}>
-                <AdaptiveText style={styles.sectionTitle}>Manage Listing</AdaptiveText>
+                <AdaptiveText style={styles.sectionTitle}>
+                  Manage Listing
+                </AdaptiveText>
                 <AdaptiveText style={styles.description}>
                   This place belongs to your account, so you can update its
                   status, contact details, and schedule.
@@ -214,7 +216,7 @@ const createStyles = ({ darkMode }: any) => {
       opacity: 0.8,
     },
     description: {
-      marginTop: 14,
+      marginBottom: 10,
       fontFamily: "Poppins-Regular",
       lineHeight: 24,
     },

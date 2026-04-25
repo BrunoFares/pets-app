@@ -36,7 +36,8 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
     const isIndexRoute = pathname === "/" && firstSegment !== "(tabs)";
     const isPublicRoute =
       firstSegment === "login-screen" ||
-      firstSegment === "register-screen";
+      firstSegment === "register-screen" ||
+      firstSegment === "verify-email-screen";
 
     if (!isAuthenticated && !isIndexRoute && !isPublicRoute) {
       appRouter.replace("/login-screen");
@@ -77,6 +78,10 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login-screen" options={{ headerShown: false }} />
       <Stack.Screen name="register-screen" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="verify-email-screen"
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name="charities-list-screen"
         options={{ headerShown: false }}
