@@ -167,8 +167,7 @@ export default function PlaceManagerScreen() {
       setApplication(null);
       setOwnedPlaces([]);
       presentApiError("Could not load place manager", error, {
-        fallbackMessage:
-          "We couldn't load your place manager tools right now.",
+        fallbackMessage: "We couldn't load your place manager tools right now.",
       });
     } finally {
       setIsLoading(false);
@@ -271,7 +270,7 @@ export default function PlaceManagerScreen() {
           ) : null}
         </View>
 
-        {application ? (
+        {application && application.Status !== "Approved" ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <AdaptiveText style={styles.sectionTitle}>
@@ -285,7 +284,10 @@ export default function PlaceManagerScreen() {
                 ]}
               >
                 <AdaptiveText
-                  style={[styles.statusBadgeText, { color: toneColors.textColor }]}
+                  style={[
+                    styles.statusBadgeText,
+                    { color: toneColors.textColor },
+                  ]}
                 >
                   {formatPlaceOwnerApplicationStatusLabel(application.Status)}
                 </AdaptiveText>
@@ -335,7 +337,9 @@ export default function PlaceManagerScreen() {
 
             {application.AdminNotes?.trim() ? (
               <View style={styles.noteCard}>
-                <AdaptiveText style={styles.noteTitle}>Admin Notes</AdaptiveText>
+                <AdaptiveText style={styles.noteTitle}>
+                  Admin Notes
+                </AdaptiveText>
                 <AdaptiveText style={styles.noteCopy}>
                   {application.AdminNotes}
                 </AdaptiveText>
@@ -345,7 +349,7 @@ export default function PlaceManagerScreen() {
         ) : null}
 
         {managerState === "approved" ? (
-          <View style={styles.section}>
+          <View style={[styles.section, { marginBottom: 70 }]}>
             <View style={styles.sectionHeader}>
               <AdaptiveText style={styles.sectionTitle}>
                 My Managed Places
@@ -399,14 +403,18 @@ export default function PlaceManagerScreen() {
 
                   <View style={styles.infoGrid}>
                     <View style={styles.infoCard}>
-                      <AdaptiveText style={styles.infoLabel}>Status</AdaptiveText>
+                      <AdaptiveText style={styles.infoLabel}>
+                        Status
+                      </AdaptiveText>
                       <AdaptiveText style={styles.infoValue}>
                         {place.Status}
                       </AdaptiveText>
                     </View>
 
                     <View style={styles.infoCard}>
-                      <AdaptiveText style={styles.infoLabel}>Reviews</AdaptiveText>
+                      <AdaptiveText style={styles.infoLabel}>
+                        Reviews
+                      </AdaptiveText>
                       <AdaptiveText style={styles.infoValue}>
                         {place.ReviewsCount}
                       </AdaptiveText>
