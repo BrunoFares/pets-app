@@ -2,6 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { PlaceReviewsSection } from "@/components/PlaceReviewsSection";
+import { PlaceScheduleSection } from "@/components/PlaceScheduleSection";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
@@ -134,6 +135,11 @@ export default function IndividualCharityScreen() {
                 </AdaptiveText>
               </View>
             </View>
+
+            <PlaceScheduleSection
+              place={organisation}
+              emptyMessage="A weekly schedule has not been added for this charity organisation yet."
+            />
 
             {canManagePlace ? (
               <View style={styles.section}>
