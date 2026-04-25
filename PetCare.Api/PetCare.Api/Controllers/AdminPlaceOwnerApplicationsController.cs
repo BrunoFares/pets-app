@@ -171,6 +171,17 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
         application.UpdatedAt = DateTimeOffset.UtcNow;
         application.User.IsApprovedPlaceOwner = true;
 
+        PetPlaceModel? createdPlace = null;
+        var hasOwnedPlace = await _db.PetPlaces
+            .AsNoTracking()
+            .AnyAsync(p => p.OwnerUserId == application.UserId);
+
+        if (!hasOwnedPlace)
+        {
+            createdPlace = PlaceOwnerApplicationPlaceSync.CreatePlaceFromApplication(application);
+            _db.PetPlaces.Add(createdPlace);
+        }
+
         _auditLogger.Log(
             adminUserId,
             "ApprovePlaceOwnerApplication",
@@ -179,6 +190,16 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
             $"Approved place owner application '{application.Id}' for user '{application.UserId}'.",
             application.AdminNotes
         );
+        if (createdPlace is not null)
+        {
+            _auditLogger.Log(
+                adminUserId,
+                "CreatePlace",
+                "Place",
+                createdPlace.Id.ToString(),
+                $"Created place '{createdPlace.Name}' from approved application '{application.Id}'."
+            );
+        }
 
         await _db.SaveChangesAsync();
         return await GetById(id);
@@ -237,4 +258,5 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
         var trimmed = value.Trim();
         return trimmed.Length == 0 ? null : trimmed;
     }
+
 }
