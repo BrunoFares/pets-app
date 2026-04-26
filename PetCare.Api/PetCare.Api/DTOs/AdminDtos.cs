@@ -60,6 +60,12 @@ public record UpdateAdminUserRequest(
     bool IsActive
 );
 
+public record ResetAdminUserPasswordRequest(
+    [Required, StringLength(64, MinimumLength = 8)] string NewPassword,
+    [Required] string ConfirmNewPassword,
+    [MaxLength(1000)] string? Reason
+);
+
 public record AdminUserListItemResponse(
     long Id,
     string Username,

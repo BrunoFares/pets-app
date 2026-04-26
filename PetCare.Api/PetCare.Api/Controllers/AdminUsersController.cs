@@ -76,16 +76,7 @@ public class AdminUsersController : ControllerBase
         var email = request.Email.Trim().ToLowerInvariant();
         var username = request.Username.Trim();
 
-        var (ok, errors) = PasswordValidator.Validate(request.Password, username, email, new PasswordPolicy(
-            MinLength: 8,
-            MaxLength: 64,
-            RequireUpper: true,
-            RequireLower: true,
-            RequireDigit: true,
-            RequireSpecial: true,
-            DisallowedChars: new[] { ' ', '"', '\'', '\\' },
-            DisallowWhitespace: true
-        ));
+        var (ok, errors) = PasswordValidator.Validate(request.Password, username, email, PasswordPolicies.UserAccount);
         if (!ok)
         {
             return BadRequest(new { message = "Invalid password.", errors });
@@ -261,5 +252,53 @@ public class AdminUsersController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "Admin activated." });
+    }
+
+    [HttpPost("{id:long}/reset-password")]
+    public async Task<IActionResult> ResetPassword(long id, [FromBody] ResetAdminUserPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+        {
+            return BadRequest(new { message = "New password and confirm password are required." });
+        }
+
+        if (!string.Equals(request.NewPassword, request.ConfirmNewPassword, StringComparison.Ordinal))
+        {
+            return BadRequest(new { message = "New password and confirm password do not match." });
+        }
+
+        var admin = await _db.AdminUsers.FindAsync(id);
+        if (admin is null)
+        {
+            return NotFound();
+        }
+
+        var (ok, errors) = PasswordValidator.Validate(request.NewPassword, admin.Username, admin.Email, PasswordPolicies.UserAccount);
+        if (!ok)
+        {
+            return BadRequest(new { message = "Invalid password.", errors });
+        }
+
+        if (PasswordHasher.Verify(request.NewPassword, admin.PasswordHash))
+        {
+            return BadRequest(new { message = "New password must be different from the current password." });
+        }
+
+        admin.PasswordHash = PasswordHasher.Hash(request.NewPassword);
+        admin.UpdatedAt = DateTimeOffset.UtcNow;
+
+        var actorId = User.GetAdminId();
+        var reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
+        _auditLogger.Log(
+            actorId,
+            "ResetAdminPassword",
+            "AdminUser",
+            admin.Id.ToString(),
+            $"Reset password for admin '{admin.Username}'.",
+            reason
+        );
+
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Admin password reset successfully." });
     }
 }
