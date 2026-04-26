@@ -63,6 +63,10 @@ public class PlacesController : ControllerBase
     [AllowAnonymous]
     public Task<IActionResult> GetPetShops() => GetAll(PlaceType.PetShop);
 
+    [HttpGet("charities")]
+    [AllowAnonymous]
+    public Task<IActionResult> GetCharities() => GetAll(PlaceType.Charity);
+
     [HttpGet("nearby")]
     [AllowAnonymous]
     public async Task<IActionResult> Nearby([FromQuery] decimal lat, [FromQuery] decimal lon, [FromQuery] decimal radiusKm = 10)
