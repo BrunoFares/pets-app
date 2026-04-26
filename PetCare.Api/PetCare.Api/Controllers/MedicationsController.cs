@@ -5,6 +5,7 @@ using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -29,12 +30,12 @@ public class MedicationsController : ControllerBase
         if (illness.Pet.UserId != me) return Forbid();
 
         var items = await _db.MedicationRecords
+            .AsNoTracking()
             .Where(m => m.IllnessId == illnessId)
             .OrderByDescending(m => m.CreatedAt)
-            .Select(m => new MedicationRecordResponse(m.Id, m.IllnessId, m.MedicationName, m.Dosage, m.Instructions, m.StartDate, m.EndDate, m.FrequencyInDays, m.Times, m.ReminderEnabled, m.IsActive, m.CreatedAt, m.UpdatedAt))
             .ToListAsync();
 
-        return Ok(items);
+        return Ok(items.Select(ToResponse));
     }
 
     [HttpPost]
@@ -54,7 +55,7 @@ public class MedicationsController : ControllerBase
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             FrequencyInDays = request.FrequencyInDays,
-            Times = (request.Times ?? new List<string>()).Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).ToList(),
+            Times = NormalizeTimesOrThrow(request.Times),
             ReminderEnabled = request.ReminderEnabled,
             IsActive = request.IsActive,
             CreatedAt = DateTimeOffset.UtcNow,
@@ -85,7 +86,7 @@ public class MedicationsController : ControllerBase
         entity.StartDate = request.StartDate;
         entity.EndDate = request.EndDate;
         entity.FrequencyInDays = request.FrequencyInDays;
-        entity.Times = (request.Times ?? new List<string>()).Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).ToList();
+        entity.Times = NormalizeTimesOrThrow(request.Times);
         entity.ReminderEnabled = request.ReminderEnabled;
         entity.IsActive = request.IsActive;
         entity.UpdatedAt = DateTimeOffset.UtcNow;
@@ -115,13 +116,18 @@ public class MedicationsController : ControllerBase
     public async Task<IActionResult> GetActive()
     {
         var me = User.GetUserId();
+        var now = DateTimeOffset.UtcNow;
         var items = await _db.MedicationRecords
-            .Where(m => m.Illness.Pet.UserId == me && m.IsActive)
+            .AsNoTracking()
+            .Where(m => m.Illness.Pet.UserId == me &&
+                        m.IsActive &&
+                        m.StartDate <= now &&
+                        (m.EndDate == null || m.EndDate >= now))
             .OrderBy(m => m.StartDate)
-            .Select(m => new MedicationRecordResponse(m.Id, m.IllnessId, m.MedicationName, m.Dosage, m.Instructions, m.StartDate, m.EndDate, m.FrequencyInDays, m.Times, m.ReminderEnabled, m.IsActive, m.CreatedAt, m.UpdatedAt))
+            .ThenBy(m => m.MedicationName)
             .ToListAsync();
 
-        return Ok(items);
+        return Ok(items.Select(ToResponse));
     }
 
     [HttpGet("needs-reminders")]
@@ -130,12 +136,63 @@ public class MedicationsController : ControllerBase
         var me = User.GetUserId();
         var now = DateTimeOffset.UtcNow;
 
-        var items = await _db.MedicationRecords
-            .Where(m => m.Illness.Pet.UserId == me && m.ReminderEnabled && m.IsActive && (m.EndDate == null || m.EndDate >= now))
-            .OrderBy(m => m.StartDate)
-            .Select(m => new MedicationRecordResponse(m.Id, m.IllnessId, m.MedicationName, m.Dosage, m.Instructions, m.StartDate, m.EndDate, m.FrequencyInDays, m.Times, m.ReminderEnabled, m.IsActive, m.CreatedAt, m.UpdatedAt))
+        var candidates = await _db.MedicationRecords
+            .AsNoTracking()
+            .Where(m => m.Illness.Pet.UserId == me &&
+                        m.ReminderEnabled &&
+                        m.IsActive &&
+                        m.StartDate <= now &&
+                        (m.EndDate == null || m.EndDate >= now))
             .ToListAsync();
 
+        var items = candidates
+            .Select(m => new
+            {
+                Medication = m,
+                NormalizedTimes = MedicationScheduleRules.TryNormalizeTimes(m.Times, out var normalizedTimes, out _)
+                    ? normalizedTimes
+                    : new List<string>()
+            })
+            .Where(x => x.NormalizedTimes.Count > 0 && MedicationScheduleRules.IsScheduledOnDate(x.Medication, now))
+            .OrderBy(x => MedicationScheduleRules.GetFirstTimeOrMax(x.NormalizedTimes))
+            .ThenBy(x => x.Medication.MedicationName)
+            .Select(x => ToResponse(x.Medication, x.NormalizedTimes))
+            .ToList();
+
         return Ok(items);
+    }
+
+    private static List<string> NormalizeTimesOrThrow(IReadOnlyList<string>? rawTimes)
+    {
+        if (MedicationScheduleRules.TryNormalizeTimes(rawTimes, out var normalizedTimes, out _))
+        {
+            return normalizedTimes;
+        }
+
+        throw new InvalidOperationException("Medication times were expected to be validated before saving.");
+    }
+
+    private static MedicationRecordResponse ToResponse(MedicationRecordModel medication)
+    {
+        return ToResponse(medication, MedicationScheduleRules.NormalizeTimesForResponse(medication.Times));
+    }
+
+    private static MedicationRecordResponse ToResponse(MedicationRecordModel medication, IReadOnlyList<string> normalizedTimes)
+    {
+        return new MedicationRecordResponse(
+            medication.Id,
+            medication.IllnessId,
+            medication.MedicationName,
+            medication.Dosage,
+            medication.Instructions,
+            medication.StartDate,
+            medication.EndDate,
+            medication.FrequencyInDays,
+            normalizedTimes,
+            medication.ReminderEnabled,
+            medication.IsActive,
+            medication.CreatedAt,
+            medication.UpdatedAt
+        );
     }
 }
