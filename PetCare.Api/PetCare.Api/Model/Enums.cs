@@ -20,7 +20,8 @@ public enum PlaceType
 {
     Vet = 1,
     PetShop = 2,
-    Other = 3
+    Charity = 3,
+    Other = 4
 }
 
 public enum PlaceStatus
