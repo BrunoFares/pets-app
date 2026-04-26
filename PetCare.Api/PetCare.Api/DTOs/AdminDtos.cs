@@ -148,7 +148,7 @@ public record AdminForumPostListItemResponse(
     string UserName,
     string? UserImage,
     string Content,
-    IReadOnlyList<string> Attachments,
+    IReadOnlyList<ForumPostAttachmentResponse> Attachments,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt,
     bool IsAReply,

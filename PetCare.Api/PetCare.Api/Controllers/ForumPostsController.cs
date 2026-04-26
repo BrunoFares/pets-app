@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -167,6 +169,11 @@ public class ForumPostsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateForumPostRequest request)
     {
         var me = User.GetUserId();
+        if (!TryCreateLegacyAttachments(request.Attachments, out var attachments, out var errorResult))
+        {
+            return errorResult!;
+        }
+
         var post = new ForumPostModel
         {
             Id = Guid.NewGuid(),
@@ -174,10 +181,7 @@ public class ForumPostsController : ControllerBase
             Content = request.Content.Trim(),
             IsAReply = false,
             CreatedAt = DateTimeOffset.UtcNow,
-            Attachments = (request.Attachments ?? new List<string>())
-                .Where(a => !string.IsNullOrWhiteSpace(a))
-                .Select(a => new ForumPostAttachmentModel { Url = a.Trim() })
-                .ToList()
+            Attachments = attachments
         };
 
         _db.ForumPosts.Add(post);
@@ -192,6 +196,10 @@ public class ForumPostsController : ControllerBase
         var me = User.GetUserId();
         var parentExists = await _db.ForumPosts.AnyAsync(p => p.Id == id);
         if (!parentExists) return NotFound(new { message = "Parent post not found." });
+        if (!TryCreateLegacyAttachments(request.Attachments, out var attachments, out var errorResult))
+        {
+            return errorResult!;
+        }
 
         var post = new ForumPostModel
         {
@@ -201,10 +209,7 @@ public class ForumPostsController : ControllerBase
             IsAReply = true,
             ReplyingToPostId = id,
             CreatedAt = DateTimeOffset.UtcNow,
-            Attachments = (request.Attachments ?? new List<string>())
-                .Where(a => !string.IsNullOrWhiteSpace(a))
-                .Select(a => new ForumPostAttachmentModel { Url = a.Trim() })
-                .ToList()
+            Attachments = attachments
         };
 
         _db.ForumPosts.Add(post);
@@ -225,6 +230,83 @@ public class ForumPostsController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "Post updated." });
+    }
+
+    [HttpPost("{id:guid}/attachments")]
+    [Consumes("multipart/form-data")]
+    [EnableRateLimiting("uploads")]
+    [RequestSizeLimit(ForumMediaUploadRules.MaxUploadRequestBytes)]
+    public async Task<IActionResult> UploadAttachments(Guid id, [FromForm] UploadForumMediaFilesRequest request)
+    {
+        var me = User.GetUserId();
+        var post = await _db.ForumPosts
+            .Include(p => p.Attachments)
+            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == me);
+        if (post is null)
+        {
+            return NotFound(new { message = "Post not found." });
+        }
+
+        var existingVideoCount = post.Attachments.Count(a => a.MediaType == ForumAttachmentMediaType.Video);
+        if (!ForumMediaUploadRules.TryValidate(request.Files, post.Attachments.Count, existingVideoCount, out var errorMessage, out var validatedFiles))
+        {
+            return BadRequest(new { message = errorMessage });
+        }
+
+        var createdAttachments = new List<ForumPostAttachmentModel>(validatedFiles.Count);
+        foreach (var validatedFile in validatedFiles)
+        {
+            var attachmentUrl = await LocalImageStorage.SaveFileAsync(
+                _env,
+                validatedFile.File,
+                "forum",
+                validatedFile.NormalizedExtension,
+                "forum-posts",
+                post.Id.ToString("N"));
+
+            createdAttachments.Add(new ForumPostAttachmentModel
+            {
+                ForumPostId = post.Id,
+                Url = attachmentUrl,
+                MediaType = validatedFile.MediaType,
+                FileSizeBytes = validatedFile.FileSizeBytes,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        _db.ForumPostAttachments.AddRange(createdAttachments);
+        await _db.SaveChangesAsync();
+
+        return Ok(createdAttachments
+            .OrderBy(a => a.CreatedAt)
+            .ThenBy(a => a.Id)
+            .Select(ToAttachmentResponse)
+            .ToList());
+    }
+
+    [HttpDelete("{id:guid}/attachments/{attachmentId:long}")]
+    public async Task<IActionResult> DeleteAttachment(Guid id, long attachmentId)
+    {
+        var me = User.GetUserId();
+        var post = await _db.ForumPosts
+            .Include(p => p.Attachments)
+            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == me);
+        if (post is null)
+        {
+            return NotFound(new { message = "Post not found." });
+        }
+
+        var attachment = post.Attachments.FirstOrDefault(a => a.Id == attachmentId);
+        if (attachment is null)
+        {
+            return NotFound(new { message = "Attachment not found." });
+        }
+
+        _db.ForumPostAttachments.Remove(attachment);
+        LocalImageStorage.TryDeleteFile(_env, attachment.Url);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     [HttpDelete("{id:guid}")]
@@ -265,6 +347,18 @@ public class ForumPostsController : ControllerBase
                 .Where(postId => !seenIds.Contains(postId))
                 .Distinct()
                 .ToList();
+        }
+
+        var allPostIds = levels.SelectMany(level => level).ToList();
+        var attachmentUrls = await _db.ForumPostAttachments
+            .AsNoTracking()
+            .Where(a => allPostIds.Contains(a.ForumPostId))
+            .Select(a => a.Url)
+            .ToListAsync();
+
+        foreach (var attachmentUrl in attachmentUrls)
+        {
+            LocalImageStorage.TryDeleteFile(_env, attachmentUrl);
         }
 
         for (var index = levels.Count - 1; index >= 0; index--)
@@ -339,7 +433,11 @@ public class ForumPostsController : ControllerBase
             GetDisplayName(post.User),
             ToVersionedStaticFileUrl(post.User.AvatarUrl),
             post.Content,
-            post.Attachments.Select(a => a.Url).ToList(),
+            post.Attachments
+                .OrderBy(a => a.CreatedAt)
+                .ThenBy(a => a.Id)
+                .Select(ToAttachmentResponse)
+                .ToList(),
             post.CreatedAt,
             post.UpdatedAt,
             post.IsAReply,
@@ -486,7 +584,17 @@ public class ForumPostsController : ControllerBase
                 p.User.LastName,
                 p.User.AvatarUrl,
                 p.Content,
-                p.Attachments.OrderBy(a => a.Id).Select(a => a.Url).ToList(),
+                p.Attachments
+                    .OrderBy(a => a.CreatedAt)
+                    .ThenBy(a => a.Id)
+                    .Select(a => new ForumPostAttachmentResponse(
+                        a.Id,
+                        a.Url,
+                        a.MediaType,
+                        a.FileSizeBytes,
+                        a.CreatedAt
+                    ))
+                    .ToList(),
                 p.CreatedAt,
                 p.UpdatedAt,
                 p.IsAReply,
@@ -541,7 +649,7 @@ public class ForumPostsController : ControllerBase
         string userName,
         string? userImage,
         string content,
-        IReadOnlyList<string> attachments,
+        IReadOnlyList<ForumPostAttachmentResponse> attachments,
         DateTimeOffset createdAt,
         DateTimeOffset? updatedAt,
         bool isAReply,
@@ -580,7 +688,7 @@ public class ForumPostsController : ControllerBase
         string LastName,
         string? UserImage,
         string Content,
-        List<string> Attachments,
+        List<ForumPostAttachmentResponse> Attachments,
         DateTimeOffset CreatedAt,
         DateTimeOffset? UpdatedAt,
         bool IsAReply,
@@ -591,6 +699,70 @@ public class ForumPostsController : ControllerBase
         int LikesCount,
         bool IsLikedByCurrentUser
     );
+
+    private static ForumPostAttachmentResponse ToAttachmentResponse(ForumPostAttachmentModel attachment) =>
+        new(
+            attachment.Id,
+            attachment.Url,
+            attachment.MediaType,
+            attachment.FileSizeBytes,
+            attachment.CreatedAt
+        );
+
+    private static bool TryCreateLegacyAttachments(
+        IReadOnlyCollection<string>? rawAttachments,
+        out List<ForumPostAttachmentModel> attachments,
+        out IActionResult? error)
+    {
+        attachments = new List<ForumPostAttachmentModel>();
+        error = null;
+
+        if (rawAttachments is null)
+        {
+            return true;
+        }
+
+        var normalizedAttachments = rawAttachments
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Select(a => a.Trim())
+            .ToList();
+
+        if (normalizedAttachments.Count == 0)
+        {
+            return true;
+        }
+
+        if (normalizedAttachments.Count > ForumMediaUploadRules.MaxAttachmentsPerPost)
+        {
+            error = new BadRequestObjectResult(new
+            {
+                message = $"A maximum of {ForumMediaUploadRules.MaxAttachmentsPerPost} attachments is allowed per post."
+            });
+            return false;
+        }
+
+        var inferredVideoCount = normalizedAttachments.Count(url => ForumMediaUploadRules.InferMediaTypeFromUrl(url) == ForumAttachmentMediaType.Video);
+        if (inferredVideoCount > ForumMediaUploadRules.MaxVideosPerPost)
+        {
+            error = new BadRequestObjectResult(new
+            {
+                message = $"A maximum of {ForumMediaUploadRules.MaxVideosPerPost} video attachment is allowed per post."
+            });
+            return false;
+        }
+
+        attachments = normalizedAttachments
+            .Select(url => new ForumPostAttachmentModel
+            {
+                Url = url,
+                MediaType = ForumMediaUploadRules.InferMediaTypeFromUrl(url),
+                FileSizeBytes = 0,
+                CreatedAt = DateTimeOffset.UtcNow
+            })
+            .ToList();
+
+        return true;
+    }
 
     private string? ToVersionedStaticFileUrl(string? storedPath)
     {

@@ -339,7 +339,17 @@ public class UsersController : ControllerBase
             GetDisplayName(post.User),
             ToVersionedStaticFileUrl(post.User.AvatarUrl),
             post.Content,
-            post.Attachments.Select(a => a.Url).ToList(),
+            post.Attachments
+                .OrderBy(a => a.CreatedAt)
+                .ThenBy(a => a.Id)
+                .Select(a => new ForumPostAttachmentResponse(
+                    a.Id,
+                    a.Url,
+                    a.MediaType,
+                    a.FileSizeBytes,
+                    a.CreatedAt
+                ))
+                .ToList(),
             post.CreatedAt,
             post.UpdatedAt,
             post.IsAReply,

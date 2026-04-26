@@ -4,7 +4,7 @@ namespace PetCare.Api.Services;
 
 public static class LocalImageStorage
 {
-    public static async Task<string> SaveImageAsync(
+    public static async Task<string> SaveFileAsync(
         IWebHostEnvironment env,
         IFormFile file,
         string fileNamePrefix,
@@ -33,6 +33,16 @@ public static class LocalImageStorage
             .Concat(new[] { fileName });
 
         return "/" + string.Join("/", relativePath);
+    }
+
+    public static async Task<string> SaveImageAsync(
+        IWebHostEnvironment env,
+        IFormFile file,
+        string fileNamePrefix,
+        string normalizedExtension,
+        params string[] relativeSegments)
+    {
+        return await SaveFileAsync(env, file, fileNamePrefix, normalizedExtension, relativeSegments);
     }
 
     public static void TryDeleteFile(IWebHostEnvironment env, string? storedPath)

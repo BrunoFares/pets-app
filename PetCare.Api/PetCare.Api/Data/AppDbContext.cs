@@ -320,9 +320,13 @@ public class AppDbContext : DbContext
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.ForumPostId).HasColumnName("forum_post_id");
             e.Property(x => x.Url).HasColumnName("url").HasMaxLength(1024).IsRequired();
+            e.Property(x => x.MediaType).HasColumnName("media_type").HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.FileSizeBytes).HasColumnName("file_size_bytes").IsRequired();
             e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
 
             e.HasOne(x => x.ForumPost).WithMany(p => p.Attachments).HasForeignKey(x => x.ForumPostId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.ForumPostId);
+            e.HasIndex(x => new { x.ForumPostId, x.CreatedAt });
         });
 
         b.Entity<ForumPostBookmarkModel>(e =>
