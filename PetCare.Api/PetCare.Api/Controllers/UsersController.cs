@@ -274,12 +274,108 @@ public class UsersController : ControllerBase
         });
     }
 
+    [HttpPost("{id:long}/block")]
+    public async Task<IActionResult> BlockUser(long id)
+    {
+        var me = User.GetUserId();
+        if (id == me)
+        {
+            return BadRequest(new { message = "You cannot block yourself." });
+        }
+
+        var targetUser = await _context.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == id);
+        if (!targetUser)
+        {
+            return NotFound(new { message = "User not found." });
+        }
+
+        var existingBlock = await _context.UserBlocks
+            .AnyAsync(b => b.BlockerUserId == me && b.BlockedUserId == id);
+        if (existingBlock)
+        {
+            return Conflict(new { message = "User is already blocked." });
+        }
+
+        _context.UserBlocks.Add(new UserBlockModel
+        {
+            BlockerUserId = me,
+            BlockedUserId = id,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            var duplicateBlockExists = await _context.UserBlocks
+                .AsNoTracking()
+                .AnyAsync(b => b.BlockerUserId == me && b.BlockedUserId == id);
+
+            if (duplicateBlockExists)
+            {
+                return Conflict(new { message = "User is already blocked." });
+            }
+
+            throw;
+        }
+
+        return Ok(new { message = "User blocked successfully." });
+    }
+
+    [HttpDelete("{id:long}/block")]
+    public async Task<IActionResult> UnblockUser(long id)
+    {
+        var me = User.GetUserId();
+        var block = await _context.UserBlocks
+            .FirstOrDefaultAsync(b => b.BlockerUserId == me && b.BlockedUserId == id);
+        if (block is null)
+        {
+            return NotFound(new { message = "User is not blocked." });
+        }
+
+        _context.UserBlocks.Remove(block);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("blocked")]
+    public async Task<IActionResult> GetBlockedUsers()
+    {
+        var me = User.GetUserId();
+        var blockedUsers = await _context.UserBlocks
+            .AsNoTracking()
+            .Where(b => b.BlockerUserId == me)
+            .OrderByDescending(b => b.CreatedAt)
+            .ThenByDescending(b => b.BlockedUserId)
+            .Select(b => new BlockedUserResponse(
+                b.BlockedUser.Id,
+                b.BlockedUser.Username,
+                b.BlockedUser.FirstName,
+                b.BlockedUser.LastName,
+                b.BlockedUser.AvatarUrl,
+                b.CreatedAt
+            ))
+            .ToListAsync();
+
+        return Ok(blockedUsers.Select(blockedUser => blockedUser with
+        {
+            AvatarUrl = ToVersionedStaticFileUrl(blockedUser.AvatarUrl)
+        }));
+    }
+
     [HttpGet("bookmarks")]
     public async Task<IActionResult> GetMyBookmarkedPosts()
     {
         var me = User.GetUserId();
         var bookmarks = await _context.ForumPostBookmarks
             .Where(b => b.UserId == me)
+            .Where(b => !_context.UserBlocks.Any(block =>
+                (block.BlockerUserId == me && block.BlockedUserId == b.ForumPost.UserId) ||
+                (block.BlockedUserId == me && block.BlockerUserId == b.ForumPost.UserId)))
             .OrderByDescending(b => b.CreatedAt)
             .Include(b => b.ForumPost)
                 .ThenInclude(p => p.User)

@@ -30,7 +30,8 @@ public class ForumPostsController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var me = TryGetCurrentUserId();
-        var posts = await _db.ForumPosts
+        var postsQuery = ApplyBlockedUsersFilter(_db.ForumPosts, me);
+        var posts = await postsQuery
             .Include(p => p.User)
             .Include(p => p.Attachments)
             .Include(p => p.Replies)
@@ -48,7 +49,7 @@ public class ForumPostsController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var me = TryGetCurrentUserId();
-        var post = await _db.ForumPosts
+        var post = await ApplyBlockedUsersFilter(_db.ForumPosts, me)
             .Include(p => p.User)
             .Include(p => p.Attachments)
             .Include(p => p.Replies)
@@ -64,7 +65,7 @@ public class ForumPostsController : ControllerBase
     public async Task<IActionResult> GetReplies(Guid id)
     {
         var me = TryGetCurrentUserId();
-        var replies = await _db.ForumPosts
+        var replies = await ApplyBlockedUsersFilter(_db.ForumPosts, me)
             .Include(p => p.User)
             .Include(p => p.Attachments)
             .Include(p => p.Bookmarks)
@@ -96,7 +97,7 @@ public class ForumPostsController : ControllerBase
             return error!;
         }
 
-        var query = BuildForumPostQuery(_db.ForumPosts.AsNoTracking(), q, mine, likedByMe, bookmarkedByMe, isReply, hasAttachments, userId, me);
+        var query = BuildForumPostQuery(ApplyBlockedUsersFilter(_db.ForumPosts.AsNoTracking(), me), q, mine, likedByMe, bookmarkedByMe, isReply, hasAttachments, userId, me);
         query = ApplySorting(query, NormalizeSort(sort));
 
         return Ok(await ToPagedResponseAsync(query, me, page, pageSize));
@@ -129,7 +130,7 @@ public class ForumPostsController : ControllerBase
         }
 
         var query = BuildForumPostQuery(
-            _db.ForumPosts.AsNoTracking().Where(p => p.ReplyingToPostId == id),
+            ApplyBlockedUsersFilter(_db.ForumPosts.AsNoTracking(), me).Where(p => p.ReplyingToPostId == id),
             q,
             mine,
             likedByMe,
@@ -149,6 +150,7 @@ public class ForumPostsController : ControllerBase
         var me = User.GetUserId();
         var likes = await _db.ForumPostLikes
             .Where(l => l.UserId == me)
+            .Where(l => !_db.UserBlocks.Any(b => b.BlockerUserId == me && b.BlockedUserId == l.ForumPost.UserId))
             .OrderByDescending(l => l.CreatedAt)
             .Include(l => l.ForumPost)
                 .ThenInclude(p => p.User)
@@ -541,6 +543,25 @@ public class ForumPostsController : ControllerBase
         }
 
         return query;
+    }
+
+    private IQueryable<ForumPostModel> ApplyBlockedUsersFilter(IQueryable<ForumPostModel> query, long? currentUserId)
+    {
+        if (!currentUserId.HasValue)
+        {
+            return query;
+        }
+
+        var invisibleUserIds = _db.UserBlocks
+            .AsNoTracking()
+            .Where(b =>
+                b.BlockerUserId == currentUserId.Value ||
+                b.BlockedUserId == currentUserId.Value)
+            .Select(b => b.BlockerUserId == currentUserId.Value
+                ? b.BlockedUserId
+                : b.BlockerUserId);
+
+        return query.Where(p => !invisibleUserIds.Contains(p.UserId));
     }
 
     private static IQueryable<ForumPostModel> ApplySorting(IQueryable<ForumPostModel> query, string sort)
