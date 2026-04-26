@@ -435,16 +435,6 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    var repairedPlaces = await PlaceOwnerApplicationPlaceSync.BackfillMissingPlacesAsync(db);
-    if (repairedPlaces.Count > 0)
-    {
-        var repairedPlaceNames = string.Join(", ", repairedPlaces.Select(p => $"'{p.Name}'"));
-        startupLogger.LogWarning(
-            "Backfilled {Count} missing place(s) from approved place owner applications: {Places}.",
-            repairedPlaces.Count,
-            repairedPlaceNames
-        );
-    }
 }
 
 app.Run();
