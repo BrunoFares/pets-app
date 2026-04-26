@@ -458,6 +458,11 @@ static bool IsDevelopmentJwtSecret(string jwtSecret)
 
 static bool ShouldUseAdminCookieToken(HttpRequest request)
 {
+    if (request.Path.StartsWithSegments("/admin", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
     if (!request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase))
     {
         return false;

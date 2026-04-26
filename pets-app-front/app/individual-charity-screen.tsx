@@ -14,6 +14,7 @@ import {
   formatPlaceAddress,
   formatPlaceLocation,
 } from "@/lib/discovery-api";
+import { isCharityPlaceType } from "@/lib/place-type-utils";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -48,7 +49,7 @@ export default function IndividualCharityScreen() {
 
     try {
       const response = await fetchPlaceById(key);
-      setOrganisation(response.Type === "Other" ? response : null);
+      setOrganisation(isCharityPlaceType(response.Type) ? response : null);
     } catch (error) {
       setOrganisation(null);
       presentApiError("Could not load charity organisation", error);

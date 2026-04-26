@@ -1,15 +1,20 @@
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { ForumPostsModel } from "@/data/models";
+import { ForumPostAttachmentModel, ForumPostsModel } from "@/data/models";
 import { apiRequest } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
 import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Dimensions,
+  Image,
   Keyboard,
+  Modal,
+  PanResponder,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -84,6 +89,12 @@ function formatPostTimestamp(
     : `${dateLabel} · ${timeLabel}`;
 }
 
+function getImageAttachments(attachments: ForumPostAttachmentModel[]) {
+  return attachments.filter(
+    (attachment) => attachment.MediaType !== "Video" && Boolean(attachment.Url),
+  );
+}
+
 const ForumPost = ({
   item,
   size,
@@ -111,15 +122,26 @@ const ForumPost = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
   const [optionsStep, setOptionsStep] = useState<"menu" | "report">("menu");
-  const [selectedReason, setSelectedReason] = useState<ReportReasonValue>(
-    "Spam",
-  );
+  const [selectedReason, setSelectedReason] =
+    useState<ReportReasonValue>("Spam");
   const [reportDescription, setReportDescription] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState<
+    number | null
+  >(null);
   const { setShowFooter } = useGlobal();
+  const attachmentViewerWidth = Dimensions.get("window").width;
+  const attachmentViewerHeight = Dimensions.get("window").height;
+  const attachmentViewerScrollRef = useRef<ScrollView>(null);
+  const attachmentViewerTranslateY = useRef(new Animated.Value(0)).current;
   const compactTimestamp = formatPostTimestamp(item.CreatedAt, "compact");
   const detailedTimestamp = formatPostTimestamp(item.CreatedAt, "detailed");
   const isOwnPost = user ? String(user.Id) === String(item.UserId) : false;
+  const imageAttachments = getImageAttachments(item.Attachments ?? []);
+  const selectedAttachment =
+    selectedAttachmentIndex === null
+      ? null
+      : (imageAttachments[selectedAttachmentIndex] ?? null);
   const handlePostPress =
     onClickPost ?? (() => goTo(item, "/(tabs)/forum/post/[id]", router));
   const handleProfilePress =
@@ -136,11 +158,89 @@ const ForumPost = ({
       });
     });
 
+  const closeAttachmentViewer = useCallback(() => {
+    setSelectedAttachmentIndex(null);
+    attachmentViewerTranslateY.setValue(0);
+  }, [attachmentViewerTranslateY]);
+
+  const restoreAttachmentViewerPosition = useCallback(() => {
+    Animated.spring(attachmentViewerTranslateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      bounciness: 6,
+    }).start();
+  }, [attachmentViewerTranslateY]);
+
+  const dismissAttachmentViewerWithSwipe = useCallback(
+    (verticalOffset: number) => {
+      Animated.timing(attachmentViewerTranslateY, {
+        toValue:
+          (verticalOffset === 0 ? 1 : Math.sign(verticalOffset)) *
+          attachmentViewerHeight,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        closeAttachmentViewer();
+      });
+    },
+    [attachmentViewerHeight, attachmentViewerTranslateY, closeAttachmentViewer],
+  );
+
+  const attachmentViewerPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_, gestureState) =>
+        Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
+        Math.abs(gestureState.dy) > 10,
+      onPanResponderMove: (_, gestureState) => {
+        attachmentViewerTranslateY.setValue(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dy) > 120) {
+          dismissAttachmentViewerWithSwipe(gestureState.dy);
+          return;
+        }
+
+        restoreAttachmentViewerPosition();
+      },
+      onPanResponderTerminate: () => {
+        restoreAttachmentViewerPosition();
+      },
+    }),
+  ).current;
+
   useEffect(() => {
     setLiked(item.IsLikedByCurrentUser ?? false);
     setLikesCount(item.LikesCount ?? 0);
     setBookmarked(item.IsBookmarked ?? false);
   }, [item.Id, item.IsBookmarked, item.IsLikedByCurrentUser, item.LikesCount]);
+
+  useEffect(() => {
+    if (selectedAttachmentIndex === null) {
+      return;
+    }
+
+    attachmentViewerTranslateY.setValue(0);
+
+    requestAnimationFrame(() => {
+      attachmentViewerScrollRef.current?.scrollTo({
+        x: selectedAttachmentIndex * attachmentViewerWidth,
+        animated: false,
+      });
+    });
+  }, [
+    attachmentViewerTranslateY,
+    attachmentViewerWidth,
+    selectedAttachmentIndex,
+  ]);
+
+  useEffect(() => {
+    if (
+      selectedAttachmentIndex !== null &&
+      selectedAttachmentIndex >= imageAttachments.length
+    ) {
+      closeAttachmentViewer();
+    }
+  }, [closeAttachmentViewer, imageAttachments.length, selectedAttachmentIndex]);
 
   const resetReportDraft = () => {
     setOptionsStep("menu");
@@ -300,6 +400,246 @@ const ForumPost = ({
       setIsSubmittingReport(false);
     }
   };
+
+  const renderAttachments = (variant: "small" | "big") => {
+    if (imageAttachments.length === 0) {
+      return null;
+    }
+
+    const visibleAttachments = imageAttachments.slice(0, 4);
+    const overflowCount = imageAttachments.length - visibleAttachments.length;
+    const isSmallVariant = variant === "small";
+
+    const renderAttachmentTile = (
+      attachment: ForumPostAttachmentModel,
+      index: number,
+      customStyle: object,
+    ) => {
+      const showOverflowCount =
+        overflowCount > 0 && index === visibleAttachments.length - 1;
+
+      return (
+        <TouchableOpacity
+          key={`${attachment.Id}-${index}`}
+          activeOpacity={0.92}
+          onPress={() => setSelectedAttachmentIndex(index)}
+          style={[styles.attachmentTile, customStyle]}
+        >
+          <Image
+            source={{ uri: attachment.Url }}
+            style={styles.attachmentImage}
+            resizeMode="cover"
+          />
+
+          {showOverflowCount ? (
+            <View style={styles.attachmentOverflow}>
+              <AdaptiveText style={styles.attachmentOverflowText}>
+                +{overflowCount}
+              </AdaptiveText>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+      );
+    };
+
+    let attachmentLayout: React.ReactNode;
+
+    if (visibleAttachments.length === 1) {
+      attachmentLayout = renderAttachmentTile(
+        visibleAttachments[0],
+        0,
+        isSmallVariant
+          ? styles.attachmentTileSingleSmall
+          : styles.attachmentTileSingleBig,
+      );
+    } else if (visibleAttachments.length === 2) {
+      attachmentLayout = (
+        <View
+          style={[
+            styles.attachmentsRow,
+            isSmallVariant
+              ? styles.attachmentsRowTwoSmall
+              : styles.attachmentsRowTwoBig,
+          ]}
+        >
+          {renderAttachmentTile(visibleAttachments[0], 0, [
+            styles.attachmentTileFlex,
+            { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
+          ])}
+          {renderAttachmentTile(visibleAttachments[1], 1, [
+            styles.attachmentTileFlex,
+            { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
+          ])}
+        </View>
+      );
+    } else if (visibleAttachments.length === 3) {
+      attachmentLayout = (
+        <View
+          style={[
+            styles.attachmentsRow,
+            isSmallVariant
+              ? styles.attachmentsRowThreeSmall
+              : styles.attachmentsRowThreeBig,
+          ]}
+        >
+          {renderAttachmentTile(visibleAttachments[0], 0, [
+            styles.attachmentTileFlex,
+            { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
+          ])}
+          <View style={styles.attachmentsColumn}>
+            {renderAttachmentTile(visibleAttachments[1], 1, [
+              styles.attachmentTileFlex,
+              {
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderBottomRightRadius: 0,
+              },
+            ])}
+            {renderAttachmentTile(visibleAttachments[2], 2, [
+              styles.attachmentTileFlex,
+              {
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderTopRightRadius: 0,
+              },
+            ])}
+          </View>
+        </View>
+      );
+    } else {
+      attachmentLayout = (
+        <View
+          style={[
+            styles.attachmentsRow,
+            isSmallVariant
+              ? styles.attachmentsRowFourSmall
+              : styles.attachmentsRowFourBig,
+          ]}
+        >
+          <View style={styles.attachmentsColumn}>
+            {renderAttachmentTile(visibleAttachments[0], 0, [
+              styles.attachmentTileFlex,
+              {
+                borderTopRightRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderBottomRightRadius: 0,
+              },
+            ])}
+            {renderAttachmentTile(visibleAttachments[2], 2, [
+              styles.attachmentTileFlex,
+              {
+                borderTopLeftRadius: 0,
+                borderTopRightRadius: 0,
+                borderBottomRightRadius: 0,
+              },
+            ])}
+          </View>
+          <View style={styles.attachmentsColumn}>
+            {renderAttachmentTile(visibleAttachments[1], 1, [
+              styles.attachmentTileFlex,
+              {
+                borderTopLeftRadius: 0,
+                borderBottomRightRadius: 0,
+                borderBottomLeftRadius: 0,
+              },
+            ])}
+            {renderAttachmentTile(visibleAttachments[3], 3, [
+              styles.attachmentTileFlex,
+              {
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderTopRightRadius: 0,
+              },
+            ])}
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View
+        style={[
+          styles.attachmentsSection,
+          variant === "small"
+            ? styles.attachmentsSectionSmall
+            : styles.attachmentsSectionBig,
+        ]}
+      >
+        {attachmentLayout}
+      </View>
+    );
+  };
+
+  const renderAttachmentViewer = () => (
+    <Modal
+      visible={Boolean(selectedAttachment)}
+      transparent
+      animationType="fade"
+      onRequestClose={closeAttachmentViewer}
+    >
+      <View style={styles.attachmentViewerOverlay}>
+        <Animated.View
+          style={[
+            styles.attachmentViewerContent,
+            {
+              transform: [{ translateY: attachmentViewerTranslateY }],
+            },
+          ]}
+          {...attachmentViewerPanResponder.panHandlers}
+        >
+          <TouchableOpacity
+            onPress={closeAttachmentViewer}
+            style={styles.attachmentViewerCloseButton}
+          >
+            <Ionicons name="close" size={22} color={colors.white} />
+          </TouchableOpacity>
+
+          {selectedAttachment ? (
+            <View style={styles.attachmentViewerCounter}>
+              <AdaptiveText style={styles.attachmentViewerCounterText}>
+                {selectedAttachmentIndex! + 1} / {imageAttachments.length}
+              </AdaptiveText>
+            </View>
+          ) : null}
+
+          <ScrollView
+            ref={attachmentViewerScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            bounces={false}
+            onMomentumScrollEnd={(event) => {
+              const nextIndex = Math.round(
+                event.nativeEvent.contentOffset.x / attachmentViewerWidth,
+              );
+              const boundedIndex = Math.max(
+                0,
+                Math.min(imageAttachments.length - 1, nextIndex),
+              );
+
+              setSelectedAttachmentIndex(boundedIndex);
+            }}
+          >
+            {imageAttachments.map((attachment) => (
+              <View
+                key={String(attachment.Id)}
+                style={[
+                  styles.attachmentViewerPage,
+                  { width: attachmentViewerWidth },
+                ]}
+              >
+                <Image
+                  source={{ uri: attachment.Url }}
+                  style={styles.attachmentViewerImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
 
   const renderOptionsModal = () => (
     <CustomModal visible={isOptionsVisible} onClose={closeOptionsModal}>
@@ -469,7 +809,10 @@ const ForumPost = ({
         <View style={styles.post}>
           <TouchableOpacity onPress={handlePostPress}>
             <AdaptiveView style={[styles.inner, styles.smallPostBody]}>
-              <TouchableOpacity onPress={handleProfilePress}>
+              <TouchableOpacity
+                style={{ height: 0 }}
+                onPress={handleProfilePress}
+              >
                 <CustomImage
                   image={item.UserImage}
                   customStyles={styles.placeholder}
@@ -518,6 +861,8 @@ const ForumPost = ({
                 <AdaptiveText style={styles.postContent}>
                   {item.Content}
                 </AdaptiveText>
+
+                {renderAttachments("small")}
               </AdaptiveView>
             </AdaptiveView>
 
@@ -576,6 +921,7 @@ const ForumPost = ({
           </TouchableOpacity>
         </View>
         {renderOptionsModal()}
+        {renderAttachmentViewer()}
       </>
     );
   } else if (size === "big") {
@@ -616,6 +962,7 @@ const ForumPost = ({
             </TouchableOpacity>
           </View>
           <AdaptiveText style={styles.postBody}>{item.Content}</AdaptiveText>
+          {renderAttachments("big")}
         </View>
 
         <View style={styles.additionalRowBig}>
@@ -699,6 +1046,7 @@ const ForumPost = ({
           </TouchableOpacity>
         </View>
         {renderOptionsModal()}
+        {renderAttachmentViewer()}
       </>
     );
   } else {
@@ -767,8 +1115,127 @@ const createStyles = ({ darkMode }: any) => {
     postContent: {
       fontFamily: "Poppins-Light",
       marginLeft: 10,
-      fontSize: 18,
-      width: 300,
+      marginTop: 4,
+      fontSize: 17,
+      lineHeight: 24,
+      flexShrink: 1,
+    },
+    attachmentsSection: {
+      width: "100%",
+    },
+    attachmentsSectionSmall: {
+      marginTop: 8,
+      paddingLeft: 10,
+      alignSelf: "flex-start",
+    },
+    attachmentsSectionBig: {
+      marginTop: 16,
+    },
+    attachmentsRow: {
+      flexDirection: "row",
+      gap: 2,
+    },
+    attachmentsRowTwoSmall: {
+      height: 160,
+    },
+    attachmentsRowTwoBig: {
+      height: 220,
+    },
+    attachmentsRowThreeSmall: {
+      height: 190,
+    },
+    attachmentsRowThreeBig: {
+      height: 260,
+    },
+    attachmentsRowFourSmall: {
+      height: 190,
+    },
+    attachmentsRowFourBig: {
+      height: 260,
+    },
+    attachmentsColumn: {
+      flex: 1,
+      gap: 4,
+    },
+    attachmentTile: {
+      flex: 1,
+      overflow: "hidden",
+      borderRadius: 18,
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.lightGrey,
+      position: "relative",
+    },
+    attachmentTileFlex: {
+      flex: 1,
+    },
+    attachmentTileSingleSmall: {
+      width: "100%",
+      height: 190,
+    },
+    attachmentTileSingleBig: {
+      width: "100%",
+      height: 280,
+    },
+    attachmentImage: {
+      height: "100%",
+    },
+    attachmentOverflow: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.42)",
+    },
+    attachmentOverflowText: {
+      color: colors.white,
+      fontFamily: "Poppins-Bold",
+      fontSize: 24,
+    },
+    attachmentViewerOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.92)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    attachmentViewerContent: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+    },
+    attachmentViewerCloseButton: {
+      position: "absolute",
+      top: 52,
+      right: 20,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "rgba(255, 255, 255, 0.14)",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1,
+    },
+    attachmentViewerCounter: {
+      position: "absolute",
+      top: 58,
+      alignSelf: "center",
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: "rgba(255, 255, 255, 0.14)",
+      zIndex: 1,
+    },
+    attachmentViewerCounterText: {
+      color: colors.white,
+      fontFamily: "Poppins-Medium",
+      fontSize: 13,
+    },
+    attachmentViewerPage: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 32,
+    },
+    attachmentViewerImage: {
+      width: "100%",
+      height: "82%",
     },
     additionalRowSmall: {
       flexDirection: "row",
@@ -818,6 +1285,7 @@ const createStyles = ({ darkMode }: any) => {
     postBody: {
       fontFamily: "Poppins-Regular",
       fontSize: 20,
+      lineHeight: 30,
     },
     reply: {
       marginLeft: 10,

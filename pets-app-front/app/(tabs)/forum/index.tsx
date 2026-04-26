@@ -6,7 +6,8 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
 import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
+import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -36,45 +37,12 @@ export default function ForumScreen() {
     const avatarCacheKey = Date.now();
 
     try {
-      const forumPosts = await apiRequest<
-        {
-          id: string;
-          userId: number;
-          userName: string;
-          userImage?: string | null;
-          content: string;
-          attachments: string[];
-          createdAt: string;
-          updatedAt?: string | null;
-          isAReply: boolean;
-          replyingToPost?: string | null;
-          repliesCount: number;
-          isBookmarked: boolean;
-          likesCount: number;
-          isLikedByCurrentUser: boolean;
-        }[]
-      >("/api/ForumPosts");
+      const forumPosts = await apiRequest<ApiForumPostResponse[]>(
+        "/api/ForumPosts",
+      );
 
       setPosts(
-        forumPosts.map((post) => ({
-          Id: post.id,
-          UserId: post.userId,
-          UserName: post.userName,
-          UserImage: resolveApiUrlWithCacheBust(
-            post.userImage ?? null,
-            avatarCacheKey,
-          ),
-          Content: post.content,
-          Attachments: post.attachments ?? [],
-          CreatedAt: post.createdAt,
-          UpdatedAt: post.updatedAt ?? null,
-          IsAReply: post.isAReply,
-          ReplyingToPost: post.replyingToPost ?? null,
-          RepliesCount: post.repliesCount,
-          IsBookmarked: post.isBookmarked,
-          LikesCount: post.likesCount,
-          IsLikedByCurrentUser: post.isLikedByCurrentUser,
-        })),
+        forumPosts.map((post) => normalizeForumPost(post, avatarCacheKey)),
       );
     } catch {
       setPosts([]);
