@@ -1,5 +1,15 @@
-import { PlaceModel, PlaceScheduleModel } from "@/data/models";
+import {
+  PlaceImageModel,
+  PlaceModel,
+  PlaceScheduleModel,
+} from "@/data/models";
 import { apiRequest, resolveApiUrl } from "@/lib/api";
+
+type ApiPlaceImageResponse = {
+  id: number | string;
+  url: string;
+  createdAt: string;
+};
 
 type ApiPlaceScheduleResponse = {
   id: number;
@@ -24,10 +34,11 @@ type ApiPlaceResponse = {
   city: string;
   country: string;
   status: "Active" | "Inactive" | "Closed";
-  type: "Vet" | "PetShop" | "Other";
+  type: "Vet" | "PetShop" | "Charity" | "Other";
   latitude?: number | null;
   longitude?: number | null;
   createdAt: string;
+  images?: ApiPlaceImageResponse[] | null;
   schedule?: ApiPlaceScheduleResponse[] | null;
   averageRating?: number | null;
   reviewsCount?: number;
@@ -49,6 +60,14 @@ function mapApiPlaceScheduleToModel(
   };
 }
 
+function mapApiPlaceImageToModel(image: ApiPlaceImageResponse): PlaceImageModel {
+  return {
+    Id: image.id,
+    Url: resolveApiUrl(image.url),
+    CreatedAt: image.createdAt,
+  };
+}
+
 export function mapApiPlaceToModel(place: ApiPlaceResponse): PlaceModel {
   return {
     Id: place.id,
@@ -67,6 +86,7 @@ export function mapApiPlaceToModel(place: ApiPlaceResponse): PlaceModel {
     Latitude: place.latitude ?? null,
     Longitude: place.longitude ?? null,
     CreatedAt: place.createdAt,
+    Images: (place.images ?? []).map(mapApiPlaceImageToModel),
     Schedule: (place.schedule ?? []).map(mapApiPlaceScheduleToModel),
     AverageRating:
       typeof place.averageRating === "number" ? place.averageRating : null,
@@ -93,7 +113,7 @@ export async function fetchPetShops() {
 }
 
 export async function fetchCharityOrganisations() {
-  return fetchPlacesByType("Other");
+  return fetchPlaces("/api/Places/charities");
 }
 
 export async function fetchPlaceById(id: string) {

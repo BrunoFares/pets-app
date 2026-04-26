@@ -1,6 +1,15 @@
-import { PlaceModel, PlaceOwnerApplicationModel } from "@/data/models";
-import { ApiRequestError, apiRequest } from "@/lib/api";
+import * as ImagePicker from "expo-image-picker";
+import { PlaceOwnerApplicationModel } from "@/data/models";
+import { ApiRequestError, apiRequest, resolveApiUrl } from "@/lib/api";
 import { mapApiPlaceToModel } from "@/lib/discovery-api";
+
+export const MAX_PLACE_IMAGES = 5;
+
+type ApiUploadedImageResponse = {
+  id: number | string;
+  url: string;
+  createdAt: string;
+};
 
 type ApiPlaceOwnerApplicationResponse = {
   id: number;
@@ -13,7 +22,7 @@ type ApiPlaceOwnerApplicationResponse = {
   addressLine2?: string | null;
   city: string;
   country: string;
-  requestedPlaceType: "Vet" | "PetShop" | "Other";
+  requestedPlaceType: "Vet" | "PetShop" | "Charity" | "Other";
   status: "Pending" | "Approved" | "Rejected";
   rejectionReason?: string | null;
   adminNotes?: string | null;
@@ -21,6 +30,7 @@ type ApiPlaceOwnerApplicationResponse = {
   reviewedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  images?: ApiUploadedImageResponse[] | null;
 };
 
 type ApiPlaceScheduleResponse = {
@@ -46,10 +56,11 @@ type ApiPlaceResponse = {
   city: string;
   country: string;
   status: "Active" | "Inactive" | "Closed";
-  type: "Vet" | "PetShop" | "Other";
+  type: "Vet" | "PetShop" | "Charity" | "Other";
   latitude?: number | null;
   longitude?: number | null;
   createdAt: string;
+  images?: ApiUploadedImageResponse[] | null;
   schedule?: ApiPlaceScheduleResponse[] | null;
   averageRating?: number | null;
   reviewsCount?: number;
@@ -64,7 +75,7 @@ export type PlaceOwnerApplicationInput = {
   addressLine2?: string | null;
   city: string;
   country: string;
-  requestedPlaceType: "Vet" | "PetShop" | "Other";
+  requestedPlaceType: "Vet" | "PetShop" | "Charity" | "Other";
 };
 
 export type ManagedPlaceScheduleInput = {
@@ -87,7 +98,7 @@ export type ManagedPlaceInput = {
   city: string;
   country: string;
   status: "Active" | "Inactive" | "Closed";
-  type: "Vet" | "PetShop" | "Other";
+  type: "Vet" | "PetShop" | "Charity" | "Other";
   latitude?: number | null;
   longitude?: number | null;
   schedule: ManagedPlaceScheduleInput[];
@@ -115,7 +126,68 @@ function mapApiPlaceOwnerApplicationToModel(
     ReviewedAt: application.reviewedAt ?? null,
     CreatedAt: application.createdAt,
     UpdatedAt: application.updatedAt,
+    Images: (application.images ?? []).map((image) => ({
+      Id: image.id,
+      Url: resolveApiUrl(image.url),
+      CreatedAt: image.createdAt,
+    })),
   };
+}
+
+function normalizeTimeForApi(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const match = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(trimmed);
+  if (!match) {
+    return trimmed;
+  }
+
+  return `${match[1]}:${match[2]}:${match[3] ?? "00"}`;
+}
+
+function buildPlaceImagesFormData(assets: ImagePicker.ImagePickerAsset[]) {
+  const formData = new FormData();
+
+  for (const [index, asset] of assets.entries()) {
+    const normalizedMimeType = asset.mimeType?.toLowerCase();
+    const extensionFromMimeType =
+      normalizedMimeType === "image/png"
+        ? "png"
+        : normalizedMimeType === "image/webp"
+          ? "webp"
+          : "jpg";
+    const extensionFromFileName =
+      asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
+    const extension =
+      extensionFromFileName === "png" || extensionFromFileName === "webp"
+        ? extensionFromFileName
+        : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
+          ? "jpg"
+          : extensionFromMimeType;
+    const type =
+      extension === "png"
+        ? "image/png"
+        : extension === "webp"
+          ? "image/webp"
+          : "image/jpeg";
+    const name =
+      asset.fileName?.trim() || `place-image-${index + 1}.${extension}`;
+
+    formData.append("files", {
+      uri: asset.uri,
+      name,
+      type,
+    } as any);
+  }
+
+  return formData;
 }
 
 function toManagedPlacePayload(input: ManagedPlaceInput) {
@@ -136,10 +208,14 @@ function toManagedPlacePayload(input: ManagedPlaceInput) {
     schedule: input.schedule.map((entry) => ({
       dayOfWeek: entry.dayOfWeek,
       isClosed: entry.isClosed,
-      openTime: entry.isClosed ? null : entry.openTime ?? null,
-      closeTime: entry.isClosed ? null : entry.closeTime ?? null,
-      breakStartTime: entry.isClosed ? null : entry.breakStartTime ?? null,
-      breakEndTime: entry.isClosed ? null : entry.breakEndTime ?? null,
+      openTime: entry.isClosed ? null : normalizeTimeForApi(entry.openTime),
+      closeTime: entry.isClosed ? null : normalizeTimeForApi(entry.closeTime),
+      breakStartTime: entry.isClosed
+        ? null
+        : normalizeTimeForApi(entry.breakStartTime),
+      breakEndTime: entry.isClosed
+        ? null
+        : normalizeTimeForApi(entry.breakEndTime),
     })),
   };
 }
@@ -184,9 +260,27 @@ export async function createPlaceOwnerApplication(
   return mapApiPlaceOwnerApplicationToModel(response);
 }
 
-export async function fetchOwnedPlaces() {
-  const response = await apiRequest<ApiPlaceResponse[]>("/api/Places/mine");
-  return response.map(mapApiPlaceToModel);
+export async function fetchOwnedPlaces(ownerUserId?: string | number | null) {
+  try {
+    const response = await apiRequest<ApiPlaceResponse[]>("/api/Places/mine");
+    return response.map(mapApiPlaceToModel);
+  } catch (error) {
+    if (!(error instanceof ApiRequestError) || error.status !== 404) {
+      throw error;
+    }
+
+    if (ownerUserId === undefined || ownerUserId === null) {
+      return [];
+    }
+
+    const fallbackResponse = await apiRequest<ApiPlaceResponse[]>("/api/Places");
+
+    return fallbackResponse
+      .filter(
+        (place) => String(place.ownerUserId ?? "") === String(ownerUserId),
+      )
+      .map(mapApiPlaceToModel);
+  }
 }
 
 export async function createManagedPlace(input: ManagedPlaceInput) {
@@ -213,6 +307,33 @@ export async function updateManagedPlace(
 export async function deleteManagedPlace(placeId: string) {
   await apiRequest(`/api/Places/${placeId}`, {
     method: "DELETE",
+  });
+}
+
+export async function uploadManagedPlaceImages(
+  placeId: string,
+  assets: ImagePicker.ImagePickerAsset[],
+) {
+  if (assets.length === 0) {
+    return [];
+  }
+
+  return apiRequest<ApiUploadedImageResponse[]>(`/api/Places/${placeId}/images`, {
+    method: "POST",
+    body: buildPlaceImagesFormData(assets),
+  });
+}
+
+export async function uploadPlaceOwnerApplicationImages(
+  assets: ImagePicker.ImagePickerAsset[],
+) {
+  if (assets.length === 0) {
+    return [];
+  }
+
+  return apiRequest<ApiUploadedImageResponse[]>("/api/place-owner-applications/me/images", {
+    method: "POST",
+    body: buildPlaceImagesFormData(assets),
   });
 }
 

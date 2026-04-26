@@ -5,7 +5,8 @@ import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
+import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
 import { goTo } from "@/utils";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -31,44 +32,12 @@ export default function Bookmarks() {
     const avatarCacheKey = Date.now();
 
     try {
-      const forumPosts = await apiRequest<
-        {
-          id: string;
-          userId: number;
-          content: string;
-          createdAt: string;
-          updatedAt?: string | null;
-          userName: string;
-          userImage?: string | null;
-          isAReply?: boolean;
-          replyingToPost?: string | null;
-          repliesCount?: number;
-          isBookmarked?: boolean;
-          likesCount?: number;
-          isLikedByCurrentUser?: boolean;
-        }[]
-      >("/api/Users/bookmarks");
+      const forumPosts = await apiRequest<ApiForumPostResponse[]>(
+        "/api/Users/bookmarks",
+      );
 
       setPosts(
-        forumPosts.map((post) => ({
-          Id: post.id,
-          UserId: post.userId,
-          UserName: post.userName,
-          UserImage: resolveApiUrlWithCacheBust(
-            post.userImage ?? null,
-            avatarCacheKey,
-          ),
-          Content: post.content,
-          Attachments: [],
-          CreatedAt: post.createdAt,
-          UpdatedAt: post.updatedAt ?? null,
-          IsAReply: post.isAReply ?? false,
-          ReplyingToPost: post.replyingToPost ?? null,
-          IsBookmarked: post.isBookmarked ?? true,
-          RepliesCount: post.repliesCount ?? 0,
-          LikesCount: post.likesCount ?? 0,
-          IsLikedByCurrentUser: post.isLikedByCurrentUser ?? false,
-        })),
+        forumPosts.map((post) => normalizeForumPost(post, avatarCacheKey)),
       );
     } catch {
       setPosts([]);

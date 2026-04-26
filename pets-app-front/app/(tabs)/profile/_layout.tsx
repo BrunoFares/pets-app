@@ -12,10 +12,6 @@ export default function ItemsStack() {
         name="place-manager"
         options={{ title: "Place Manager" }}
       />
-      <Stack.Screen
-        name="place-owner-application"
-        options={{ title: "Place Owner Application" }}
-      />
       <Stack.Screen name="place-editor" options={{ title: "Place Editor" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
       <Stack.Screen name="consultation" options={{ title: "Consultation" }} />

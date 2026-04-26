@@ -13,6 +13,7 @@ import {
   formatPlaceOwnerApplicationStatusLabel,
   getPlaceOwnerApplicationStatusTone,
 } from "@/lib/place-owner-api";
+import { formatPlaceTypeLabel } from "@/lib/place-type-utils";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
@@ -74,7 +75,7 @@ function getManagerSummary(
 
   if (state === "pending") {
     return {
-      badge: "Application Pending",
+      badge: "Registration Pending",
       title: "Your place-owner request is under review.",
       description:
         "An admin still needs to review your business details before you can manage listings from the app.",
@@ -85,10 +86,10 @@ function getManagerSummary(
   if (state === "rejected") {
     return {
       badge: "Needs Update",
-      title: "Your latest request was rejected.",
+      title: "Your latest place registration was rejected.",
       description:
-        "You can review the notes below, fix the details, and submit a fresh application when you are ready.",
-      actionLabel: "Apply Again",
+        "You can review the notes below, fix the details, and submit the registration again when you are ready.",
+      actionLabel: "Register Again",
     };
   }
 
@@ -97,17 +98,17 @@ function getManagerSummary(
       badge: "Approval Inactive",
       title: "Your previous owner approval is not active right now.",
       description:
-        "You can submit a new application from here if you still need access to manage your place.",
-      actionLabel: "Apply Again",
+        "You can submit a new place registration from here if you still need access to manage your place.",
+      actionLabel: "Register Again",
     };
   }
 
   return {
-    badge: "Apply First",
-    title: "Apply to manage a place from your account.",
+    badge: "Register First",
+    title: "Register your place from your account.",
     description:
-      "Tell us about your vet clinic, pet shop, or charity organisation and an admin can review your request.",
-    actionLabel: "Start Application",
+      "Tell us about your vet clinic, pet shop, or charity organisation and an admin can review the registration.",
+    actionLabel: "Start Registration",
   };
 }
 
@@ -158,7 +159,7 @@ export default function PlaceManagerScreen() {
     try {
       const nextApplication = await fetchMyPlaceOwnerApplication();
       const nextOwnedPlaces = user.IsApprovedPlaceOwner
-        ? await fetchOwnedPlaces()
+        ? await fetchOwnedPlaces(user.Id)
         : [];
 
       setApplication(nextApplication);
@@ -193,9 +194,9 @@ export default function PlaceManagerScreen() {
     : "pending";
   const toneColors = getApplicationToneColor(applicationTone, darkMode);
 
-  const openApplicationForm = useCallback(() => {
+  const openRegistrationForm = useCallback(() => {
     router.push({
-      pathname: "/profile/place-owner-application",
+      pathname: "/profile/place-editor",
       params: application
         ? {
             payload: encodeURIComponent(
@@ -259,7 +260,7 @@ export default function PlaceManagerScreen() {
               onPress={
                 managerState === "approved"
                   ? () => openPlaceEditor()
-                  : openApplicationForm
+                  : openRegistrationForm
               }
               activeOpacity={0.85}
             >
@@ -274,7 +275,7 @@ export default function PlaceManagerScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <AdaptiveText style={styles.sectionTitle}>
-                Latest Application
+                Latest Registration
               </AdaptiveText>
 
               <View
@@ -298,7 +299,7 @@ export default function PlaceManagerScreen() {
               {application.BusinessName}
             </AdaptiveText>
             <AdaptiveText style={styles.applicationMeta}>
-              {application.RequestedPlaceType} · {application.City},{" "}
+              {formatPlaceTypeLabel(application.RequestedPlaceType)} · {application.City},{" "}
               {application.Country}
             </AdaptiveText>
 

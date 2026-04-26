@@ -6,9 +6,9 @@ import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { router } from "expo-router";
+import { apiRequest } from "@/lib/api";
+import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
@@ -18,30 +18,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-const normalizeForumPost = (
-  post: any,
-  avatarCacheKey?: string | number,
-): ForumPostsModel => ({
-  Id: post.id ?? post.Id,
-  UserId: post.userId ?? post.UserId,
-  UserName: post.userName ?? post.UserName,
-  UserImage: resolveApiUrlWithCacheBust(
-    post.userImage ?? post.UserImage ?? null,
-    avatarCacheKey,
-  ),
-  Content: post.content ?? post.Content,
-  Attachments: post.attachments ?? post.Attachments ?? [],
-  CreatedAt: post.createdAt ?? post.CreatedAt,
-  UpdatedAt: post.updatedAt ?? post.UpdatedAt ?? null,
-  IsAReply: post.isAReply ?? post.IsAReply ?? false,
-  ReplyingToPost: post.replyingToPost ?? post.ReplyingToPost ?? null,
-  RepliesCount: post.repliesCount ?? post.RepliesCount,
-  IsBookmarked: post.isBookmarked ?? post.IsBookmarked,
-  LikesCount: post.likesCount ?? post.LikesCount ?? 0,
-  IsLikedByCurrentUser:
-    post.isLikedByCurrentUser ?? post.IsLikedByCurrentUser ?? false,
-});
 
 const PostScreen = () => {
   const darkMode = useColorScheme() === "dark";
@@ -61,8 +37,8 @@ const PostScreen = () => {
 
     try {
       const [post, postReplies] = await Promise.all([
-        apiRequest<any>(`/api/ForumPosts/${postId}`),
-        apiRequest<any[]>(`/api/ForumPosts/${postId}/replies`),
+        apiRequest<ApiForumPostResponse>(`/api/ForumPosts/${postId}`),
+        apiRequest<ApiForumPostResponse[]>(`/api/ForumPosts/${postId}/replies`),
       ]);
 
       setItem(normalizeForumPost(post, avatarCacheKey));
@@ -93,13 +69,13 @@ const PostScreen = () => {
       const avatarCacheKey = Date.now();
       try {
         selectedPost = normalizeForumPost(
-          JSON.parse(decodeURIComponent(payload)),
+          JSON.parse(decodeURIComponent(payload)) as ApiForumPostResponse,
           avatarCacheKey,
         );
       } catch {
         try {
           selectedPost = normalizeForumPost(
-            JSON.parse(payload),
+            JSON.parse(payload) as ApiForumPostResponse,
             avatarCacheKey,
           );
         } catch {

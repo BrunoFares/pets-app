@@ -1,25 +1,43 @@
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
+import CustomModal from "@/components/CustomModal";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { PlaceModel } from "@/data/models";
+import { PlaceModel, PlaceOwnerApplicationModel } from "@/data/models";
 import { presentApiError } from "@/lib/api-feedback";
 import { fetchPlaceById } from "@/lib/discovery-api";
 import {
   createManagedPlace,
+  createPlaceOwnerApplication,
   deleteManagedPlace,
   ManagedPlaceInput,
+  MAX_PLACE_IMAGES,
+  uploadManagedPlaceImages,
+  uploadPlaceOwnerApplicationImages,
   updateManagedPlace,
 } from "@/lib/place-owner-api";
+import {
+  formatPlaceTypeLabel,
+  normalizePlaceTypeForSelection,
+  SupportedPlaceType,
+} from "@/lib/place-type-utils";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { parseRoutePayload } from "@/lib/profile-api";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Image,
   Keyboard,
+  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -39,6 +57,11 @@ const DAY_OPTIONS = [
 ] as const;
 
 type DayName = (typeof DAY_OPTIONS)[number];
+type ScheduleTimeField =
+  | "openTime"
+  | "closeTime"
+  | "breakStartTime"
+  | "breakEndTime";
 
 type EditableScheduleEntry = {
   dayOfWeek: DayName;
@@ -49,7 +72,13 @@ type EditableScheduleEntry = {
   breakEndTime: string;
 };
 
-const PLACE_TYPE_OPTIONS: PlaceModel["Type"][] = ["Vet", "PetShop", "Other"];
+type ActiveTimePicker = {
+  day: DayName;
+  field: ScheduleTimeField;
+  value: Date;
+};
+
+const PLACE_TYPE_OPTIONS: SupportedPlaceType[] = ["Vet", "PetShop", "Charity"];
 const PLACE_STATUS_OPTIONS: PlaceModel["Status"][] = [
   "Active",
   "Inactive",
@@ -80,6 +109,23 @@ function normalizeDayOfWeek(value: string | number): DayName {
   return match ?? "Monday";
 }
 
+function normalizeTimeForEditor(value?: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  const match = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d)(?:\.\d+)?)?$/.exec(
+    trimmed,
+  );
+
+  if (!match) {
+    return trimmed;
+  }
+
+  return `${match[1]}:${match[2]}`;
+}
+
 function mapPlaceToEditableSchedule(place: PlaceModel) {
   const defaultsByDay = new Map(
     getDefaultSchedule().map((entry) => [entry.dayOfWeek, entry]),
@@ -90,10 +136,10 @@ function mapPlaceToEditableSchedule(place: PlaceModel) {
       {
         dayOfWeek: normalizeDayOfWeek(entry.DayOfWeek),
         isClosed: entry.IsClosed,
-        openTime: entry.OpenTime ?? "",
-        closeTime: entry.CloseTime ?? "",
-        breakStartTime: entry.BreakStartTime ?? "",
-        breakEndTime: entry.BreakEndTime ?? "",
+        openTime: normalizeTimeForEditor(entry.OpenTime),
+        closeTime: normalizeTimeForEditor(entry.CloseTime),
+        breakStartTime: normalizeTimeForEditor(entry.BreakStartTime),
+        breakEndTime: normalizeTimeForEditor(entry.BreakEndTime),
       },
     ]),
   );
@@ -103,7 +149,7 @@ function mapPlaceToEditableSchedule(place: PlaceModel) {
 
 function parseTimeToMinutes(value: string) {
   const trimmed = value.trim();
-  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(trimmed);
+  const match = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(trimmed);
   if (!match) {
     return null;
   }
@@ -174,14 +220,57 @@ function dayLabel(day: DayName) {
   return "Sun";
 }
 
+function isBreakField(field: ScheduleTimeField) {
+  return field === "breakStartTime" || field === "breakEndTime";
+}
+
+function timeStringToDate(value?: string | null) {
+  const date = new Date();
+  const parsedMinutes = value ? parseTimeToMinutes(value) : null;
+
+  if (parsedMinutes === null) {
+    date.setHours(9, 0, 0, 0);
+    return date;
+  }
+
+  date.setHours(Math.floor(parsedMinutes / 60), parsedMinutes % 60, 0, 0);
+  return date;
+}
+
+function formatTimeForStorage(value: Date) {
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function getTimePlaceholder(field: ScheduleTimeField) {
+  if (field === "openTime") return "Select opening";
+  if (field === "closeTime") return "Select closing";
+  if (field === "breakStartTime") return "Select break start";
+  return "Select break end";
+}
+
+function getTimeFieldLabel(field: ScheduleTimeField) {
+  if (field === "openTime") return "Opens";
+  if (field === "closeTime") return "Closes";
+  if (field === "breakStartTime") return "Break starts";
+  return "Break ends";
+}
+
+function getTimePickerTitle(day: DayName, field: ScheduleTimeField) {
+  return `${day} ${getTimeFieldLabel(field)}`;
+}
+
 export default function PlaceEditorScreen() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, payload } = useLocalSearchParams<{ id?: string; payload?: string }>();
   const { user } = useAuth();
   const { setShowFooter } = useGlobal();
   const isEditing = Boolean(id);
+  const isOwnerActive = Boolean(user?.IsApprovedPlaceOwner);
+  const isApplicationMode = !isEditing && !isOwnerActive;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -193,22 +282,76 @@ export default function PlaceEditorScreen() {
   const [country, setCountry] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
-  const [placeType, setPlaceType] = useState<PlaceModel["Type"]>("Vet");
+  const [placeType, setPlaceType] = useState<SupportedPlaceType>("Vet");
   const [placeStatus, setPlaceStatus] =
     useState<PlaceModel["Status"]>("Active");
   const [schedule, setSchedule] = useState<EditableScheduleEntry[]>(
     getDefaultSchedule(),
   );
-  const [place, setPlace] = useState<PlaceModel | null>(null);
+  const [existingImages, setExistingImages] = useState<PlaceModel["Images"]>([]);
+  const [selectedImageAssets, setSelectedImageAssets] = useState<
+    ImagePicker.ImagePickerAsset[]
+  >([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(id));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTimePicker, setActiveTimePicker] =
+    useState<ActiveTimePicker | null>(null);
+  const [iosTimeValue, setIosTimeValue] = useState(new Date());
 
-  const isOwnerActive = Boolean(user?.IsApprovedPlaceOwner);
+  const latestApplication = useMemo(() => {
+    const parsed = parseRoutePayload<{ application?: PlaceOwnerApplicationModel }>(
+      payload,
+    );
+
+    return parsed?.application ?? null;
+  }, [payload]);
+
+  const pageTitle = isApplicationMode
+    ? "Register Place"
+    : isEditing
+      ? "Edit Place"
+      : "Add Place";
+  const heroTitle = isApplicationMode
+    ? "Register your place"
+    : isEditing
+      ? "Update your listing"
+      : "Create a new listing";
+  const heroSubtitle = isApplicationMode
+    ? "Share the core details for your vet clinic, pet shop, or charity so an admin can review the registration and activate your place-owner access."
+    : "Keep the public details, visibility status, and weekly schedule in sync with how your place actually operates.";
+  const nameLabel = isApplicationMode ? "Business Name" : "Place Name";
+  const remainingImageSlots =
+    MAX_PLACE_IMAGES - existingImages.length - selectedImageAssets.length;
+
+  useEffect(() => {
+    if (id) {
+      return;
+    }
+
+    setName(latestApplication?.BusinessName ?? "");
+    setPhone(latestApplication?.Phone ?? "");
+    setEmail(latestApplication?.Email ?? user?.Email ?? "");
+    setPhoto("");
+    setDescription(latestApplication?.Description ?? "");
+    setAddressLine1(latestApplication?.AddressLine1 ?? "");
+    setAddressLine2(latestApplication?.AddressLine2 ?? "");
+    setCity(latestApplication?.City ?? "");
+    setCountry(latestApplication?.Country ?? "");
+    setLatitude("");
+    setLongitude("");
+    setExistingImages([]);
+    setSelectedImageAssets([]);
+    setPlaceType(
+      normalizePlaceTypeForSelection(latestApplication?.RequestedPlaceType),
+    );
+    setPlaceStatus("Active");
+    setSchedule(getDefaultSchedule());
+    setErrorMessage(null);
+  }, [id, latestApplication, user?.Email]);
 
   const applyPlaceToForm = useCallback((nextPlace: PlaceModel) => {
-    setPlace(nextPlace);
     setName(nextPlace.Name);
     setPhone(nextPlace.Phone);
     setEmail(nextPlace.Email);
@@ -228,14 +371,15 @@ export default function PlaceEditorScreen() {
         ? ""
         : String(nextPlace.Longitude),
     );
-    setPlaceType(nextPlace.Type);
+    setPlaceType(normalizePlaceTypeForSelection(nextPlace.Type));
     setPlaceStatus(nextPlace.Status);
+    setExistingImages(nextPlace.Images);
+    setSelectedImageAssets([]);
     setSchedule(mapPlaceToEditableSchedule(nextPlace));
   }, []);
 
   const loadPlace = useCallback(async () => {
     if (!id) {
-      setPlace(null);
       setErrorMessage(null);
       setIsLoading(false);
       return;
@@ -247,7 +391,6 @@ export default function PlaceEditorScreen() {
       const response = await fetchPlaceById(id);
 
       if (user && String(response.OwnerUserId ?? "") !== String(user.Id)) {
-        setPlace(null);
         setErrorMessage("You can only edit places that belong to your account.");
         return;
       }
@@ -255,7 +398,6 @@ export default function PlaceEditorScreen() {
       setErrorMessage(null);
       applyPlaceToForm(response);
     } catch (error) {
-      setPlace(null);
       setErrorMessage("We couldn't load this place right now.");
       presentApiError("Could not load place", error);
     } finally {
@@ -304,6 +446,153 @@ export default function PlaceEditorScreen() {
     [],
   );
 
+  const clearBreakTimes = useCallback(
+    (day: DayName) => {
+      updateScheduleEntry(day, {
+        breakStartTime: "",
+        breakEndTime: "",
+      });
+    },
+    [updateScheduleEntry],
+  );
+
+  const handlePickImages = useCallback(async () => {
+    if (isSubmitting || remainingImageSlots <= 0) {
+      return;
+    }
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert(
+        "Permission required",
+        "Please allow photo library access so you can attach images to this place.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      allowsMultipleSelection: true,
+      selectionLimit: remainingImageSlots,
+      quality: 0.9,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    setSelectedImageAssets((currentAssets) => {
+      const nextAssets = [...currentAssets];
+      const seenKeys = new Set(
+        currentAssets.map((asset) => asset.assetId ?? asset.uri),
+      );
+
+      for (const asset of result.assets) {
+        const assetKey = asset.assetId ?? asset.uri;
+
+        if (seenKeys.has(assetKey)) {
+          continue;
+        }
+
+        nextAssets.push(asset);
+        seenKeys.add(assetKey);
+
+        if (nextAssets.length >= MAX_PLACE_IMAGES - existingImages.length) {
+          break;
+        }
+      }
+
+      return nextAssets;
+    });
+  }, [existingImages.length, isSubmitting, remainingImageSlots]);
+
+  const handleRemoveSelectedImage = useCallback(
+    (assetToRemove: ImagePicker.ImagePickerAsset) => {
+      setSelectedImageAssets((currentAssets) =>
+        currentAssets.filter((asset) => asset.uri !== assetToRemove.uri),
+      );
+    },
+    [],
+  );
+
+  const openTimePicker = useCallback(
+    (day: DayName, field: ScheduleTimeField, currentValue: string) => {
+      const nextValue = timeStringToDate(currentValue);
+      setIosTimeValue(nextValue);
+      setActiveTimePicker({
+        day,
+        field,
+        value: nextValue,
+      });
+    },
+    [],
+  );
+
+  const closeTimePicker = useCallback(() => {
+    setActiveTimePicker(null);
+  }, []);
+
+  const applySelectedTime = useCallback(
+    (day: DayName, field: ScheduleTimeField, value: Date) => {
+      updateScheduleEntry(day, {
+        [field]: formatTimeForStorage(value),
+      } as Partial<EditableScheduleEntry>);
+    },
+    [updateScheduleEntry],
+  );
+
+  const handleTimePickerChange = useCallback(
+    (event: DateTimePickerEvent, selectedDate?: Date) => {
+      if (!activeTimePicker) {
+        return;
+      }
+
+      if (Platform.OS === "android") {
+        if (event.type === "dismissed") {
+          closeTimePicker();
+          return;
+        }
+
+        if (selectedDate) {
+          applySelectedTime(
+            activeTimePicker.day,
+            activeTimePicker.field,
+            selectedDate,
+          );
+        }
+
+        closeTimePicker();
+        return;
+      }
+
+      if (selectedDate) {
+        setIosTimeValue(selectedDate);
+      }
+    },
+    [activeTimePicker, applySelectedTime, closeTimePicker],
+  );
+
+  const confirmIosTimeSelection = useCallback(() => {
+    if (!activeTimePicker) {
+      return;
+    }
+
+    applySelectedTime(activeTimePicker.day, activeTimePicker.field, iosTimeValue);
+    closeTimePicker();
+  }, [activeTimePicker, applySelectedTime, closeTimePicker, iosTimeValue]);
+
+  const clearActiveBreakTimes = useCallback(() => {
+    if (!activeTimePicker) {
+      return;
+    }
+
+    clearBreakTimes(activeTimePicker.day);
+    closeTimePicker();
+  }, [activeTimePicker, clearBreakTimes, closeTimePicker]);
+
   const schedulePayload = useMemo<ManagedPlaceInput["schedule"]>(
     () =>
       schedule.map((entry) => ({
@@ -318,14 +607,6 @@ export default function PlaceEditorScreen() {
   );
 
   const handleSave = async () => {
-    if (!isOwnerActive) {
-      Alert.alert(
-        "Access unavailable",
-        "Your place-owner approval is not active right now.",
-      );
-      return;
-    }
-
     if (
       !name.trim() ||
       !phone.trim() ||
@@ -336,8 +617,50 @@ export default function PlaceEditorScreen() {
     ) {
       Alert.alert(
         "Missing information",
-        "Please complete the required place details before saving.",
+        "Please complete the required place details before continuing.",
       );
+      return;
+    }
+
+    if (isApplicationMode) {
+      try {
+        setIsSubmitting(true);
+
+        await createPlaceOwnerApplication({
+          businessName: name,
+          phone,
+          email,
+          description,
+          addressLine1,
+          addressLine2,
+          city,
+          country,
+          requestedPlaceType: placeType,
+        });
+
+        if (selectedImageAssets.length > 0) {
+          try {
+            await uploadPlaceOwnerApplicationImages(selectedImageAssets);
+          } catch {
+            Alert.alert(
+              "Registration submitted without images",
+              "Your registration was submitted, but the selected images could not be uploaded.",
+            );
+            router.replace("/profile/place-manager");
+            return;
+          }
+        }
+
+        router.replace("/profile/place-manager");
+      } catch (error) {
+        presentApiError("Could not submit registration", error, {
+          fallbackMessage:
+            "We couldn't submit your place registration right now.",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+
       return;
     }
 
@@ -381,17 +704,27 @@ export default function PlaceEditorScreen() {
         schedule: schedulePayload,
       };
 
-      if (id) {
-        await updateManagedPlace(id, payload);
-      } else {
-        await createManagedPlace(payload);
+      const savedPlace = id
+        ? await updateManagedPlace(id, payload)
+        : await createManagedPlace(payload);
+
+      if (selectedImageAssets.length > 0) {
+        try {
+          await uploadManagedPlaceImages(savedPlace.Id, selectedImageAssets);
+        } catch {
+          Alert.alert(
+            "Place saved without new images",
+            "Your place details were saved, but the selected images could not be uploaded.",
+          );
+          router.back();
+          return;
+        }
       }
 
       router.back();
     } catch (error) {
       presentApiError("Could not save place", error, {
-        fallbackMessage:
-          "We couldn't save your place details right now.",
+        fallbackMessage: "We couldn't save your place details right now.",
       });
     } finally {
       setIsSubmitting(false);
@@ -437,20 +770,20 @@ export default function PlaceEditorScreen() {
   if (!user) {
     return (
       <SafeAreaView style={styles.container}>
-        <PageHeader title="Place Editor" />
+        <PageHeader title={pageTitle} />
         <ProfileEmptyState
           title="Sign in required"
-          subtitle="Log in to manage your place listings."
+          subtitle="Log in to register or manage your place listings."
           style={styles.emptyStateCard}
         />
       </SafeAreaView>
     );
   }
 
-  if (!isOwnerActive) {
+  if (isEditing && !isOwnerActive) {
     return (
       <SafeAreaView style={styles.container}>
-        <PageHeader title="Place Editor" />
+        <PageHeader title={pageTitle} />
         <ProfileEmptyState
           title="Owner approval inactive"
           subtitle="Your place-owner approval is not active right now, so editing is unavailable."
@@ -463,7 +796,7 @@ export default function PlaceEditorScreen() {
   if (errorMessage && !isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <PageHeader title={isEditing ? "Edit Place" : "Add Place"} />
+        <PageHeader title={pageTitle} />
         <ProfileEmptyState
           title="Place unavailable"
           subtitle={errorMessage}
@@ -475,7 +808,7 @@ export default function PlaceEditorScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <PageHeader title={isEditing ? "Edit Place" : "Add Place"} />
+      <PageHeader title={pageTitle} />
 
       <ScrollView
         keyboardDismissMode="on-drag"
@@ -484,13 +817,17 @@ export default function PlaceEditorScreen() {
         contentContainerStyle={styles.content}
       >
         <View style={styles.heroCard}>
-          <AdaptiveText style={styles.title}>
-            {isEditing ? "Update your listing" : "Create a new listing"}
-          </AdaptiveText>
-          <AdaptiveText style={styles.subtitle}>
-            Keep the public details, visibility status, and weekly schedule in
-            sync with how your place actually operates.
-          </AdaptiveText>
+          <AdaptiveText style={styles.title}>{heroTitle}</AdaptiveText>
+          <AdaptiveText style={styles.subtitle}>{heroSubtitle}</AdaptiveText>
+
+          {isApplicationMode ? (
+            <View style={styles.helperCard}>
+              <AdaptiveText style={styles.helperCardText}>
+                Hours, listing status, and map coordinates unlock after your
+                place-owner registration is approved.
+              </AdaptiveText>
+            </View>
+          ) : null}
         </View>
 
         <AdaptiveText style={styles.sectionLabel}>Place Type</AdaptiveText>
@@ -514,42 +851,46 @@ export default function PlaceEditorScreen() {
                     isSelected ? styles.optionChipTextSelected : null,
                   ]}
                 >
-                  {option === "PetShop" ? "Pet Shop" : option}
+                  {formatPlaceTypeLabel(option)}
                 </AdaptiveText>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <AdaptiveText style={styles.sectionLabel}>Listing Status</AdaptiveText>
-        <View style={styles.optionRow}>
-          {PLACE_STATUS_OPTIONS.map((option) => {
-            const isSelected = placeStatus === option;
+        {!isApplicationMode ? (
+          <>
+            <AdaptiveText style={styles.sectionLabel}>Listing Status</AdaptiveText>
+            <View style={styles.optionRow}>
+              {PLACE_STATUS_OPTIONS.map((option) => {
+                const isSelected = placeStatus === option;
 
-            return (
-              <TouchableOpacity
-                key={option}
-                style={[
-                  styles.optionChip,
-                  isSelected ? styles.optionChipSelected : null,
-                ]}
-                onPress={() => setPlaceStatus(option)}
-                activeOpacity={0.85}
-              >
-                <AdaptiveText
-                  style={[
-                    styles.optionChipText,
-                    isSelected ? styles.optionChipTextSelected : null,
-                  ]}
-                >
-                  {option}
-                </AdaptiveText>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.optionChip,
+                      isSelected ? styles.optionChipSelected : null,
+                    ]}
+                    onPress={() => setPlaceStatus(option)}
+                    activeOpacity={0.85}
+                  >
+                    <AdaptiveText
+                      style={[
+                        styles.optionChipText,
+                        isSelected ? styles.optionChipTextSelected : null,
+                      ]}
+                    >
+                      {option}
+                    </AdaptiveText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
 
-        <AdaptiveText style={styles.sectionLabel}>Place Name</AdaptiveText>
+        <AdaptiveText style={styles.sectionLabel}>{nameLabel}</AdaptiveText>
         <CustomInput value={name} onChangeText={setName} />
 
         <AdaptiveText style={styles.sectionLabel}>Phone</AdaptiveText>
@@ -563,13 +904,93 @@ export default function PlaceEditorScreen() {
           keyboardType="email-address"
         />
 
-        <AdaptiveText style={styles.sectionLabel}>Photo URL</AdaptiveText>
-        <CustomInput
-          value={photo}
-          onChangeText={setPhoto}
-          autoCapitalize="none"
-          keyboardType="url"
-        />
+        <View style={styles.imagesSection}>
+          <View style={styles.imagesHeader}>
+            <AdaptiveText style={styles.sectionLabel}>
+              {isApplicationMode ? "Registration Images" : "Place Images"}
+            </AdaptiveText>
+            <AdaptiveText style={styles.imagesCounter}>
+              {existingImages.length + selectedImageAssets.length}/{MAX_PLACE_IMAGES}
+            </AdaptiveText>
+          </View>
+
+          <AdaptiveText style={styles.imagesHint}>
+            Add up to {MAX_PLACE_IMAGES} images from your gallery.
+          </AdaptiveText>
+
+          <TouchableOpacity
+            style={[
+              styles.imagePickerButton,
+              (isSubmitting || remainingImageSlots <= 0) &&
+                styles.imagePickerButtonDisabled,
+            ]}
+            disabled={isSubmitting || remainingImageSlots <= 0}
+            onPress={handlePickImages}
+            activeOpacity={0.85}
+          >
+            <Ionicons
+              name="images-outline"
+              size={18}
+              color={darkMode ? colors.white : colors.black}
+            />
+            <AdaptiveText style={styles.imagePickerButtonText}>
+              {remainingImageSlots <= 0
+                ? "Image limit reached"
+                : selectedImageAssets.length > 0
+                  ? "Add more images"
+                  : "Choose images"}
+            </AdaptiveText>
+          </TouchableOpacity>
+
+          {existingImages.length > 0 ? (
+            <View style={styles.imageGroup}>
+              <AdaptiveText style={styles.imageGroupLabel}>
+                Current images
+              </AdaptiveText>
+              <View style={styles.imageGrid}>
+                {existingImages.map((image) => (
+                  <View key={String(image.Id)} style={styles.imageCard}>
+                    <Image
+                      source={{ uri: image.Url }}
+                      style={styles.imagePreview}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {selectedImageAssets.length > 0 ? (
+            <View style={styles.imageGroup}>
+              <AdaptiveText style={styles.imageGroupLabel}>
+                Selected images
+              </AdaptiveText>
+              <View style={styles.imageGrid}>
+                {selectedImageAssets.map((asset) => (
+                  <View
+                    key={asset.assetId ?? asset.uri}
+                    style={styles.imageCard}
+                  >
+                    <Image
+                      source={{ uri: asset.uri }}
+                      style={styles.imagePreview}
+                    />
+                    <TouchableOpacity
+                      onPress={() => handleRemoveSelectedImage(asset)}
+                      style={styles.removeImageButton}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={14}
+                        color={colors.white}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
 
         <AdaptiveText style={styles.sectionLabel}>Description</AdaptiveText>
         <CustomInput
@@ -592,113 +1013,201 @@ export default function PlaceEditorScreen() {
         <AdaptiveText style={styles.sectionLabel}>Country</AdaptiveText>
         <CustomInput value={country} onChangeText={setCountry} />
 
-        <AdaptiveText style={styles.sectionLabel}>Latitude</AdaptiveText>
-        <CustomInput
-          value={latitude}
-          onChangeText={setLatitude}
-          keyboardType="decimal-pad"
-        />
+        {!isApplicationMode ? (
+          <>
+            <AdaptiveText style={styles.sectionLabel}>Latitude</AdaptiveText>
+            <CustomInput
+              value={latitude}
+              onChangeText={setLatitude}
+              keyboardType="decimal-pad"
+            />
 
-        <AdaptiveText style={styles.sectionLabel}>Longitude</AdaptiveText>
-        <CustomInput
-          value={longitude}
-          onChangeText={setLongitude}
-          keyboardType="decimal-pad"
-        />
+            <AdaptiveText style={styles.sectionLabel}>Longitude</AdaptiveText>
+            <CustomInput
+              value={longitude}
+              onChangeText={setLongitude}
+              keyboardType="decimal-pad"
+            />
 
-        <View style={styles.scheduleSection}>
-          <AdaptiveText style={styles.scheduleTitle}>Weekly Schedule</AdaptiveText>
-          <AdaptiveText style={styles.scheduleSubtitle}>
-            Use 24-hour time like 09:00 and leave break times blank if you do
-            not close mid-day.
-          </AdaptiveText>
+            <View style={styles.scheduleSection}>
+              <AdaptiveText style={styles.scheduleTitle}>Weekly Schedule</AdaptiveText>
+              <AdaptiveText style={styles.scheduleSubtitle}>
+                Tap each field to choose a time. Leave break times empty if you
+                do not close mid-day.
+              </AdaptiveText>
 
-          {schedule.map((entry) => (
-            <View key={entry.dayOfWeek} style={styles.dayCard}>
-              <View style={styles.dayHeader}>
-                <AdaptiveText style={styles.dayTitle}>
-                  {dayLabel(entry.dayOfWeek)}
-                </AdaptiveText>
+              {schedule.map((entry) => (
+                <View key={entry.dayOfWeek} style={styles.dayCard}>
+                  <View style={styles.dayHeader}>
+                    <AdaptiveText style={styles.dayTitle}>
+                      {dayLabel(entry.dayOfWeek)}
+                    </AdaptiveText>
 
-                <TouchableOpacity
-                  style={[
-                    styles.closedToggle,
-                    entry.isClosed ? styles.closedToggleSelected : null,
-                  ]}
-                  onPress={() =>
-                    updateScheduleEntry(entry.dayOfWeek, {
-                      isClosed: !entry.isClosed,
-                    })
-                  }
-                  activeOpacity={0.85}
-                >
-                  <AdaptiveText
-                    style={[
-                      styles.closedToggleText,
-                      entry.isClosed ? styles.closedToggleTextSelected : null,
-                    ]}
-                  >
-                    {entry.isClosed ? "Closed" : "Open"}
-                  </AdaptiveText>
-                </TouchableOpacity>
-              </View>
-
-              {!entry.isClosed ? (
-                <>
-                  <View style={styles.timeRow}>
-                    <CustomInput
-                      value={entry.openTime}
-                      onChangeText={(value) =>
+                    <TouchableOpacity
+                      style={[
+                        styles.closedToggle,
+                        entry.isClosed ? styles.closedToggleSelected : null,
+                      ]}
+                      onPress={() =>
                         updateScheduleEntry(entry.dayOfWeek, {
-                          openTime: value,
+                          isClosed: !entry.isClosed,
                         })
                       }
-                      placeholder="09:00"
-                      style={styles.timeField}
-                    />
-                    <CustomInput
-                      value={entry.closeTime}
-                      onChangeText={(value) =>
-                        updateScheduleEntry(entry.dayOfWeek, {
-                          closeTime: value,
-                        })
-                      }
-                      placeholder="17:00"
-                      style={styles.timeField}
-                    />
+                      activeOpacity={0.85}
+                    >
+                      <AdaptiveText
+                        style={[
+                          styles.closedToggleText,
+                          entry.isClosed ? styles.closedToggleTextSelected : null,
+                        ]}
+                      >
+                        {entry.isClosed ? "Closed" : "Open"}
+                      </AdaptiveText>
+                    </TouchableOpacity>
                   </View>
 
-                  <View style={styles.timeRow}>
-                    <CustomInput
-                      value={entry.breakStartTime}
-                      onChangeText={(value) =>
-                        updateScheduleEntry(entry.dayOfWeek, {
-                          breakStartTime: value,
-                        })
-                      }
-                      placeholder="Break start"
-                      style={styles.timeField}
-                    />
-                    <CustomInput
-                      value={entry.breakEndTime}
-                      onChangeText={(value) =>
-                        updateScheduleEntry(entry.dayOfWeek, {
-                          breakEndTime: value,
-                        })
-                      }
-                      placeholder="Break end"
-                      style={styles.timeField}
-                    />
-                  </View>
-                </>
-              ) : (
-                <AdaptiveText style={styles.closedHint}>
-                  Marked as closed for the whole day.
-                </AdaptiveText>
-              )}
+                  {!entry.isClosed ? (
+                    <>
+                      <View style={styles.timeRow}>
+                        <View style={styles.timeGroup}>
+                          <AdaptiveText style={styles.timeGroupLabel}>
+                            Opens
+                          </AdaptiveText>
+                          <TouchableOpacity
+                            style={styles.timeSelector}
+                            onPress={() =>
+                              openTimePicker(
+                                entry.dayOfWeek,
+                                "openTime",
+                                entry.openTime,
+                              )
+                            }
+                            activeOpacity={0.85}
+                          >
+                            <AdaptiveText
+                              style={[
+                                styles.timeSelectorText,
+                                !entry.openTime
+                                  ? styles.timeSelectorPlaceholder
+                                  : null,
+                              ]}
+                            >
+                              {entry.openTime || getTimePlaceholder("openTime")}
+                            </AdaptiveText>
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.timeGroup}>
+                          <AdaptiveText style={styles.timeGroupLabel}>
+                            Closes
+                          </AdaptiveText>
+                          <TouchableOpacity
+                            style={styles.timeSelector}
+                            onPress={() =>
+                              openTimePicker(
+                                entry.dayOfWeek,
+                                "closeTime",
+                                entry.closeTime,
+                              )
+                            }
+                            activeOpacity={0.85}
+                          >
+                            <AdaptiveText
+                              style={[
+                                styles.timeSelectorText,
+                                !entry.closeTime
+                                  ? styles.timeSelectorPlaceholder
+                                  : null,
+                              ]}
+                            >
+                              {entry.closeTime || getTimePlaceholder("closeTime")}
+                            </AdaptiveText>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      <View style={styles.timeRow}>
+                        <View style={styles.timeGroup}>
+                          <AdaptiveText style={styles.timeGroupLabel}>
+                            Break starts
+                          </AdaptiveText>
+                          <TouchableOpacity
+                            style={styles.timeSelector}
+                            onPress={() =>
+                              openTimePicker(
+                                entry.dayOfWeek,
+                                "breakStartTime",
+                                entry.breakStartTime,
+                              )
+                            }
+                            activeOpacity={0.85}
+                          >
+                            <AdaptiveText
+                              style={[
+                                styles.timeSelectorText,
+                                !entry.breakStartTime
+                                  ? styles.timeSelectorPlaceholder
+                                  : null,
+                              ]}
+                            >
+                              {entry.breakStartTime ||
+                                getTimePlaceholder("breakStartTime")}
+                            </AdaptiveText>
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.timeGroup}>
+                          <AdaptiveText style={styles.timeGroupLabel}>
+                            Break ends
+                          </AdaptiveText>
+                          <TouchableOpacity
+                            style={styles.timeSelector}
+                            onPress={() =>
+                              openTimePicker(
+                                entry.dayOfWeek,
+                                "breakEndTime",
+                                entry.breakEndTime,
+                              )
+                            }
+                            activeOpacity={0.85}
+                          >
+                            <AdaptiveText
+                              style={[
+                                styles.timeSelectorText,
+                                !entry.breakEndTime
+                                  ? styles.timeSelectorPlaceholder
+                                  : null,
+                              ]}
+                            >
+                              {entry.breakEndTime ||
+                                getTimePlaceholder("breakEndTime")}
+                            </AdaptiveText>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {entry.breakStartTime || entry.breakEndTime ? (
+                        <TouchableOpacity
+                          style={styles.clearBreakButton}
+                          onPress={() => clearBreakTimes(entry.dayOfWeek)}
+                          activeOpacity={0.85}
+                        >
+                          <AdaptiveText style={styles.clearBreakButtonText}>
+                            Clear break
+                          </AdaptiveText>
+                        </TouchableOpacity>
+                      ) : null}
+                    </>
+                  ) : (
+                    <AdaptiveText style={styles.closedHint}>
+                      Marked as closed for the whole day.
+                    </AdaptiveText>
+                  )}
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        ) : null}
 
         <TouchableOpacity
           style={styles.saveButton}
@@ -708,10 +1217,14 @@ export default function PlaceEditorScreen() {
         >
           <AdaptiveText style={styles.saveButtonText}>
             {isSubmitting
-              ? "Saving..."
-              : isEditing
-                ? "Save Changes"
-                : "Create Place"}
+              ? isApplicationMode
+                ? "Submitting..."
+                : "Saving..."
+              : isApplicationMode
+                ? "Submit Registration"
+                : isEditing
+                  ? "Save Changes"
+                  : "Create Place"}
           </AdaptiveText>
         </TouchableOpacity>
 
@@ -728,6 +1241,72 @@ export default function PlaceEditorScreen() {
           </TouchableOpacity>
         ) : null}
       </ScrollView>
+
+      {Platform.OS === "android" && activeTimePicker ? (
+        <DateTimePicker
+          value={activeTimePicker.value}
+          mode="time"
+          is24Hour
+          onChange={handleTimePickerChange}
+        />
+      ) : null}
+
+      {Platform.OS === "ios" && activeTimePicker ? (
+        <CustomModal
+          visible
+          onClose={closeTimePicker}
+          style={styles.timePickerModal}
+        >
+          <View style={styles.timePickerModalContent}>
+            <AdaptiveText style={styles.timePickerTitle}>
+              {getTimePickerTitle(activeTimePicker.day, activeTimePicker.field)}
+            </AdaptiveText>
+
+            <DateTimePicker
+              value={iosTimeValue}
+              mode="time"
+              display="spinner"
+              is24Hour
+              onChange={handleTimePickerChange}
+              style={styles.iosTimePicker}
+            />
+
+            <View style={styles.timePickerActions}>
+              {isBreakField(activeTimePicker.field) ? (
+                <TouchableOpacity
+                  style={styles.secondaryPickerButton}
+                  onPress={clearActiveBreakTimes}
+                  activeOpacity={0.85}
+                >
+                  <AdaptiveText style={styles.secondaryPickerButtonText}>
+                    Clear Break
+                  </AdaptiveText>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.secondaryPickerButton}
+                onPress={closeTimePicker}
+                activeOpacity={0.85}
+              >
+                <AdaptiveText style={styles.secondaryPickerButtonText}>
+                  Cancel
+                </AdaptiveText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.primaryPickerButton}
+                onPress={confirmIosTimeSelection}
+                activeOpacity={0.85}
+              >
+                <AdaptiveText style={styles.primaryPickerButtonText}>
+                  Done
+                </AdaptiveText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </CustomModal>
+      ) : null}
 
       {(isLoading || showLoadingOverlay) && <LoadingOverlay />}
     </SafeAreaView>
@@ -768,6 +1347,19 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) =>
       lineHeight: 22,
       opacity: 0.84,
     },
+    helperCard: {
+      marginTop: 4,
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
+    },
+    helperCardText: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      lineHeight: 20,
+      opacity: 0.84,
+    },
     sectionLabel: {
       width: "84%",
       marginTop: 8,
@@ -799,6 +1391,83 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) =>
     descriptionInput: {
       width: "84%",
       minHeight: 160,
+    },
+    imagesSection: {
+      width: "84%",
+      marginBottom: 6,
+    },
+    imagesHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    imagesCounter: {
+      fontSize: 13,
+      fontFamily: "Poppins-Medium",
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    imagesHint: {
+      marginBottom: 12,
+      fontSize: 14,
+      fontFamily: "Poppins-Regular",
+      lineHeight: 20,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    imagePickerButton: {
+      minHeight: 52,
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      marginBottom: 12,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    imagePickerButtonDisabled: {
+      opacity: 0.6,
+    },
+    imagePickerButtonText: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 14,
+    },
+    imageGroup: {
+      marginBottom: 12,
+    },
+    imageGroupLabel: {
+      marginBottom: 8,
+      fontSize: 13,
+      fontFamily: "Poppins-Medium",
+      opacity: 0.8,
+    },
+    imageGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    imageCard: {
+      position: "relative",
+      width: 88,
+      height: 88,
+      borderRadius: 16,
+      overflow: "hidden",
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    imagePreview: {
+      width: "100%",
+      height: "100%",
+    },
+    removeImageButton: {
+      position: "absolute",
+      top: 6,
+      right: 6,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
     },
     scheduleSection: {
       width: "92%",
@@ -854,9 +1523,40 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) =>
       flexDirection: "row",
       gap: 10,
     },
-    timeField: {
+    timeGroup: {
       flex: 1,
-      width: "48%",
+      gap: 6,
+    },
+    timeGroupLabel: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 12,
+      opacity: 0.8,
+    },
+    timeSelector: {
+      minHeight: 54,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      justifyContent: "center",
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    timeSelectorText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 14,
+    },
+    timeSelectorPlaceholder: {
+      opacity: 0.58,
+    },
+    clearBreakButton: {
+      alignSelf: "flex-start",
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
+    },
+    clearBreakButtonText: {
+      color: colors.red,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 12,
     },
     closedHint: {
       fontFamily: "Poppins-Regular",
@@ -888,5 +1588,50 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) =>
       fontFamily: "Poppins-Bold",
       fontSize: 18,
       textAlign: "center",
+    },
+    timePickerModal: {
+      paddingBottom: 28,
+    },
+    timePickerModalContent: {
+      width: "100%",
+      alignItems: "center",
+      gap: 8,
+    },
+    timePickerTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 20,
+      textAlign: "center",
+    },
+    iosTimePicker: {
+      width: "100%",
+    },
+    timePickerActions: {
+      width: "100%",
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      flexWrap: "wrap",
+      gap: 10,
+      marginTop: 8,
+    },
+    secondaryPickerButton: {
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
+    },
+    secondaryPickerButtonText: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 14,
+    },
+    primaryPickerButton: {
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      backgroundColor: colors.green,
+    },
+    primaryPickerButtonText: {
+      color: colors.white,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 14,
     },
   });

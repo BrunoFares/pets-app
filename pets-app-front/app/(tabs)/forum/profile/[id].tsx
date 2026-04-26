@@ -10,6 +10,7 @@ import { AppUsersModel, ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
+import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -200,25 +201,9 @@ const ProfileScreen = () => {
     }
 
     if (allPostsResult.status === "fulfilled") {
-      const normalizedPosts = allPostsResult.value.map((item) => ({
-        Id: item.id,
-        UserId: item.userId,
-        UserName: item.userName,
-        UserImage: resolveApiUrlWithCacheBust(
-          item.userImage ?? null,
-          avatarCacheKey,
-        ),
-        Content: item.content,
-        Attachments: item.attachments ?? [],
-        CreatedAt: item.createdAt,
-        UpdatedAt: item.updatedAt ?? null,
-        IsAReply: item.isAReply,
-        ReplyingToPost: item.replyingToPost ?? null,
-        RepliesCount: item.repliesCount,
-        IsBookmarked: item.isBookmarked,
-        LikesCount: item.likesCount ?? 0,
-        IsLikedByCurrentUser: item.isLikedByCurrentUser ?? false,
-      }));
+      const normalizedPosts = allPostsResult.value.map((item) =>
+        normalizeForumPost(item as ApiForumPostResponse, avatarCacheKey),
+      );
 
       const displayPosts = normalizedPosts.filter(
         (item) => String(item.UserId) === String(selectedUserID),
