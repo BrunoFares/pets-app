@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
+using PetCare.Api.Model;
 
 namespace PetCare.Api.DTOs;
 
@@ -14,6 +16,20 @@ public record ReplyToForumPostRequest(
 
 public record UpdateForumPostRequest([Required, MaxLength(5000)] string Content);
 
+public class UploadForumMediaFilesRequest
+{
+    [Required]
+    public List<IFormFile> Files { get; set; } = new();
+}
+
+public record ForumPostAttachmentResponse(
+    long Id,
+    string Url,
+    ForumAttachmentMediaType MediaType,
+    long FileSizeBytes,
+    DateTimeOffset CreatedAt
+);
+
 public record ForumPostLikeStatusResponse(
     Guid ForumPostId,
     int LikesCount,
@@ -28,7 +44,7 @@ public record ForumPostResponse(
     string UserName,
     string? UserImage,
     string Content,
-    IReadOnlyList<string> Attachments,
+    IReadOnlyList<ForumPostAttachmentResponse> Attachments,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt,
     bool IsAReply,

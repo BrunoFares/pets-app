@@ -16,11 +16,13 @@ public class AdminModerationController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly AdminAuditLogger _auditLogger;
+    private readonly IWebHostEnvironment _env;
 
-    public AdminModerationController(AppDbContext db, AdminAuditLogger auditLogger)
+    public AdminModerationController(AppDbContext db, AdminAuditLogger auditLogger, IWebHostEnvironment env)
     {
         _db = db;
         _auditLogger = auditLogger;
+        _env = env;
     }
 
     [HttpGet("users")]
@@ -288,10 +290,17 @@ public class AdminModerationController : ControllerBase
     public async Task<IActionResult> DeleteForumPost(Guid id)
     {
         var adminUserId = User.GetAdminId();
-        var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id);
+        var post = await _db.ForumPosts
+            .Include(p => p.Attachments)
+            .FirstOrDefaultAsync(p => p.Id == id);
         if (post is null)
         {
             return NotFound();
+        }
+
+        foreach (var attachment in post.Attachments)
+        {
+            LocalImageStorage.TryDeleteFile(_env, attachment.Url);
         }
 
         _db.ForumPosts.Remove(post);
@@ -419,7 +428,17 @@ public class AdminModerationController : ControllerBase
                 p.User.Username,
                 p.User.AvatarUrl,
                 p.Content,
-                p.Attachments.OrderBy(a => a.Id).Select(a => a.Url).ToList(),
+                p.Attachments
+                    .OrderBy(a => a.CreatedAt)
+                    .ThenBy(a => a.Id)
+                    .Select(a => new ForumPostAttachmentResponse(
+                        a.Id,
+                        a.Url,
+                        a.MediaType,
+                        a.FileSizeBytes,
+                        a.CreatedAt
+                    ))
+                    .ToList(),
                 p.CreatedAt,
                 p.UpdatedAt,
                 p.IsAReply,
