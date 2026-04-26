@@ -5,6 +5,7 @@ using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -14,10 +15,12 @@ namespace PetCare.Api.Controllers;
 public class PlaceOwnerApplicationsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IWebHostEnvironment _env;
 
-    public PlaceOwnerApplicationsController(AppDbContext db)
+    public PlaceOwnerApplicationsController(AppDbContext db, IWebHostEnvironment env)
     {
         _db = db;
+        _env = env;
     }
 
     [HttpPost]
@@ -88,14 +91,82 @@ public class PlaceOwnerApplicationsController : ControllerBase
     public async Task<IActionResult> GetMyLatest()
     {
         var userId = User.GetUserId();
-        var application = await _db.PlaceOwnerApplications
+        var application = await ProjectToResponse(_db.PlaceOwnerApplications
             .AsNoTracking()
             .Where(a => a.UserId == userId)
             .OrderByDescending(a => a.CreatedAt)
-            .ThenByDescending(a => a.Id)
+            .ThenByDescending(a => a.Id))
             .FirstOrDefaultAsync();
 
         return application is null ? NotFound() : Ok(ToResponse(application));
+    }
+
+    [HttpPost("me/images")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(ImageCollectionUploadRules.MaxUploadRequestBytes)]
+    public async Task<IActionResult> UploadMyImages([FromForm] UploadImageFilesRequest request)
+    {
+        var application = await GetCurrentPendingApplicationAsync();
+        if (application is null)
+        {
+            return NotFound(new { message = "No pending place owner application found." });
+        }
+
+        if (!ImageCollectionUploadRules.TryValidate(request.Files, application.Images.Count, out var errorMessage))
+        {
+            return BadRequest(new { message = errorMessage });
+        }
+
+        var createdImages = new List<PlaceOwnerApplicationImageModel>(request.Files.Count);
+        foreach (var file in request.Files)
+        {
+            ImageUploadValidator.TryValidateImage(file, out _, out var normalizedExtension);
+            var imageUrl = await LocalImageStorage.SaveImageAsync(
+                _env,
+                file,
+                "application",
+                normalizedExtension,
+                "place-owner-applications",
+                application.Id.ToString());
+
+            createdImages.Add(new PlaceOwnerApplicationImageModel
+            {
+                PlaceOwnerApplicationId = application.Id,
+                Url = imageUrl,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        _db.PlaceOwnerApplicationImages.AddRange(createdImages);
+        await _db.SaveChangesAsync();
+
+        return Ok(createdImages
+            .OrderBy(i => i.CreatedAt)
+            .ThenBy(i => i.Id)
+            .Select(ToImageResponse)
+            .ToList());
+    }
+
+    [HttpDelete("me/images/{imageId:long}")]
+    public async Task<IActionResult> DeleteMyImage(long imageId)
+    {
+        var application = await GetCurrentPendingApplicationAsync();
+        if (application is null)
+        {
+            return NotFound(new { message = "No pending place owner application found." });
+        }
+
+        var image = application.Images.FirstOrDefault(i => i.Id == imageId);
+        if (image is null)
+        {
+            return NotFound(new { message = "Application image not found." });
+        }
+
+        _db.PlaceOwnerApplicationImages.Remove(image);
+        LocalImageStorage.TryDeleteFile(_env, image.Url);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     private static PlaceOwnerApplicationResponse ToResponse(PlaceOwnerApplicationModel application) =>
@@ -117,8 +188,57 @@ public class PlaceOwnerApplicationsController : ControllerBase
             application.ReviewedByAdminId,
             application.ReviewedAt,
             application.CreatedAt,
-            application.UpdatedAt
+            application.UpdatedAt,
+            application.Images
+                .OrderBy(i => i.CreatedAt)
+                .ThenBy(i => i.Id)
+                .Select(ToImageResponse)
+                .ToList()
         );
+
+    private static PlaceOwnerApplicationResponse ToResponse(PlaceOwnerApplicationResponse application) => application;
+
+    private static IQueryable<PlaceOwnerApplicationResponse> ProjectToResponse(IQueryable<PlaceOwnerApplicationModel> query) =>
+        query.Select(application => new PlaceOwnerApplicationResponse(
+            application.Id,
+            application.UserId,
+            application.BusinessName,
+            application.Phone,
+            application.Email,
+            application.Description,
+            application.AddressLine1,
+            application.AddressLine2,
+            application.City,
+            application.Country,
+            application.RequestedPlaceType,
+            application.Status,
+            application.RejectionReason,
+            application.AdminNotes,
+            application.ReviewedByAdminId,
+            application.ReviewedAt,
+            application.CreatedAt,
+            application.UpdatedAt,
+            application.Images
+                .OrderBy(i => i.CreatedAt)
+                .ThenBy(i => i.Id)
+                .Select(i => new PlaceOwnerApplicationImageResponse(
+                    i.Id,
+                    i.Url,
+                    i.CreatedAt
+                ))
+                .ToList()
+        ));
+
+    private async Task<PlaceOwnerApplicationModel?> GetCurrentPendingApplicationAsync()
+    {
+        var userId = User.GetUserId();
+        return await _db.PlaceOwnerApplications
+            .Include(a => a.Images)
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.Status == PlaceOwnerApplicationStatus.Pending);
+    }
+
+    private static PlaceOwnerApplicationImageResponse ToImageResponse(PlaceOwnerApplicationImageModel image) =>
+        new(image.Id, image.Url, image.CreatedAt);
 
     private static string? NormalizeText(string? value)
     {

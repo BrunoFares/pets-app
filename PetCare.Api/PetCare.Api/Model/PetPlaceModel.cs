@@ -21,6 +21,7 @@ public class PetPlaceModel
 
     public AppUser? OwnerUser { get; set; }
     public List<PetPlaceScheduleModel> Schedules { get; set; } = new();
+    public List<PetPlaceImageModel> Images { get; set; } = new();
     public List<PetPlaceReviewModel> Reviews { get; set; } = new();
     public List<ConsultationModel> Consultations { get; set; } = new();
 }

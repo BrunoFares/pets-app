@@ -33,7 +33,8 @@ public record PlaceOwnerApplicationResponse(
     long? ReviewedByAdminId,
     DateTimeOffset? ReviewedAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<PlaceOwnerApplicationImageResponse> Images
 );
 
 public record AdminPlaceOwnerApplicationListItemResponse(
@@ -78,7 +79,14 @@ public record AdminPlaceOwnerApplicationDetailsResponse(
     string? ReviewedByAdminUsername,
     DateTimeOffset? ReviewedAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<PlaceOwnerApplicationImageResponse> Images
+);
+
+public record PlaceOwnerApplicationImageResponse(
+    long Id,
+    string Url,
+    DateTimeOffset CreatedAt
 );
 
 public record AdminPlaceOwnerApplicationListResponse(

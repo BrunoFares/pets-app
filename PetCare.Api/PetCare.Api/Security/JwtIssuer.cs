@@ -42,13 +42,23 @@ public static class JwtIssuer
 
     private static string CreateToken(IEnumerable<Claim> claims, string secret, string issuer, string audience, int minutes)
     {
+        var issuedAt = DateTimeOffset.UtcNow;
+        var tokenClaims = claims.Concat(new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
+            new Claim(
+                JwtRegisteredClaimNames.Iat,
+                issuedAt.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64)
+        });
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(minutes),
+            claims: tokenClaims,
+            expires: issuedAt.UtcDateTime.AddMinutes(minutes),
             signingCredentials: creds
         );
 

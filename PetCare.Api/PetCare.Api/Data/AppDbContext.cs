@@ -20,8 +20,10 @@ public class AppDbContext : DbContext
     public DbSet<ForumPostBookmarkModel> ForumPostBookmarks => Set<ForumPostBookmarkModel>();
     public DbSet<ForumPostLikeModel> ForumPostLikes => Set<ForumPostLikeModel>();
     public DbSet<PlaceOwnerApplicationModel> PlaceOwnerApplications => Set<PlaceOwnerApplicationModel>();
+    public DbSet<PlaceOwnerApplicationImageModel> PlaceOwnerApplicationImages => Set<PlaceOwnerApplicationImageModel>();
     public DbSet<ReportModel> Reports => Set<ReportModel>();
     public DbSet<PetPlaceModel> PetPlaces => Set<PetPlaceModel>();
+    public DbSet<PetPlaceImageModel> PetPlaceImages => Set<PetPlaceImageModel>();
     public DbSet<PetPlaceScheduleModel> PetPlaceSchedules => Set<PetPlaceScheduleModel>();
     public DbSet<PetPlaceReviewModel> PetPlaceReviews => Set<PetPlaceReviewModel>();
     public DbSet<VaccineRecordModel> VaccineRecords => Set<VaccineRecordModel>();
@@ -196,6 +198,24 @@ public class AppDbContext : DbContext
             e.HasIndex(x => x.Type);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => new { x.City, x.Country });
+        });
+
+        b.Entity<PetPlaceImageModel>(e =>
+        {
+            e.ToTable("pet_place_images", "public");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.PetPlaceId).HasColumnName("pet_place_id").IsRequired();
+            e.Property(x => x.Url).HasColumnName("url").HasMaxLength(1024).IsRequired();
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            e.HasOne(x => x.PetPlace)
+                .WithMany(x => x.Images)
+                .HasForeignKey(x => x.PetPlaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.PetPlaceId);
+            e.HasIndex(x => new { x.PetPlaceId, x.CreatedAt });
         });
 
         b.Entity<PetPlaceScheduleModel>(e =>
@@ -406,6 +426,24 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.UserId, x.Status })
                 .IsUnique()
                 .HasFilter("\"status\" = 'Pending'");
+        });
+
+        b.Entity<PlaceOwnerApplicationImageModel>(e =>
+        {
+            e.ToTable("place_owner_application_images", "public");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.PlaceOwnerApplicationId).HasColumnName("place_owner_application_id").IsRequired();
+            e.Property(x => x.Url).HasColumnName("url").HasMaxLength(1024).IsRequired();
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            e.HasOne(x => x.PlaceOwnerApplication)
+                .WithMany(x => x.Images)
+                .HasForeignKey(x => x.PlaceOwnerApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.PlaceOwnerApplicationId);
+            e.HasIndex(x => new { x.PlaceOwnerApplicationId, x.CreatedAt });
         });
 
         b.Entity<VaccineRecordModel>(e =>

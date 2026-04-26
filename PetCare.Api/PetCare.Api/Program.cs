@@ -198,7 +198,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnMessageReceived = context =>
             {
                 if (string.IsNullOrWhiteSpace(context.Token) &&
-                    context.Request.Cookies.TryGetValue(AuthConstants.Cookies.AdminAccessToken, out var cookieToken))
+                    context.Request.Cookies.TryGetValue(AuthConstants.Cookies.AdminAccessToken, out var cookieToken) &&
+                    ShouldUseAdminCookieToken(context.Request))
                 {
                     context.Token = cookieToken;
                 }
@@ -260,7 +261,10 @@ if (app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(app.Configurati
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.ConfigObject.PersistAuthorization = false;
+    });
 }
 
 app.UseExceptionHandler(exceptionHandlerApp =>
@@ -460,4 +464,25 @@ static bool IsDevelopmentJwtSecret(string jwtSecret)
     return string.Equals(jwtSecret, "dev_secret_change_me_very_long", StringComparison.Ordinal)
         || jwtSecret.Contains("local", StringComparison.OrdinalIgnoreCase)
         || jwtSecret.Contains("dev", StringComparison.OrdinalIgnoreCase);
+}
+
+static bool ShouldUseAdminCookieToken(HttpRequest request)
+{
+    if (!request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    if (!request.Headers.TryGetValue("Referer", out var refererValues))
+    {
+        return false;
+    }
+
+    var referer = refererValues.ToString();
+    if (!Uri.TryCreate(referer, UriKind.Absolute, out var refererUri))
+    {
+        return false;
+    }
+
+    return refererUri.AbsolutePath.StartsWith("/admin", StringComparison.OrdinalIgnoreCase);
 }

@@ -81,9 +81,16 @@ public record PlaceResponse(
     decimal? Latitude,
     decimal? Longitude,
     DateTimeOffset CreatedAt,
+    IReadOnlyList<PlaceImageResponse> Images,
     IReadOnlyList<PlaceScheduleResponse> Schedule,
     double? AverageRating,
     int ReviewsCount
+);
+
+public record PlaceImageResponse(
+    long Id,
+    string Url,
+    DateTimeOffset CreatedAt
 );
 
 public record CreatePlaceReviewRequest(
