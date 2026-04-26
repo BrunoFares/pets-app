@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<ForumPostAttachmentModel> ForumPostAttachments => Set<ForumPostAttachmentModel>();
     public DbSet<ForumPostBookmarkModel> ForumPostBookmarks => Set<ForumPostBookmarkModel>();
     public DbSet<ForumPostLikeModel> ForumPostLikes => Set<ForumPostLikeModel>();
+    public DbSet<UserBlockModel> UserBlocks => Set<UserBlockModel>();
     public DbSet<PlaceOwnerApplicationModel> PlaceOwnerApplications => Set<PlaceOwnerApplicationModel>();
     public DbSet<PlaceOwnerApplicationImageModel> PlaceOwnerApplicationImages => Set<PlaceOwnerApplicationImageModel>();
     public DbSet<ReportModel> Reports => Set<ReportModel>();
@@ -351,6 +352,28 @@ public class AppDbContext : DbContext
 
             e.HasOne(x => x.User).WithMany(u => u.LikedPosts).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.ForumPost).WithMany(p => p.Likes).HasForeignKey(x => x.ForumPostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<UserBlockModel>(e =>
+        {
+            e.ToTable("user_blocks", "public");
+            e.HasKey(x => new { x.BlockerUserId, x.BlockedUserId });
+            e.Property(x => x.BlockerUserId).HasColumnName("blocker_user_id");
+            e.Property(x => x.BlockedUserId).HasColumnName("blocked_user_id");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            e.HasOne(x => x.BlockerUser)
+                .WithMany(u => u.BlocksInitiated)
+                .HasForeignKey(x => x.BlockerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.BlockedUser)
+                .WithMany(u => u.BlocksReceived)
+                .HasForeignKey(x => x.BlockedUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.BlockedUserId);
+            e.HasIndex(x => x.CreatedAt);
         });
 
         b.Entity<ReportModel>(e =>

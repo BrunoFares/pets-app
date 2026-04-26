@@ -34,4 +34,6 @@ public class AppUser
     public List<PetPlaceModel> OwnedPlaces { get; set; } = new();
     public List<PlaceOwnerApplicationModel> PlaceOwnerApplications { get; set; } = new();
     public List<ReportModel> SubmittedReports { get; set; } = new();
+    public List<UserBlockModel> BlocksInitiated { get; set; } = new();
+    public List<UserBlockModel> BlocksReceived { get; set; } = new();
 }
