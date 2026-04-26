@@ -7,9 +7,6 @@ public class UpdateProfileRequest
     [MaxLength(100)]
     public string? Username { get; set; }
 
-    [EmailAddress, MaxLength(320)]
-    public string? Email { get; set; }
-
     [MaxLength(100)]
     public string? FirstName { get; set; }
 

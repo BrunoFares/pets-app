@@ -11,6 +11,11 @@ public class AppUser
     public bool EmailVerified { get; set; }
     public string? EmailVerificationTokenHash { get; set; }
     public DateTimeOffset? EmailVerificationTokenExpiresAt { get; set; }
+    public string? PasswordResetCodeHash { get; set; }
+    public DateTimeOffset? PasswordResetCodeExpiresAt { get; set; }
+    public string? PendingNewEmail { get; set; }
+    public string? EmailChangeCodeHash { get; set; }
+    public DateTimeOffset? EmailChangeCodeExpiresAt { get; set; }
     public string? AvatarUrl { get; set; }
     public string? Description { get; set; }
     public bool IsBanned { get; set; }

@@ -7,6 +7,7 @@ using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
 using PetCare.Api.Services;
+using PetCare.Api.Services.Email;
 
 namespace PetCare.Api.Controllers;
 
@@ -17,11 +18,15 @@ public class UsersController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IWebHostEnvironment _env;
+    private readonly IConfiguration _cfg;
+    private readonly IEmailSender _emailSender;
 
-    public UsersController(AppDbContext context, IWebHostEnvironment env)
+    public UsersController(AppDbContext context, IWebHostEnvironment env, IConfiguration cfg, IEmailSender emailSender)
     {
         _context = context;
         _env = env;
+        _cfg = cfg;
+        _emailSender = emailSender;
     }
 
     [HttpGet("me")]
@@ -68,28 +73,170 @@ public class UsersController : ControllerBase
         var user = await _context.Users.FindAsync(User.GetUserId());
         if (user == null) return NotFound();
 
-        if (!string.IsNullOrWhiteSpace(request.Username))
+        if (request.Username is not null)
         {
             var username = request.Username.Trim();
+            if (string.IsNullOrWhiteSpace(username))
+                return BadRequest(new { message = "Username cannot be empty." });
+
             var usernameTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Username == username);
             if (usernameTaken) return Conflict(new { message = "Username already exists." });
             user.Username = username;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Email))
+        if (request.FirstName is not null)
         {
-            var email = request.Email.Trim().ToLowerInvariant();
-            var emailTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Email == email);
-            if (emailTaken) return Conflict(new { message = "Email already exists." });
-            user.Email = email;
+            var firstName = request.FirstName.Trim();
+            if (string.IsNullOrWhiteSpace(firstName))
+                return BadRequest(new { message = "First name cannot be empty." });
+
+            user.FirstName = firstName;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName.Trim();
-        if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName.Trim();
-        if (request.Description is not null) user.Description = request.Description.Trim();
+        if (request.LastName is not null)
+        {
+            var lastName = request.LastName.Trim();
+            if (string.IsNullOrWhiteSpace(lastName))
+                return BadRequest(new { message = "Last name cannot be empty." });
+
+            user.LastName = lastName;
+        }
+
+        if (request.Description is not null)
+        {
+            var description = request.Description.Trim();
+            user.Description = string.IsNullOrWhiteSpace(description) ? null : description;
+        }
 
         await _context.SaveChangesAsync();
         return Ok(new { message = "Profile updated successfully" });
+    }
+
+    [HttpPost("change-password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword) ||
+            string.IsNullOrWhiteSpace(request.NewPassword) ||
+            string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+        {
+            return BadRequest(new { message = "Current password, new password, and confirm password are required." });
+        }
+
+        if (!string.Equals(request.NewPassword, request.ConfirmNewPassword, StringComparison.Ordinal))
+            return BadRequest(new { message = "New password and confirm password do not match." });
+
+        var user = await _context.Users.FindAsync(User.GetUserId());
+        if (user is null) return NotFound();
+
+        if (!PasswordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+            return BadRequest(new { message = "Current password is incorrect." });
+
+        if (PasswordHasher.Verify(request.NewPassword, user.PasswordHash))
+            return BadRequest(new { message = "New password must be different from the current password." });
+
+        var (ok, errors) = PasswordValidator.Validate(request.NewPassword, user.Username, user.Email, PasswordPolicies.UserAccount);
+        if (!ok)
+            return BadRequest(new { message = "Invalid password.", errors });
+
+        user.PasswordHash = PasswordHasher.Hash(request.NewPassword);
+        user.PasswordResetCodeHash = null;
+        user.PasswordResetCodeExpiresAt = null;
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Password changed successfully." });
+    }
+
+    [HttpPost("change-email/request")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> RequestEmailChange([FromBody] RequestEmailChangeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewEmail) || string.IsNullOrWhiteSpace(request.CurrentPassword))
+            return BadRequest(new { message = "New email and current password are required." });
+
+        var user = await _context.Users.FindAsync(User.GetUserId());
+        if (user is null) return NotFound();
+
+        if (!PasswordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+            return BadRequest(new { message = "Current password is incorrect." });
+
+        var newEmail = request.NewEmail.Trim().ToLowerInvariant();
+        if (string.Equals(newEmail, user.Email, StringComparison.Ordinal))
+            return BadRequest(new { message = "New email must be different from the current email." });
+
+        var emailTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Email == newEmail);
+        if (emailTaken)
+            return Conflict(new { message = "Email already exists." });
+
+        var verificationCode = EmailVerificationTokenService.GenerateToken();
+        user.PendingNewEmail = newEmail;
+        user.EmailChangeCodeHash = EmailVerificationTokenService.HashToken(verificationCode);
+        user.EmailChangeCodeExpiresAt = DateTimeOffset.UtcNow.AddHours(GetEmailChangeCodeHours());
+
+        await _context.SaveChangesAsync();
+        await SendEmailChangeVerificationAsync(user, newEmail, verificationCode);
+
+        return Ok(new { message = "A verification code has been sent to the new email address." });
+    }
+
+    [HttpPost("change-email/confirm")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ConfirmEmailChange([FromBody] ConfirmEmailChangeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(new { message = "Verification code is required." });
+
+        var code = request.Code.Trim();
+        if (!EmailVerificationTokenService.IsValidTokenFormat(code))
+            return BadRequest(new { message = "Verification code must be a 6-digit number." });
+
+        var user = await _context.Users.FindAsync(User.GetUserId());
+        if (user is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(user.PendingNewEmail) ||
+            string.IsNullOrWhiteSpace(user.EmailChangeCodeHash) ||
+            user.EmailChangeCodeExpiresAt is null)
+        {
+            return BadRequest(new { message = "No pending email change was found." });
+        }
+
+        if (user.EmailChangeCodeExpiresAt <= DateTimeOffset.UtcNow)
+            return BadRequest(new { message = "Verification code has expired. Please request a new one." });
+
+        var incomingCodeHash = EmailVerificationTokenService.HashToken(code);
+        if (!string.Equals(incomingCodeHash, user.EmailChangeCodeHash, StringComparison.Ordinal))
+            return BadRequest(new { message = "Invalid or expired verification code." });
+
+        var emailTaken = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Email == user.PendingNewEmail);
+        if (emailTaken)
+            return Conflict(new { message = "Email already exists." });
+
+        user.Email = user.PendingNewEmail;
+        user.EmailVerified = true;
+        user.EmailVerificationTokenHash = null;
+        user.EmailVerificationTokenExpiresAt = null;
+        user.PendingNewEmail = null;
+        user.EmailChangeCodeHash = null;
+        user.EmailChangeCodeExpiresAt = null;
+
+        await _context.SaveChangesAsync();
+
+        var token = JwtIssuer.CreateUserToken(
+            user.Id.ToString(),
+            user.Username,
+            user.Email,
+            _cfg["Jwt:Secret"]!,
+            _cfg["Jwt:Issuer"]!,
+            _cfg["Jwt:Audience"]!,
+            int.Parse(_cfg["Jwt:Minutes"] ?? "60")
+        );
+
+        return Ok(new
+        {
+            message = "Email changed successfully.",
+            email = user.Email,
+            accessToken = token
+        });
     }
 
     [HttpPost("avatar")]
@@ -210,6 +357,17 @@ public class UsersController : ControllerBase
     {
         var fullName = $"{user.FirstName} {user.LastName}".Trim();
         return string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName;
+    }
+
+    private int GetEmailChangeCodeHours()
+    {
+        return int.TryParse(_cfg["Email:EmailChangeCodeHours"], out var hours) ? hours : 24;
+    }
+
+    private async Task SendEmailChangeVerificationAsync(AppUser user, string newEmail, string verificationCode)
+    {
+        var recipientName = GetDisplayName(user);
+        await _emailSender.SendEmailChangeVerificationEmailAsync(newEmail, recipientName, verificationCode);
     }
 
     private string? ToVersionedStaticFileUrl(string? storedPath)

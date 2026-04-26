@@ -45,6 +45,11 @@ public class AppDbContext : DbContext
             e.Property(x => x.EmailVerified).HasColumnName("email_verified").IsRequired().HasDefaultValue(false);
             e.Property(x => x.EmailVerificationTokenHash).HasColumnName("email_verification_token_hash");
             e.Property(x => x.EmailVerificationTokenExpiresAt).HasColumnName("email_verification_token_expires_at");
+            e.Property(x => x.PasswordResetCodeHash).HasColumnName("password_reset_code_hash");
+            e.Property(x => x.PasswordResetCodeExpiresAt).HasColumnName("password_reset_code_expires_at");
+            e.Property(x => x.PendingNewEmail).HasColumnName("pending_new_email").HasMaxLength(320);
+            e.Property(x => x.EmailChangeCodeHash).HasColumnName("email_change_code_hash");
+            e.Property(x => x.EmailChangeCodeExpiresAt).HasColumnName("email_change_code_expires_at");
             e.Property(x => x.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(1024);
             e.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000);
             e.Property(x => x.IsBanned).HasColumnName("is_banned").IsRequired().HasDefaultValue(false);

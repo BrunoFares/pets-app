@@ -14,6 +14,20 @@ public record PasswordPolicy(
     bool OnlyAsciiPrintable = false
 );
 
+public static class PasswordPolicies
+{
+    public static PasswordPolicy UserAccount { get; } = new(
+        MinLength: 8,
+        MaxLength: 64,
+        RequireUpper: true,
+        RequireLower: true,
+        RequireDigit: true,
+        RequireSpecial: true,
+        DisallowedChars: new[] { ' ', '"', '\'', '\\' },
+        DisallowWhitespace: true
+    );
+}
+
 public static class PasswordValidator
 {
     private static readonly Regex U = new(@"[A-Z]");

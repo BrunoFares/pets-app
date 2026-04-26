@@ -9,4 +9,6 @@ public class EmailSenderOptions
     public string SenderEmail { get; set; } = string.Empty;
     public string SenderName { get; set; } = string.Empty;
     public int VerificationTokenHours { get; set; } = 24;
+    public int PasswordResetCodeMinutes { get; set; } = 30;
+    public int EmailChangeCodeHours { get; set; } = 24;
 }

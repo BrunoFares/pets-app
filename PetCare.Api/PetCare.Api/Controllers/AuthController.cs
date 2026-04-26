@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
+using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
 using PetCare.Api.Services.Email;
@@ -56,16 +57,7 @@ public class AuthController : ControllerBase
         var email = req.Email.Trim().ToLowerInvariant();
         var username = req.Username.Trim();
 
-        var (ok, errors) = PasswordValidator.Validate(req.Password, username, email, new PasswordPolicy(
-            MinLength: 8,
-            MaxLength: 64,
-            RequireUpper: true,
-            RequireLower: true,
-            RequireDigit: true,
-            RequireSpecial: true,
-            DisallowedChars: new[] { ' ', '"', '\'', '\\' },
-            DisallowWhitespace: true
-        ));
+        var (ok, errors) = PasswordValidator.Validate(req.Password, username, email, PasswordPolicies.UserAccount);
 
         if (!ok) return BadRequest(new { message = "Invalid password.", errors });
         if (string.IsNullOrWhiteSpace(username))
@@ -143,7 +135,7 @@ public class AuthController : ControllerBase
 
         var normalizedEmail = req.Email.Trim().ToLowerInvariant();
         var code = req.Code.Trim();
-        if (code.Length != 6 || !code.All(char.IsDigit))
+        if (!EmailVerificationTokenService.IsValidTokenFormat(code))
             return BadRequest(new { message = "Verification code must be a 6-digit number." });
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
@@ -198,6 +190,78 @@ public class AuthController : ControllerBase
         return Ok(new { message = "If the account exists and is not verified, a verification email has been sent." });
     }
 
+    [EnableRateLimiting("auth")]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(new { message = "Email is required." });
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user is not null)
+        {
+            var resetCode = EmailVerificationTokenService.GenerateToken();
+            user.PasswordResetCodeHash = EmailVerificationTokenService.HashToken(resetCode);
+            user.PasswordResetCodeExpiresAt = DateTimeOffset.UtcNow.AddMinutes(GetPasswordResetCodeMinutes());
+
+            await _context.SaveChangesAsync();
+            await SendPasswordResetEmailAsync(user, resetCode);
+        }
+
+        return Ok(new { message = "If the account exists, a password reset code has been sent." });
+    }
+
+    [EnableRateLimiting("auth")]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Code) ||
+            string.IsNullOrWhiteSpace(request.NewPassword) ||
+            string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+        {
+            return BadRequest(new { message = "Email, code, new password, and confirm password are required." });
+        }
+
+        if (!string.Equals(request.NewPassword, request.ConfirmNewPassword, StringComparison.Ordinal))
+            return BadRequest(new { message = "New password and confirm password do not match." });
+
+        var code = request.Code.Trim();
+        if (!EmailVerificationTokenService.IsValidTokenFormat(code))
+            return BadRequest(new { message = "Reset code must be a 6-digit number." });
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user is null ||
+            string.IsNullOrWhiteSpace(user.PasswordResetCodeHash) ||
+            user.PasswordResetCodeExpiresAt is null)
+        {
+            return BadRequest(new { message = "Invalid or expired reset code." });
+        }
+
+        if (user.PasswordResetCodeExpiresAt <= DateTimeOffset.UtcNow)
+            return BadRequest(new { message = "Reset code has expired. Please request a new one." });
+
+        var incomingCodeHash = EmailVerificationTokenService.HashToken(code);
+        if (!string.Equals(incomingCodeHash, user.PasswordResetCodeHash, StringComparison.Ordinal))
+            return BadRequest(new { message = "Invalid or expired reset code." });
+
+        var (ok, errors) = PasswordValidator.Validate(request.NewPassword, user.Username, user.Email, PasswordPolicies.UserAccount);
+        if (!ok)
+            return BadRequest(new { message = "Invalid password.", errors });
+
+        if (PasswordHasher.Verify(request.NewPassword, user.PasswordHash))
+            return BadRequest(new { message = "New password must be different from the current password." });
+
+        user.PasswordHash = PasswordHasher.Hash(request.NewPassword);
+        user.PasswordResetCodeHash = null;
+        user.PasswordResetCodeExpiresAt = null;
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Password reset successfully." });
+    }
+
     [Authorize(Policy = AuthConstants.Policies.UserOnly)]
     [HttpPost("logout")]
     public IActionResult Logout() => Ok(new { message = "Logged out" });
@@ -207,9 +271,20 @@ public class AuthController : ControllerBase
         return int.TryParse(_cfg["Email:VerificationTokenHours"], out var hours) ? hours : 24;
     }
 
+    private int GetPasswordResetCodeMinutes()
+    {
+        return int.TryParse(_cfg["Email:PasswordResetCodeMinutes"], out var minutes) ? minutes : 30;
+    }
+
     private async Task SendVerificationEmailAsync(AppUser user, string verificationCode)
     {
         var recipientName = $"{user.FirstName} {user.LastName}".Trim();
         await _emailSender.SendVerificationEmailAsync(user.Email, recipientName, verificationCode);
+    }
+
+    private async Task SendPasswordResetEmailAsync(AppUser user, string resetCode)
+    {
+        var recipientName = $"{user.FirstName} {user.LastName}".Trim();
+        await _emailSender.SendPasswordResetEmailAsync(user.Email, recipientName, resetCode);
     }
 }
