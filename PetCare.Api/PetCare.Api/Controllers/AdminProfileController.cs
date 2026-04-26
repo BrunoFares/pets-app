@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.Controllers;
 
@@ -13,10 +15,12 @@ namespace PetCare.Api.Controllers;
 public class AdminProfileController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AdminAuditLogger _auditLogger;
 
-    public AdminProfileController(AppDbContext db)
+    public AdminProfileController(AppDbContext db, AdminAuditLogger auditLogger)
     {
         _db = db;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet("me")]
@@ -78,6 +82,58 @@ public class AdminProfileController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(ToProfileResponse(admin));
+    }
+
+    [HttpPost("change-password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangeAdminPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword) ||
+            string.IsNullOrWhiteSpace(request.NewPassword) ||
+            string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+        {
+            return BadRequest(new { message = "Current password, new password, and confirm password are required." });
+        }
+
+        if (!string.Equals(request.NewPassword, request.ConfirmNewPassword, StringComparison.Ordinal))
+        {
+            return BadRequest(new { message = "New password and confirm password do not match." });
+        }
+
+        var admin = await _db.AdminUsers.FindAsync(User.GetAdminId());
+        if (admin is null)
+        {
+            return NotFound();
+        }
+
+        if (!PasswordHasher.Verify(request.CurrentPassword, admin.PasswordHash))
+        {
+            return BadRequest(new { message = "Current password is incorrect." });
+        }
+
+        if (PasswordHasher.Verify(request.NewPassword, admin.PasswordHash))
+        {
+            return BadRequest(new { message = "New password must be different from the current password." });
+        }
+
+        var (ok, errors) = PasswordValidator.Validate(request.NewPassword, admin.Username, admin.Email, PasswordPolicies.UserAccount);
+        if (!ok)
+        {
+            return BadRequest(new { message = "Invalid password.", errors });
+        }
+
+        admin.PasswordHash = PasswordHasher.Hash(request.NewPassword);
+        admin.UpdatedAt = DateTimeOffset.UtcNow;
+        _auditLogger.Log(
+            admin.Id,
+            "ChangeAdminPassword",
+            "AdminUser",
+            admin.Id.ToString(),
+            $"Admin '{admin.Username}' changed their own password."
+        );
+
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Password changed successfully." });
     }
 
     private static AdminProfileResponse ToProfileResponse(Model.AdminUser admin) => new(
