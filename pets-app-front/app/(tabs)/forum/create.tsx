@@ -5,11 +5,19 @@ import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { presentApiError } from "@/lib/api-feedback";
-import { apiRequest } from "@/lib/api";
+import {
+  createForumPost,
+  getForumPostIdFromCreateResponse,
+  MAX_FORUM_ATTACHMENTS,
+  uploadForumPostAttachments,
+} from "@/lib/forum-api";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   Alert,
+  Image,
   Keyboard,
   ScrollView,
   StyleSheet,
@@ -25,7 +33,12 @@ export default function CreateForumPostScreen() {
   const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
   const [content, setContent] = useState("");
+  const [selectedImageAssets, setSelectedImageAssets] = useState<
+    ImagePicker.ImagePickerAsset[]
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const remainingAttachmentSlots =
+    MAX_FORUM_ATTACHMENTS - selectedImageAssets.length;
 
   useFocusEffect(
     useCallback(() => {
@@ -37,6 +50,65 @@ export default function CreateForumPostScreen() {
     }, [setShowFooter]),
   );
 
+  const handlePickImages = async () => {
+    if (isSubmitting || remainingAttachmentSlots <= 0) {
+      return;
+    }
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert(
+        "Permission required",
+        "Please allow photo library access so you can attach images to your post.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      allowsMultipleSelection: true,
+      selectionLimit: remainingAttachmentSlots,
+      quality: 0.9,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    setSelectedImageAssets((currentAssets) => {
+      const nextAssets = [...currentAssets];
+      const seenKeys = new Set(
+        currentAssets.map((asset) => asset.assetId ?? asset.uri),
+      );
+
+      for (const asset of result.assets) {
+        const assetKey = asset.assetId ?? asset.uri;
+
+        if (seenKeys.has(assetKey)) {
+          continue;
+        }
+
+        nextAssets.push(asset);
+        seenKeys.add(assetKey);
+
+        if (nextAssets.length >= MAX_FORUM_ATTACHMENTS) {
+          break;
+        }
+      }
+
+      return nextAssets;
+    });
+  };
+
+  const handleRemoveImage = (assetToRemove: ImagePicker.ImagePickerAsset) => {
+    setSelectedImageAssets((currentAssets) =>
+      currentAssets.filter((asset) => asset.uri !== assetToRemove.uri),
+    );
+  };
+
   const handleCreatePost = async () => {
     const trimmedContent = content.trim();
 
@@ -47,12 +119,30 @@ export default function CreateForumPostScreen() {
 
     try {
       setIsSubmitting(true);
-      await apiRequest("/api/ForumPosts", {
-        method: "POST",
-        body: JSON.stringify({
-          content: trimmedContent,
-        }),
-      });
+      const createResponse = await createForumPost(trimmedContent);
+      const createdPostId = getForumPostIdFromCreateResponse(createResponse);
+
+      if (selectedImageAssets.length > 0) {
+        if (!createdPostId) {
+          Alert.alert(
+            "Post published without images",
+            "Your post was published, but the app could not attach the selected images.",
+          );
+          router.back();
+          return;
+        }
+
+        try {
+          await uploadForumPostAttachments(createdPostId, selectedImageAssets);
+        } catch {
+          Alert.alert(
+            "Post published without images",
+            "Your text was published, but the selected images could not be uploaded.",
+          );
+          router.back();
+          return;
+        }
+      }
 
       router.back();
     } catch (error) {
@@ -94,6 +184,69 @@ export default function CreateForumPostScreen() {
           style={styles.inputContainer}
           inputStyle={styles.input}
         />
+
+        <View style={styles.attachmentsSection}>
+          <View style={styles.attachmentsHeader}>
+            <AdaptiveText style={styles.label}>Images</AdaptiveText>
+            <AdaptiveText style={styles.attachmentsCounter}>
+              {selectedImageAssets.length}/{MAX_FORUM_ATTACHMENTS}
+            </AdaptiveText>
+          </View>
+
+          <AdaptiveText style={styles.attachmentsHint}>
+            Add up to {MAX_FORUM_ATTACHMENTS} images to give your post more
+            context.
+          </AdaptiveText>
+
+          <TouchableOpacity
+            style={[
+              styles.imagePickerButton,
+              (isSubmitting || remainingAttachmentSlots <= 0) &&
+                styles.imagePickerButtonDisabled,
+            ]}
+            disabled={isSubmitting || remainingAttachmentSlots <= 0}
+            onPress={handlePickImages}
+          >
+            <Ionicons
+              name="images-outline"
+              size={18}
+              color={darkMode ? colors.white : colors.black}
+            />
+            <AdaptiveText style={styles.imagePickerButtonText}>
+              {remainingAttachmentSlots <= 0
+                ? "Image limit reached"
+                : selectedImageAssets.length > 0
+                  ? "Add more images"
+                  : "Choose images"}
+            </AdaptiveText>
+          </TouchableOpacity>
+
+          {selectedImageAssets.length > 0 ? (
+            <View style={styles.imageGrid}>
+              {selectedImageAssets.map((asset) => (
+                <View
+                  key={asset.assetId ?? asset.uri}
+                  style={styles.imageCard}
+                >
+                  <Image
+                    source={{ uri: asset.uri }}
+                    style={styles.imagePreview}
+                  />
+                  <TouchableOpacity
+                    onPress={() => handleRemoveImage(asset)}
+                    style={styles.removeImageButton}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={14}
+                      color={colors.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
 
         <TouchableOpacity
           style={[styles.button, isSubmitting && styles.buttonDisabled]}
@@ -141,6 +294,76 @@ const createStyles = ({ darkMode }: any) => {
       width: "84%",
       marginBottom: 8,
       fontFamily: "Poppins-Medium",
+    },
+    attachmentsSection: {
+      width: "84%",
+      marginBottom: 20,
+    },
+    attachmentsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    attachmentsCounter: {
+      fontSize: 13,
+      fontFamily: "Poppins-Medium",
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    attachmentsHint: {
+      marginBottom: 12,
+      fontSize: 14,
+      fontFamily: "Poppins-Regular",
+      lineHeight: 20,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    imagePickerButton: {
+      minHeight: 54,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: darkMode ? colors.mildDarkGrey : colors.lightGrey,
+      backgroundColor: darkMode ? colors.averageDarkGrey : "#F7F7F7",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      paddingHorizontal: 16,
+      marginBottom: 14,
+    },
+    imagePickerButtonDisabled: {
+      opacity: 0.65,
+    },
+    imagePickerButtonText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 15,
+    },
+    imageGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+    },
+    imageCard: {
+      width: "30.5%",
+      aspectRatio: 1,
+      borderRadius: 18,
+      overflow: "hidden",
+      position: "relative",
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.lightGrey,
+    },
+    imagePreview: {
+      width: "100%",
+      height: "100%",
+    },
+    removeImageButton: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: "rgba(0, 0, 0, 0.72)",
+      alignItems: "center",
+      justifyContent: "center",
     },
     inputContainer: {
       width: "84%",

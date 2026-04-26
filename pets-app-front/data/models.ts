@@ -25,7 +25,7 @@ export interface ForumPostsModel {
   UserName: string;
   UserImage?: string | null;
   Content: string;
-  Attachments: string[];
+  Attachments: ForumPostAttachmentModel[];
   CreatedAt: number | string;
   UpdatedAt?: number | string | null;
   IsAReply: boolean;
@@ -34,6 +34,14 @@ export interface ForumPostsModel {
   IsBookmarked?: boolean;
   LikesCount?: number;
   IsLikedByCurrentUser?: boolean;
+}
+
+export interface ForumPostAttachmentModel {
+  Id: string | number;
+  Url: string;
+  MediaType: "Image" | "Video";
+  FileSizeBytes: number;
+  CreatedAt: number | string;
 }
 
 export interface ChatMessageModel {
@@ -74,13 +82,20 @@ export interface PlaceModel {
   City: string;
   Country: string;
   Status: "Active" | "Inactive" | "Closed";
-  Type: "Vet" | "PetShop" | "Other";
+  Type: "Vet" | "PetShop" | "Charity" | "Other";
   Latitude: number | null;
   Longitude: number | null;
   CreatedAt: number | string;
+  Images: PlaceImageModel[];
   Schedule: PlaceScheduleModel[];
   AverageRating: number | null;
   ReviewsCount: number;
+}
+
+export interface PlaceImageModel {
+  Id: string | number;
+  Url: string;
+  CreatedAt: number | string;
 }
 
 export interface PlaceScheduleModel {
@@ -121,7 +136,7 @@ export interface PlaceOwnerApplicationModel {
   AddressLine2?: string | null;
   City: string;
   Country: string;
-  RequestedPlaceType: "Vet" | "PetShop" | "Other";
+  RequestedPlaceType: "Vet" | "PetShop" | "Charity" | "Other";
   Status: "Pending" | "Approved" | "Rejected";
   RejectionReason?: string | null;
   AdminNotes?: string | null;
@@ -129,6 +144,13 @@ export interface PlaceOwnerApplicationModel {
   ReviewedAt?: number | string | null;
   CreatedAt: number | string;
   UpdatedAt: number | string;
+  Images: PlaceOwnerApplicationImageModel[];
+}
+
+export interface PlaceOwnerApplicationImageModel {
+  Id: string | number;
+  Url: string;
+  CreatedAt: number | string;
 }
 
 export interface PetModel {

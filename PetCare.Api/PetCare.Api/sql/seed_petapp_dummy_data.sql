@@ -28,6 +28,8 @@ BEGIN;
 TRUNCATE TABLE
     public.admin_action_logs,
     public.reports,
+    public.user_blocks,
+    public.place_owner_application_images,
     public.place_owner_applications,
     public.pet_place_reviews,
     public.medication_records,
@@ -38,6 +40,7 @@ TRUNCATE TABLE
     public.forum_post_bookmarks,
     public.forum_post_likes,
     public.forum_posts,
+    public.pet_place_images,
     public.pet_place_schedules,
     public.pets,
     public.pet_places,
@@ -349,6 +352,24 @@ VALUES
     ('10000000-0000-4000-8000-000000000009', 6, 'Green Trail Pet Outfitters', '+1-303-555-0109', 'sales@greentrailpets.test', 'https://picsum.photos/seed/petcare-place-09/1200/800.jpg', 'Outdoor pet gear, training tools, and long-hike supplies for active owners.', '1012 Pearl Street', NULL, 'Denver', 'United States', 'Active', 'PetShop', 39.750740, -104.999180, '2025-12-01T14:40:00Z'),
     ('10000000-0000-4000-8000-000000000010', NULL, 'Sunset Emergency Animal Hospital', '+1-303-555-0110', 'triage@sunsetemergency.test', 'https://picsum.photos/seed/petcare-place-10/1200/800.jpg', 'Emergency clinic listed in the app as a 24/7 option for urgent visits.', '880 Colfax Avenue', NULL, 'Denver', 'United States', 'Active', 'Vet', 39.740230, -104.982460, '2025-12-04T18:15:00Z');
 
+INSERT INTO public.pet_place_images (
+    id,
+    pet_place_id,
+    url,
+    created_at
+)
+VALUES
+    (1, '10000000-0000-4000-8000-000000000001', 'https://picsum.photos/seed/petcare-place-gallery-01/1600/1200.jpg', '2025-11-05T08:05:00Z'),
+    (2, '10000000-0000-4000-8000-000000000002', 'https://picsum.photos/seed/petcare-place-gallery-02/1600/1200.jpg', '2025-11-07T10:05:00Z'),
+    (3, '10000000-0000-4000-8000-000000000003', 'https://picsum.photos/seed/petcare-place-gallery-03/1600/1200.jpg', '2025-11-09T09:35:00Z'),
+    (4, '10000000-0000-4000-8000-000000000004', 'https://picsum.photos/seed/petcare-place-gallery-04/1600/1200.jpg', '2025-11-12T08:50:00Z'),
+    (5, '10000000-0000-4000-8000-000000000005', 'https://picsum.photos/seed/petcare-place-gallery-05/1600/1200.jpg', '2025-11-15T11:20:00Z'),
+    (6, '10000000-0000-4000-8000-000000000006', 'https://picsum.photos/seed/petcare-place-gallery-06/1600/1200.jpg', '2025-11-19T13:05:00Z'),
+    (7, '10000000-0000-4000-8000-000000000007', 'https://picsum.photos/seed/petcare-place-gallery-07/1600/1200.jpg', '2025-11-24T09:25:00Z'),
+    (8, '10000000-0000-4000-8000-000000000008', 'https://picsum.photos/seed/petcare-place-gallery-08/1600/1200.jpg', '2025-11-28T10:10:00Z'),
+    (9, '10000000-0000-4000-8000-000000000009', 'https://picsum.photos/seed/petcare-place-gallery-09/1600/1200.jpg', '2025-12-01T14:45:00Z'),
+    (10, '10000000-0000-4000-8000-000000000010', 'https://picsum.photos/seed/petcare-place-gallery-10/1600/1200.jpg', '2025-12-04T18:20:00Z');
+
 WITH place_templates AS (
     VALUES
         ('10000000-0000-4000-8000-000000000001'::uuid, 'vet'),
@@ -448,6 +469,19 @@ VALUES
     (3, 6, 'Green Trail Pet Outfitters', '+1-303-555-0109', 'sales@greentrailpets.test', 'Outdoor-focused pet supply shop application tied to Omar''s hiking and training recommendations.', '1012 Pearl Street', NULL, 'Denver', 'United States', 'PetShop', 'Approved', NULL, 'Approved after matching ownership documents to the public listing.', 5, '2026-03-24T15:20:00Z', '2026-03-20T14:05:00Z', '2026-03-24T15:20:00Z'),
     (4, 7, 'Bandit Safe Playroom', '+1-425-555-0127', 'hello@banditsafeplayroom.test', 'Indoor ferret play space proposal with supervised booking slots and enrichment equipment.', '44 Maple Court', 'Unit B', 'Seattle', 'United States', 'Other', 'Rejected', 'Business documentation was incomplete and the location permit was missing.', 'Asked the applicant to reapply with finalized permits and insurance.', 1, '2026-04-02T10:00:00Z', '2026-03-30T09:30:00Z', '2026-04-02T10:00:00Z'),
     (5, 8, 'Silver Creek Equine Support', '+1-303-555-0138', 'info@silvercreekequine.test', 'Pending application for a small equine support and transport service near Denver.', '220 Stable Road', NULL, 'Denver', 'United States', 'Other', 'Pending', NULL, NULL, NULL, NULL, '2026-04-19T08:45:00Z', '2026-04-19T08:45:00Z');
+
+INSERT INTO public.place_owner_application_images (
+    id,
+    place_owner_application_id,
+    url,
+    created_at
+)
+VALUES
+    (1, 1, 'https://picsum.photos/seed/petcare-place-application-01/1600/1200.jpg', '2026-02-14T09:05:00Z'),
+    (2, 2, 'https://picsum.photos/seed/petcare-place-application-02/1600/1200.jpg', '2026-03-03T11:15:00Z'),
+    (3, 3, 'https://picsum.photos/seed/petcare-place-application-03/1600/1200.jpg', '2026-03-20T14:10:00Z'),
+    (4, 4, 'https://picsum.photos/seed/petcare-place-application-04/1600/1200.jpg', '2026-03-30T09:35:00Z'),
+    (5, 5, 'https://picsum.photos/seed/petcare-place-application-05/1600/1200.jpg', '2026-04-19T08:50:00Z');
 
 INSERT INTO public.pet_place_reviews (
     id,
@@ -555,19 +589,21 @@ INSERT INTO public.forum_post_attachments (
     id,
     forum_post_id,
     url,
+    media_type,
+    file_size_bytes,
     created_at
 )
 VALUES
-    (1, '40000000-0000-4000-8000-000000000001', 'https://picsum.photos/seed/petcare-forum-01/1200/900.jpg', '2026-04-08T14:32:00Z'),
-    (2, '40000000-0000-4000-8000-000000000002', 'https://picsum.photos/seed/petcare-forum-02/1200/900.jpg', '2026-04-09T10:18:00Z'),
-    (3, '40000000-0000-4000-8000-000000000003', 'https://picsum.photos/seed/petcare-forum-03/1200/900.jpg', '2026-04-09T18:07:00Z'),
-    (4, '40000000-0000-4000-8000-000000000004', 'https://picsum.photos/seed/petcare-forum-04/1200/900.jpg', '2026-04-10T07:53:00Z'),
-    (5, '40000000-0000-4000-8000-000000000005', 'https://picsum.photos/seed/petcare-forum-05/1200/900.jpg', '2026-04-10T16:24:00Z'),
-    (6, '40000000-0000-4000-8000-000000000006', 'https://picsum.photos/seed/petcare-forum-06/1200/900.jpg', '2026-04-11T09:42:00Z'),
-    (7, '40000000-0000-4000-8000-000000000007', 'https://picsum.photos/seed/petcare-forum-07/1200/900.jpg', '2026-04-11T20:12:00Z'),
-    (8, '40000000-0000-4000-8000-000000000008', 'https://picsum.photos/seed/petcare-forum-08/1200/900.jpg', '2026-04-12T12:03:00Z'),
-    (9, '40000000-0000-4000-8000-000000000009', 'https://picsum.photos/seed/petcare-forum-09/1200/900.jpg', '2026-04-13T08:27:00Z'),
-    (10, '40000000-0000-4000-8000-000000000010', 'https://picsum.photos/seed/petcare-forum-10/1200/900.jpg', '2026-04-13T17:14:00Z');
+    (1, '40000000-0000-4000-8000-000000000001', 'https://picsum.photos/seed/petcare-forum-01/1200/900.jpg', 'Image', 412384, '2026-04-08T14:32:00Z'),
+    (2, '40000000-0000-4000-8000-000000000002', 'https://picsum.photos/seed/petcare-forum-02/1200/900.jpg', 'Image', 538219, '2026-04-09T10:18:00Z'),
+    (3, '40000000-0000-4000-8000-000000000003', 'https://picsum.photos/seed/petcare-forum-03/1200/900.jpg', 'Image', 467502, '2026-04-09T18:07:00Z'),
+    (4, '40000000-0000-4000-8000-000000000004', 'https://picsum.photos/seed/petcare-forum-04/1200/900.jpg', 'Image', 389144, '2026-04-10T07:53:00Z'),
+    (5, '40000000-0000-4000-8000-000000000005', 'https://picsum.photos/seed/petcare-forum-05/1200/900.jpg', 'Image', 624771, '2026-04-10T16:24:00Z'),
+    (6, '40000000-0000-4000-8000-000000000006', 'https://picsum.photos/seed/petcare-forum-06/1200/900.jpg', 'Image', 458630, '2026-04-11T09:42:00Z'),
+    (7, '40000000-0000-4000-8000-000000000007', 'https://picsum.photos/seed/petcare-forum-07/1200/900.jpg', 'Image', 515904, '2026-04-11T20:12:00Z'),
+    (8, '40000000-0000-4000-8000-000000000008', 'https://picsum.photos/seed/petcare-forum-08/1200/900.jpg', 'Image', 603287, '2026-04-12T12:03:00Z'),
+    (9, '40000000-0000-4000-8000-000000000009', 'https://picsum.photos/seed/petcare-forum-09/1200/900.jpg', 'Image', 431255, '2026-04-13T08:27:00Z'),
+    (10, '40000000-0000-4000-8000-000000000010', 'https://picsum.photos/seed/petcare-forum-10/1200/900.jpg', 'Image', 549883, '2026-04-13T17:14:00Z');
 
 INSERT INTO public.forum_post_bookmarks (
     user_id,
@@ -748,8 +784,10 @@ SELECT setval(pg_get_serial_sequence('public.admin_users', 'id'), (SELECT MAX(id
 SELECT setval(pg_get_serial_sequence('public.admin_action_logs', 'id'), (SELECT MAX(id) FROM public.admin_action_logs), true);
 SELECT setval(pg_get_serial_sequence('public.species', 'id'), (SELECT MAX(id) FROM public.species), true);
 SELECT setval(pg_get_serial_sequence('public.breeds', 'id'), (SELECT MAX(id) FROM public.breeds), true);
+SELECT setval(pg_get_serial_sequence('public.pet_place_images', 'id'), (SELECT MAX(id) FROM public.pet_place_images), true);
 SELECT setval(pg_get_serial_sequence('public.pet_place_schedules', 'id'), (SELECT MAX(id) FROM public.pet_place_schedules), true);
 SELECT setval(pg_get_serial_sequence('public.place_owner_applications', 'id'), (SELECT MAX(id) FROM public.place_owner_applications), true);
+SELECT setval(pg_get_serial_sequence('public.place_owner_application_images', 'id'), (SELECT MAX(id) FROM public.place_owner_application_images), true);
 SELECT setval(pg_get_serial_sequence('public.consultations', 'id'), (SELECT MAX(id) FROM public.consultations), true);
 SELECT setval(pg_get_serial_sequence('public.forum_post_attachments', 'id'), (SELECT MAX(id) FROM public.forum_post_attachments), true);
 SELECT setval(pg_get_serial_sequence('public.reports', 'id'), (SELECT MAX(id) FROM public.reports), true);
