@@ -29,6 +29,12 @@ public class UpdateAdminProfileRequest
     public string? LastName { get; set; }
 }
 
+public record ChangeAdminPasswordRequest(
+    [Required] string CurrentPassword,
+    [Required, StringLength(64, MinimumLength = 8)] string NewPassword,
+    [Required] string ConfirmNewPassword
+);
+
 public record AdminProfileResponse(
     long Id,
     string Username,
