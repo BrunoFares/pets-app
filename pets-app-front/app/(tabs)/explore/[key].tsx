@@ -14,6 +14,7 @@ import {
   formatPlaceAddress,
   formatPlaceLocation,
 } from "@/lib/discovery-api";
+import { isCharityPlaceType } from "@/lib/place-type-utils";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -31,6 +32,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 function getPlaceDetailsTitle(place: PlaceModel | null) {
   if (place?.Type === "Vet") return "Vet Details";
   if (place?.Type === "PetShop") return "Pet Shop Details";
+  if (isCharityPlaceType(place?.Type)) return "Charity Organisation Details";
   return "Place Details";
 }
 
