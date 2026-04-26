@@ -686,6 +686,38 @@ namespace PetCare.Api.Migrations
                     b.ToTable("pets", "public");
                 });
 
+            modelBuilder.Entity("PetCare.Api.Model.PetPlaceImageModel", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("PetPlaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pet_place_id");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PetPlaceId");
+
+                    b.HasIndex("PetPlaceId", "CreatedAt");
+
+                    b.ToTable("pet_place_images", "public");
+                });
+
             modelBuilder.Entity("PetCare.Api.Model.PetPlaceModel", b =>
                 {
                     b.Property<Guid>("Id")
@@ -881,6 +913,38 @@ namespace PetCare.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("pet_place_schedules", "public");
+                });
+
+            modelBuilder.Entity("PetCare.Api.Model.PlaceOwnerApplicationImageModel", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("PlaceOwnerApplicationId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("place_owner_application_id");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlaceOwnerApplicationId");
+
+                    b.HasIndex("PlaceOwnerApplicationId", "CreatedAt");
+
+                    b.ToTable("place_owner_application_images", "public");
                 });
 
             modelBuilder.Entity("PetCare.Api.Model.PlaceOwnerApplicationModel", b =>
@@ -1333,6 +1397,17 @@ namespace PetCare.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PetCare.Api.Model.PetPlaceImageModel", b =>
+                {
+                    b.HasOne("PetCare.Api.Model.PetPlaceModel", "PetPlace")
+                        .WithMany("Images")
+                        .HasForeignKey("PetPlaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PetPlace");
+                });
+
             modelBuilder.Entity("PetCare.Api.Model.PetPlaceModel", b =>
                 {
                     b.HasOne("PetCare.Api.Model.AppUser", "OwnerUser")
@@ -1371,6 +1446,17 @@ namespace PetCare.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("PetPlace");
+                });
+
+            modelBuilder.Entity("PetCare.Api.Model.PlaceOwnerApplicationImageModel", b =>
+                {
+                    b.HasOne("PetCare.Api.Model.PlaceOwnerApplicationModel", "PlaceOwnerApplication")
+                        .WithMany("Images")
+                        .HasForeignKey("PlaceOwnerApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlaceOwnerApplication");
                 });
 
             modelBuilder.Entity("PetCare.Api.Model.PlaceOwnerApplicationModel", b =>
@@ -1484,9 +1570,16 @@ namespace PetCare.Api.Migrations
                 {
                     b.Navigation("Consultations");
 
+                    b.Navigation("Images");
+
                     b.Navigation("Reviews");
 
                     b.Navigation("Schedules");
+                });
+
+            modelBuilder.Entity("PetCare.Api.Model.PlaceOwnerApplicationModel", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("PetCare.Api.Model.SpeciesModel", b =>

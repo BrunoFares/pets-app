@@ -23,4 +23,5 @@ public class PlaceOwnerApplicationModel
 
     public AppUser User { get; set; } = default!;
     public AdminUser? ReviewedByAdmin { get; set; }
+    public List<PlaceOwnerApplicationImageModel> Images { get; set; } = new();
 }

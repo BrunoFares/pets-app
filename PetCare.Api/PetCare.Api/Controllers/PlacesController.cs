@@ -16,11 +16,13 @@ public class PlacesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly AdminAuditLogger _auditLogger;
+    private readonly IWebHostEnvironment _env;
 
-    public PlacesController(AppDbContext db, AdminAuditLogger auditLogger)
+    public PlacesController(AppDbContext db, AdminAuditLogger auditLogger, IWebHostEnvironment env)
     {
         _db = db;
         _auditLogger = auditLogger;
+        _env = env;
     }
 
     [HttpGet]
@@ -218,7 +220,9 @@ public class PlacesController : ControllerBase
             return Forbid();
         }
 
-        var entity = await _db.PetPlaces.FindAsync(id);
+        var entity = await _db.PetPlaces
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Id == id);
         if (entity is null) return NotFound();
         if (!CanManagePlace(access, entity))
         {
@@ -227,6 +231,11 @@ public class PlacesController : ControllerBase
 
         var usedByConsultations = await _db.Consultations.AnyAsync(c => c.VetPlaceId == id);
         if (usedByConsultations) return Conflict(new { message = "Cannot delete a place referenced by consultations." });
+
+        foreach (var image in entity.Images)
+        {
+            LocalImageStorage.TryDeleteFile(_env, image.Url);
+        }
 
         _db.PetPlaces.Remove(entity);
         if (access.AdminUserId.HasValue)
@@ -239,6 +248,138 @@ public class PlacesController : ControllerBase
                 $"Deleted place '{entity.Name}' with type '{entity.Type}'."
             );
         }
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/images")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(ImageCollectionUploadRules.MaxUploadRequestBytes)]
+    public async Task<IActionResult> UploadImages(Guid id, [FromForm] UploadImageFilesRequest request)
+    {
+        var access = await ResolvePlaceWriteAccessAsync();
+        if (access is null)
+        {
+            return Forbid();
+        }
+
+        var place = await _db.PetPlaces
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        if (place is null)
+        {
+            return NotFound();
+        }
+
+        if (!CanManagePlace(access, place))
+        {
+            return Forbid();
+        }
+
+        if (!ImageCollectionUploadRules.TryValidate(request.Files, place.Images.Count, out var errorMessage))
+        {
+            return BadRequest(new { message = errorMessage });
+        }
+
+        var createdImages = new List<PetPlaceImageModel>(request.Files.Count);
+        foreach (var file in request.Files)
+        {
+            ImageUploadValidator.TryValidateImage(file, out _, out var normalizedExtension);
+            var imageUrl = await LocalImageStorage.SaveImageAsync(
+                _env,
+                file,
+                "place",
+                normalizedExtension,
+                "places",
+                place.Id.ToString("N"));
+
+            createdImages.Add(new PetPlaceImageModel
+            {
+                PetPlaceId = place.Id,
+                Url = imageUrl,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        _db.PetPlaceImages.AddRange(createdImages);
+        if (string.IsNullOrWhiteSpace(place.Photo) && createdImages.Count > 0)
+        {
+            place.Photo = createdImages[0].Url;
+        }
+
+        if (access.AdminUserId.HasValue)
+        {
+            _auditLogger.Log(
+                access.AdminUserId.Value,
+                "UploadPlaceImages",
+                "Place",
+                place.Id.ToString(),
+                $"Uploaded {createdImages.Count} image(s) for place '{place.Name}'."
+            );
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(createdImages
+            .OrderBy(i => i.CreatedAt)
+            .ThenBy(i => i.Id)
+            .Select(ToPlaceImageResponse)
+            .ToList());
+    }
+
+    [HttpDelete("{id:guid}/images/{imageId:long}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteImage(Guid id, long imageId)
+    {
+        var access = await ResolvePlaceWriteAccessAsync();
+        if (access is null)
+        {
+            return Forbid();
+        }
+
+        var place = await _db.PetPlaces
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        if (place is null)
+        {
+            return NotFound();
+        }
+
+        if (!CanManagePlace(access, place))
+        {
+            return Forbid();
+        }
+
+        var image = place.Images.FirstOrDefault(i => i.Id == imageId);
+        if (image is null)
+        {
+            return NotFound(new { message = "Place image not found." });
+        }
+
+        _db.PetPlaceImages.Remove(image);
+        LocalImageStorage.TryDeleteFile(_env, image.Url);
+
+        if (string.Equals(place.Photo, image.Url, StringComparison.Ordinal))
+        {
+            place.Photo = place.Images
+                .Where(i => i.Id != image.Id)
+                .OrderBy(i => i.CreatedAt)
+                .ThenBy(i => i.Id)
+                .Select(i => i.Url)
+                .FirstOrDefault();
+        }
+
+        if (access.AdminUserId.HasValue)
+        {
+            _auditLogger.Log(
+                access.AdminUserId.Value,
+                "DeletePlaceImage",
+                "Place",
+                place.Id.ToString(),
+                $"Deleted image '{image.Id}' from place '{place.Name}'."
+            );
+        }
+
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -321,6 +462,15 @@ public class PlacesController : ControllerBase
             place.Latitude,
             place.Longitude,
             place.CreatedAt,
+            place.Images
+                .OrderBy(i => i.CreatedAt)
+                .ThenBy(i => i.Id)
+                .Select(i => new PlaceImageResponse(
+                    i.Id,
+                    i.Url,
+                    i.CreatedAt
+                ))
+                .ToList(),
             place.Schedules
                 .OrderBy(s => s.DayOfWeek)
                 .Select(s => new PlaceScheduleResponse(
@@ -336,6 +486,9 @@ public class PlacesController : ControllerBase
             place.Reviews.Average(r => (double?)r.Rating),
             place.Reviews.Count()
         ));
+
+    private static PlaceImageResponse ToPlaceImageResponse(PetPlaceImageModel image) =>
+        new(image.Id, image.Url, image.CreatedAt);
 
     private sealed record PlaceWriteAccess(long? UserId, long? AdminUserId);
 }

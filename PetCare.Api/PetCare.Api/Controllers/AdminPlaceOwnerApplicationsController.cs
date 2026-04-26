@@ -138,7 +138,16 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
                 a.ReviewedByAdmin != null ? a.ReviewedByAdmin.Username : null,
                 a.ReviewedAt,
                 a.CreatedAt,
-                a.UpdatedAt
+                a.UpdatedAt,
+                a.Images
+                    .OrderBy(i => i.CreatedAt)
+                    .ThenBy(i => i.Id)
+                    .Select(i => new PlaceOwnerApplicationImageResponse(
+                        i.Id,
+                        i.Url,
+                        i.CreatedAt
+                    ))
+                    .ToList()
             ))
             .FirstOrDefaultAsync();
 
