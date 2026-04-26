@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using PetCare.Api.Services;
 
 namespace PetCare.Api.DTOs;
 
@@ -13,7 +14,11 @@ public record CreateMedicationRecordRequest(
     List<string> Times,
     bool ReminderEnabled,
     bool IsActive
-);
+) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        MedicationScheduleRules.ValidateMedicationRequest(MedicationName, StartDate, EndDate, Times, ReminderEnabled);
+}
 
 public record UpdateMedicationRecordRequest(
     [Required, MaxLength(200)] string MedicationName,
@@ -25,7 +30,11 @@ public record UpdateMedicationRecordRequest(
     List<string> Times,
     bool ReminderEnabled,
     bool IsActive
-);
+) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        MedicationScheduleRules.ValidateMedicationRequest(MedicationName, StartDate, EndDate, Times, ReminderEnabled);
+}
 
 public record MedicationRecordResponse(
     long Id,
