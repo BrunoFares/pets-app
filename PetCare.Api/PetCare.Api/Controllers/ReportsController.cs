@@ -114,7 +114,7 @@ public class ReportsController : ControllerBase
 
                 var forumPost = await _db.ForumPosts
                     .AsNoTracking()
-                    .Where(p => p.Id == forumPostId)
+                    .Where(p => p.Id == forumPostId && p.ModerationStatus != ForumModerationStatus.AutoHidden)
                     .Select(p => new { p.Id, p.UserId })
                     .FirstOrDefaultAsync();
 

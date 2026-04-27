@@ -81,6 +81,30 @@ public enum ReportPriority
     High = 3
 }
 
+public enum ForumAiModerationLabel
+{
+    Safe = 1,
+    Spam = 2,
+    Abusive = 3,
+    Suspicious = 4
+}
+
+public enum ForumModerationLabel
+{
+    Safe = 1,
+    Spam = 2,
+    Abusive = 3,
+    Suspicious = 4
+}
+
+public enum ForumModerationStatus
+{
+    None = 1,
+    Flagged = 2,
+    AutoHidden = 3,
+    Reviewed = 4
+}
+
 public enum PlaceOwnerApplicationStatus
 {
     Pending = 1,

@@ -337,6 +337,210 @@ public class AdminModerationController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("forum-posts/moderation")]
+    public async Task<IActionResult> SearchForumPostModeration(
+        [FromQuery] ForumModerationStatus? status,
+        [FromQuery] ForumAiModerationLabel? label,
+        [FromQuery] bool? isReply,
+        [FromQuery] string? sortBy = "moderatedAt",
+        [FromQuery] string? sortDirection = "desc",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1)
+        {
+            return BadRequest(new { message = "page must be greater than or equal to 1." });
+        }
+
+        if (pageSize < 1 || pageSize > 200)
+        {
+            return BadRequest(new { message = "pageSize must be between 1 and 200." });
+        }
+
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "moderatedAt" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDirection = string.IsNullOrWhiteSpace(sortDirection) ? "desc" : sortDirection.Trim().ToLowerInvariant();
+
+        if (normalizedSortDirection is not ("asc" or "desc"))
+        {
+            return BadRequest(new { message = "sortDirection must be 'asc' or 'desc'." });
+        }
+
+        if (normalizedSortBy is not ("moderatedat" or "createdat" or "confidence"))
+        {
+            return BadRequest(new { message = "sortBy must be one of: moderatedAt, createdAt, confidence." });
+        }
+
+        var query = _db.ForumPosts
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(p => p.ModerationStatus == status.Value);
+        }
+        else if (!label.HasValue)
+        {
+            query = query.Where(p => p.ModerationStatus != ForumModerationStatus.None);
+        }
+
+        if (label.HasValue)
+        {
+            query = query.Where(p => p.AiModerationLabel == label.Value);
+        }
+
+        if (isReply.HasValue)
+        {
+            query = query.Where(p => p.IsAReply == isReply.Value);
+        }
+
+        query = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("confidence", "asc") => query.OrderBy(p => p.AiModerationConfidence ?? 0).ThenBy(p => p.Id),
+            ("confidence", "desc") => query.OrderByDescending(p => p.AiModerationConfidence ?? 0).ThenByDescending(p => p.Id),
+            ("createdat", "asc") => query.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id),
+            ("createdat", "desc") => query.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id),
+            ("moderatedat", "asc") => query.OrderBy(p => p.ModeratedAt ?? p.CreatedAt).ThenBy(p => p.Id),
+            _ => query.OrderByDescending(p => p.ModeratedAt ?? p.CreatedAt).ThenByDescending(p => p.Id)
+        };
+
+        var totalCount = await query.CountAsync();
+        var items = await SelectAdminForumPostListItems(query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize))
+            .ToListAsync();
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new AdminForumPostSearchListResponse(items, page, pageSize, totalCount, totalPages));
+    }
+
+    [HttpGet("forum-posts/moderation-training-data")]
+    public async Task<IActionResult> GetForumModerationTrainingData(
+        [FromQuery] bool? hasFinalModerationLabel,
+        [FromQuery] ForumModerationLabel? finalModerationLabel,
+        [FromQuery] DateTimeOffset? from,
+        [FromQuery] DateTimeOffset? to,
+        [FromQuery] bool? isReply,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
+    {
+        if (page < 1)
+        {
+            return BadRequest(new { message = "page must be greater than or equal to 1." });
+        }
+
+        if (pageSize < 1 || pageSize > 500)
+        {
+            return BadRequest(new { message = "pageSize must be between 1 and 500." });
+        }
+
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+        {
+            return BadRequest(new { message = "from must be earlier than or equal to to." });
+        }
+
+        var query = _db.ForumPosts
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (hasFinalModerationLabel.HasValue)
+        {
+            query = hasFinalModerationLabel.Value
+                ? query.Where(p => p.FinalModerationLabel.HasValue)
+                : query.Where(p => !p.FinalModerationLabel.HasValue);
+        }
+
+        if (finalModerationLabel.HasValue)
+        {
+            query = query.Where(p => p.FinalModerationLabel == finalModerationLabel.Value);
+        }
+
+        if (from.HasValue)
+        {
+            query = query.Where(p => p.CreatedAt >= from.Value);
+        }
+
+        if (to.HasValue)
+        {
+            query = query.Where(p => p.CreatedAt <= to.Value);
+        }
+
+        if (isReply.HasValue)
+        {
+            query = query.Where(p => p.IsAReply == isReply.Value);
+        }
+
+        query = query
+            .OrderByDescending(p => p.ReviewedAt ?? p.ModeratedAt ?? p.CreatedAt)
+            .ThenByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new ForumModerationTrainingDataItemResponse(
+                p.Id,
+                p.Content,
+                p.IsAReply,
+                p.ReplyingToPostId,
+                p.CreatedAt,
+                p.UpdatedAt,
+                p.AiModerationLabel,
+                p.AiModerationConfidence,
+                p.FinalModerationLabel,
+                p.ModerationStatus,
+                p.ModeratedAt,
+                p.ReviewedAt
+            ))
+            .ToListAsync();
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        return Ok(new ForumModerationTrainingDataListResponse(items, page, pageSize, totalCount, totalPages));
+    }
+
+    [HttpPost("forum-posts/{id:guid}/moderation-review")]
+    public async Task<IActionResult> ReviewForumPostModeration(Guid id, [FromBody] ReviewForumPostModerationRequest request)
+    {
+        var adminUserId = User.GetAdminId();
+        var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id);
+        if (post is null)
+        {
+            return NotFound(new { message = "Forum post not found." });
+        }
+
+        var previousStatus = post.ModerationStatus;
+        var previousFinalLabel = post.FinalModerationLabel;
+        var normalizedNotes = NormalizeOptionalText(request.AdminNotes);
+
+        post.ModerationStatus = request.Status;
+        post.FinalModerationLabel = request.FinalModerationLabel;
+        post.ReviewedByAdminId = adminUserId;
+        post.ReviewedAt = DateTimeOffset.UtcNow;
+        post.AdminModerationNotes = normalizedNotes;
+
+        _auditLogger.Log(
+            adminUserId,
+            "ReviewForumPostModeration",
+            "ForumPost",
+            post.Id.ToString(),
+            $"Reviewed AI moderation for forum post '{post.Id}'. Status: {previousStatus} -> {post.ModerationStatus}. Final label: {FormatLabel(previousFinalLabel)} -> {FormatLabel(post.FinalModerationLabel)}.",
+            normalizedNotes
+        );
+
+        await _db.SaveChangesAsync();
+
+        var adminUsername = await _db.AdminUsers
+            .AsNoTracking()
+            .Where(a => a.Id == adminUserId)
+            .Select(a => a.Username)
+            .FirstOrDefaultAsync();
+
+        return Ok(new ReviewForumPostModerationResponse(
+            post.Id,
+            ToModerationMetadata(post, adminUsername)
+        ));
+    }
+
     [HttpGet("forum-posts")]
     public async Task<IActionResult> SearchForumPosts(
         [FromQuery] string? content,
@@ -419,38 +623,69 @@ public class AdminModerationController : ControllerBase
         };
 
         var totalCount = await query.CountAsync();
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(p => new AdminForumPostListItemResponse(
-                p.Id,
-                p.UserId,
-                p.User.Username,
-                p.User.AvatarUrl,
-                p.Content,
-                p.Attachments
-                    .OrderBy(a => a.CreatedAt)
-                    .ThenBy(a => a.Id)
-                    .Select(a => new ForumPostAttachmentResponse(
-                        a.Id,
-                        a.Url,
-                        a.MediaType,
-                        a.FileSizeBytes,
-                        a.CreatedAt
-                    ))
-                    .ToList(),
-                p.CreatedAt,
-                p.UpdatedAt,
-                p.IsAReply,
-                p.ReplyingToPostId,
-                p.Replies.Count,
-                p.Likes.Count
-            ))
+        var items = await SelectAdminForumPostListItems(query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize))
             .ToListAsync();
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
         return Ok(new AdminForumPostSearchListResponse(items, page, pageSize, totalCount, totalPages));
     }
+
+    private static IQueryable<AdminForumPostListItemResponse> SelectAdminForumPostListItems(IQueryable<ForumPostModel> query) =>
+        query.Select(p => new AdminForumPostListItemResponse(
+            p.Id,
+            p.UserId,
+            p.User.Username,
+            p.User.AvatarUrl,
+            p.Content,
+            p.Attachments
+                .OrderBy(a => a.CreatedAt)
+                .ThenBy(a => a.Id)
+                .Select(a => new ForumPostAttachmentResponse(
+                    a.Id,
+                    a.Url,
+                    a.MediaType,
+                    a.FileSizeBytes,
+                    a.CreatedAt
+                ))
+                .ToList(),
+            p.CreatedAt,
+            p.UpdatedAt,
+            p.IsAReply,
+            p.ReplyingToPostId,
+            p.Replies.Count,
+            p.Likes.Count,
+            new ForumModerationMetadataResponse(
+                p.AiModerationLabel,
+                p.AiModerationConfidence,
+                p.AiModerationReason,
+                p.FinalModerationLabel,
+                p.ModerationStatus,
+                p.ModeratedAt,
+                p.ReviewedByAdminId,
+                p.ReviewedByAdmin != null ? p.ReviewedByAdmin.Username : null,
+                p.ReviewedAt,
+                p.AdminModerationNotes
+            )
+        ));
+
+    private static ForumModerationMetadataResponse ToModerationMetadata(ForumPostModel post, string? reviewedByAdminUsername) =>
+        new(
+            post.AiModerationLabel,
+            post.AiModerationConfidence,
+            post.AiModerationReason,
+            post.FinalModerationLabel,
+            post.ModerationStatus,
+            post.ModeratedAt,
+            post.ReviewedByAdminId,
+            reviewedByAdminUsername,
+            post.ReviewedAt,
+            post.AdminModerationNotes
+        );
+
+    private static string FormatLabel(ForumModerationLabel? label) =>
+        label?.ToString() ?? "None";
 
     private static string? NormalizeOptionalText(string? value)
     {

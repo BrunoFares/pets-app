@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/synthetic_forum_moderation_examples.csv
+
+data/processed/*
+!data/processed/.gitkeep
+
+models/*
+!models/.gitkeep
+
+outputs/
