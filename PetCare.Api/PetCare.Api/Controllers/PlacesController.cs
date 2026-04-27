@@ -114,6 +114,11 @@ public class PlacesController : ControllerBase
             return Forbid();
         }
 
+        if (!CanUsePlaceType(access, request.Type))
+        {
+            return Forbid();
+        }
+
         var placeId = Guid.NewGuid();
         var entity = new PetPlaceModel
         {
@@ -173,6 +178,11 @@ public class PlacesController : ControllerBase
 
         if (entity is null) return NotFound();
         if (!CanManagePlace(access, entity))
+        {
+            return Forbid();
+        }
+
+        if (!CanUsePlaceType(access, request.Type))
         {
             return Forbid();
         }
@@ -422,7 +432,7 @@ public class PlacesController : ControllerBase
                     a.IsActive &&
                     (a.Role == AdminRole.Admin || a.Role == AdminRole.Manager));
 
-            return admin is null ? null : new PlaceWriteAccess(null, admin.Id);
+            return admin is null ? null : new PlaceWriteAccess(null, admin.Id, new HashSet<PlaceType>());
         }
 
         if (!string.Equals(actorType, AuthConstants.ActorTypes.User, StringComparison.Ordinal))
@@ -442,11 +452,29 @@ public class PlacesController : ControllerBase
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == userId && !u.IsBanned && u.IsApprovedPlaceOwner);
 
-        return user is null ? null : new PlaceWriteAccess(user.Id, null);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var approvedPlaceTypes = await _db.PlaceOwnerApplications
+            .AsNoTracking()
+            .Where(a => a.UserId == user.Id && a.Status == PlaceOwnerApplicationStatus.Approved)
+            .Select(a => a.RequestedPlaceType)
+            .Distinct()
+            .ToListAsync();
+
+        return new PlaceWriteAccess(user.Id, null, approvedPlaceTypes.ToHashSet());
     }
 
     private static bool CanManagePlace(PlaceWriteAccess access, PetPlaceModel place) =>
-        access.AdminUserId.HasValue || (access.UserId.HasValue && place.OwnerUserId == access.UserId.Value);
+        access.AdminUserId.HasValue ||
+        (access.UserId.HasValue &&
+            place.OwnerUserId == access.UserId.Value &&
+            CanUsePlaceType(access, place.Type));
+
+    private static bool CanUsePlaceType(PlaceWriteAccess access, PlaceType type) =>
+        access.AdminUserId.HasValue || access.ApprovedPlaceTypes.Contains(type);
 
     private static IQueryable<PlaceResponse> ProjectToPlaceResponse(IQueryable<PetPlaceModel> query) =>
         query.Select(place => new PlaceResponse(
@@ -494,5 +522,9 @@ public class PlacesController : ControllerBase
     private static PlaceImageResponse ToPlaceImageResponse(PetPlaceImageModel image) =>
         new(image.Id, image.Url, image.CreatedAt);
 
-    private sealed record PlaceWriteAccess(long? UserId, long? AdminUserId);
+    private sealed record PlaceWriteAccess(
+        long? UserId,
+        long? AdminUserId,
+        IReadOnlySet<PlaceType> ApprovedPlaceTypes
+    );
 }

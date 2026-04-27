@@ -33,11 +33,6 @@ public class PlaceOwnerApplicationsController : ControllerBase
             return NotFound(new { message = "User not found." });
         }
 
-        if (user.IsApprovedPlaceOwner)
-        {
-            return Conflict(new { message = "You are already an approved place owner." });
-        }
-
         var hasPendingApplication = await _db.PlaceOwnerApplications
             .AsNoTracking()
             .AnyAsync(a => a.UserId == userId && a.Status == PlaceOwnerApplicationStatus.Pending);
@@ -45,6 +40,18 @@ public class PlaceOwnerApplicationsController : ControllerBase
         if (hasPendingApplication)
         {
             return Conflict(new { message = "You already have a pending place owner application." });
+        }
+
+        var isAlreadyApprovedForRequestedType = user.IsApprovedPlaceOwner && await _db.PlaceOwnerApplications
+            .AsNoTracking()
+            .AnyAsync(a =>
+                a.UserId == userId &&
+                a.RequestedPlaceType == request.RequestedPlaceType &&
+                a.Status == PlaceOwnerApplicationStatus.Approved);
+
+        if (isAlreadyApprovedForRequestedType)
+        {
+            return Conflict(new { message = "You are already approved for this place type." });
         }
 
         var application = new PlaceOwnerApplicationModel

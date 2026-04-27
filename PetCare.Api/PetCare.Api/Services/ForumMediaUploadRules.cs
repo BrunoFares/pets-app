@@ -5,7 +5,7 @@ namespace PetCare.Api.Services;
 
 public static class ForumMediaUploadRules
 {
-    public const int MaxAttachmentsPerPost = 5;
+    public const int MaxAttachmentsPerPost = 4;
     public const int MaxVideosPerPost = 1;
     public const long MaxVideoBytes = 20_000_000;
     public const long MaxUploadRequestBytes = MaxVideoBytes + ((MaxAttachmentsPerPost - MaxVideosPerPost) * ImageUploadValidator.MaxImageBytes);
