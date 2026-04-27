@@ -154,7 +154,8 @@ public record AdminForumPostListItemResponse(
     bool IsAReply,
     Guid? ReplyingToPostId,
     int RepliesCount,
-    int LikesCount
+    int LikesCount,
+    ForumModerationMetadataResponse Moderation
 );
 
 public record AdminForumPostSearchListResponse(
@@ -163,6 +164,69 @@ public record AdminForumPostSearchListResponse(
     int PageSize,
     int TotalCount,
     int TotalPages
+);
+
+public record ForumModerationTrainingDataItemResponse(
+    Guid Id,
+    string Content,
+    bool IsReply,
+    Guid? ReplyingToPostId,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt,
+    ForumAiModerationLabel? AiModerationLabel,
+    decimal? AiModerationConfidence,
+    ForumModerationLabel? FinalModerationLabel,
+    ForumModerationStatus ModerationStatus,
+    DateTimeOffset? ModeratedAt,
+    DateTimeOffset? ReviewedAt
+);
+
+public record ForumModerationTrainingDataListResponse(
+    IReadOnlyList<ForumModerationTrainingDataItemResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages
+);
+
+public record ForumModerationMetadataResponse(
+    ForumAiModerationLabel? AiLabel,
+    decimal? AiConfidence,
+    string? AiReason,
+    ForumModerationLabel? FinalModerationLabel,
+    ForumModerationStatus Status,
+    DateTimeOffset? ModeratedAt,
+    long? ReviewedByAdminId,
+    string? ReviewedByAdminUsername,
+    DateTimeOffset? ReviewedAt,
+    string? AdminNotes
+);
+
+public record ReviewForumPostModerationRequest(
+    [Required] ForumModerationStatus Status,
+    ForumModerationLabel? FinalModerationLabel,
+    [MaxLength(1000)] string? AdminNotes
+) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Status is ForumModerationStatus.None or
+            ForumModerationStatus.Flagged or
+            ForumModerationStatus.AutoHidden or
+            ForumModerationStatus.Reviewed)
+        {
+            yield break;
+        }
+
+        yield return new ValidationResult(
+            "Status must be None, Flagged, AutoHidden, or Reviewed.",
+            new[] { nameof(Status) });
+    }
+}
+
+public record ReviewForumPostModerationResponse(
+    Guid ForumPostId,
+    ForumModerationMetadataResponse Moderation
 );
 
 public record AdminActionLogResponse(

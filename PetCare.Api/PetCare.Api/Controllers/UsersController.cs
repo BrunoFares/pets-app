@@ -373,6 +373,7 @@ public class UsersController : ControllerBase
         var me = User.GetUserId();
         var bookmarks = await _context.ForumPostBookmarks
             .Where(b => b.UserId == me)
+            .Where(b => b.ForumPost.ModerationStatus != ForumModerationStatus.AutoHidden)
             .Where(b => !_context.UserBlocks.Any(block =>
                 (block.BlockerUserId == me && block.BlockedUserId == b.ForumPost.UserId) ||
                 (block.BlockedUserId == me && block.BlockerUserId == b.ForumPost.UserId)))
@@ -396,7 +397,9 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> BookmarkPost([FromBody] BookmarkPostRequest request)
     {
         var me = User.GetUserId();
-        var exists = await _context.ForumPosts.AnyAsync(p => p.Id == request.ForumPostId);
+        var exists = await _context.ForumPosts.AnyAsync(p =>
+            p.Id == request.ForumPostId &&
+            p.ModerationStatus != ForumModerationStatus.AutoHidden);
         if (!exists) return NotFound(new { message = "Post not found." });
 
         var already = await _context.ForumPostBookmarks.AnyAsync(b => b.UserId == me && b.ForumPostId == request.ForumPostId);
@@ -450,7 +453,7 @@ public class UsersController : ControllerBase
             post.UpdatedAt,
             post.IsAReply,
             post.ReplyingToPostId,
-            post.Replies.Count,
+            post.Replies.Count(r => r.ModerationStatus != ForumModerationStatus.AutoHidden),
             isBookmarkedByCurrentUser,
             isBookmarkedByCurrentUser,
             post.Bookmarks.Count,

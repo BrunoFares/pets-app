@@ -305,13 +305,29 @@ public class AppDbContext : DbContext
             e.Property(x => x.ReplyingToPostId).HasColumnName("replying_to_post");
             e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.AiModerationLabel).HasColumnName("ai_moderation_label").HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.AiModerationConfidence).HasColumnName("ai_moderation_confidence").HasPrecision(5, 4);
+            e.Property(x => x.AiModerationReason).HasColumnName("ai_moderation_reason").HasMaxLength(1000);
+            e.Property(x => x.ModerationStatus).HasColumnName("moderation_status").HasConversion<string>().HasMaxLength(30).IsRequired();
+            e.Property(x => x.ModeratedAt).HasColumnName("moderated_at");
+            e.Property(x => x.FinalModerationLabel).HasColumnName("final_moderation_label").HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");
+            e.Property(x => x.ReviewedAt).HasColumnName("reviewed_at");
+            e.Property(x => x.AdminModerationNotes).HasColumnName("admin_moderation_notes").HasMaxLength(1000);
 
             e.HasOne(x => x.User).WithMany(u => u.ForumPosts).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.ReviewedByAdmin).WithMany(a => a.ReviewedForumPosts).HasForeignKey(x => x.ReviewedByAdminId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.ReplyingToPost).WithMany(x => x.Replies).HasForeignKey(x => x.ReplyingToPostId).OnDelete(DeleteBehavior.Restrict);
 
             e.HasIndex(x => x.UserId);
             e.HasIndex(x => x.ReplyingToPostId);
             e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.AiModerationLabel);
+            e.HasIndex(x => x.FinalModerationLabel);
+            e.HasIndex(x => x.ModerationStatus);
+            e.HasIndex(x => x.ModeratedAt);
+            e.HasIndex(x => x.ReviewedByAdminId);
+            e.HasIndex(x => new { x.ModerationStatus, x.CreatedAt });
         });
 
         b.Entity<ForumPostAttachmentModel>(e =>

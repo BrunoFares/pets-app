@@ -43,6 +43,9 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(dataSource)
 );
 builder.Services.AddScoped<AdminAuditLogger>();
+builder.Services.Configure<ForumModerationOptions>(builder.Configuration.GetSection("ForumModeration"));
+builder.Services.AddScoped<RulesBasedForumTextModerationService>();
+builder.Services.AddHttpClient<IForumTextModerationService, PythonForumTextModerationService>();
 builder.Services.Configure<PetTranslatorOptions>(builder.Configuration.GetSection("PetTranslator"));
 builder.Services.Configure<EmailSenderOptions>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();

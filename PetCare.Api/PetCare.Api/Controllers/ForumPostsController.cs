@@ -17,12 +17,14 @@ public class ForumPostsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly IForumTextModerationService _forumTextModerationService;
     private static readonly string[] AllowedSorts = ["newest", "oldest", "mostliked", "mostbookmarked", "mostrelevant"];
 
-    public ForumPostsController(AppDbContext db, IWebHostEnvironment env)
+    public ForumPostsController(AppDbContext db, IWebHostEnvironment env, IForumTextModerationService forumTextModerationService)
     {
         _db = db;
         _env = env;
+        _forumTextModerationService = forumTextModerationService;
     }
 
     [HttpGet]
@@ -30,7 +32,7 @@ public class ForumPostsController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var me = TryGetCurrentUserId();
-        var postsQuery = ApplyBlockedUsersFilter(_db.ForumPosts, me);
+        var postsQuery = ApplyBlockedUsersFilter(ApplyVisibleModerationFilter(_db.ForumPosts), me);
         var posts = await postsQuery
             .Include(p => p.User)
             .Include(p => p.Attachments)
@@ -49,7 +51,7 @@ public class ForumPostsController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var me = TryGetCurrentUserId();
-        var post = await ApplyBlockedUsersFilter(_db.ForumPosts, me)
+        var post = await ApplyBlockedUsersFilter(ApplyVisibleModerationFilter(_db.ForumPosts), me)
             .Include(p => p.User)
             .Include(p => p.Attachments)
             .Include(p => p.Replies)
@@ -65,7 +67,14 @@ public class ForumPostsController : ControllerBase
     public async Task<IActionResult> GetReplies(Guid id)
     {
         var me = TryGetCurrentUserId();
-        var replies = await ApplyBlockedUsersFilter(_db.ForumPosts, me)
+        var parentExists = await ApplyVisibleModerationFilter(_db.ForumPosts.AsNoTracking())
+            .AnyAsync(p => p.Id == id);
+        if (!parentExists)
+        {
+            return NotFound(new { message = "Parent post not found." });
+        }
+
+        var replies = await ApplyBlockedUsersFilter(ApplyVisibleModerationFilter(_db.ForumPosts), me)
             .Include(p => p.User)
             .Include(p => p.Attachments)
             .Include(p => p.Bookmarks)
@@ -97,7 +106,7 @@ public class ForumPostsController : ControllerBase
             return error!;
         }
 
-        var query = BuildForumPostQuery(ApplyBlockedUsersFilter(_db.ForumPosts.AsNoTracking(), me), q, mine, likedByMe, bookmarkedByMe, isReply, hasAttachments, userId, me);
+        var query = BuildForumPostQuery(ApplyBlockedUsersFilter(ApplyVisibleModerationFilter(_db.ForumPosts.AsNoTracking()), me), q, mine, likedByMe, bookmarkedByMe, isReply, hasAttachments, userId, me);
         query = ApplySorting(query, NormalizeSort(sort));
 
         return Ok(await ToPagedResponseAsync(query, me, page, pageSize));
@@ -123,14 +132,14 @@ public class ForumPostsController : ControllerBase
             return error!;
         }
 
-        var parentExists = await _db.ForumPosts.AsNoTracking().AnyAsync(p => p.Id == id);
+        var parentExists = await ApplyVisibleModerationFilter(_db.ForumPosts.AsNoTracking()).AnyAsync(p => p.Id == id);
         if (!parentExists)
         {
             return NotFound(new { message = "Parent post not found." });
         }
 
         var query = BuildForumPostQuery(
-            ApplyBlockedUsersFilter(_db.ForumPosts.AsNoTracking(), me).Where(p => p.ReplyingToPostId == id),
+            ApplyBlockedUsersFilter(ApplyVisibleModerationFilter(_db.ForumPosts.AsNoTracking()), me).Where(p => p.ReplyingToPostId == id),
             q,
             mine,
             likedByMe,
@@ -150,6 +159,7 @@ public class ForumPostsController : ControllerBase
         var me = User.GetUserId();
         var likes = await _db.ForumPostLikes
             .Where(l => l.UserId == me)
+            .Where(l => l.ForumPost.ModerationStatus != ForumModerationStatus.AutoHidden)
             .Where(l => !_db.UserBlocks.Any(b => b.BlockerUserId == me && b.BlockedUserId == l.ForumPost.UserId))
             .OrderByDescending(l => l.CreatedAt)
             .Include(l => l.ForumPost)
@@ -168,7 +178,7 @@ public class ForumPostsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateForumPostRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateForumPostRequest request, CancellationToken cancellationToken)
     {
         var me = User.GetUserId();
         if (!TryCreateLegacyAttachments(request.Attachments, out var attachments, out var errorResult))
@@ -186,17 +196,18 @@ public class ForumPostsController : ControllerBase
             Attachments = attachments
         };
 
+        await ApplyAiModerationAsync(post, cancellationToken);
         _db.ForumPosts.Add(post);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = post.Id }, new { post.Id });
     }
 
     [HttpPost("{id:guid}/reply")]
-    public async Task<IActionResult> Reply(Guid id, [FromBody] ReplyToForumPostRequest request)
+    public async Task<IActionResult> Reply(Guid id, [FromBody] ReplyToForumPostRequest request, CancellationToken cancellationToken)
     {
         var me = User.GetUserId();
-        var parentExists = await _db.ForumPosts.AnyAsync(p => p.Id == id);
+        var parentExists = await ApplyVisibleModerationFilter(_db.ForumPosts).AnyAsync(p => p.Id == id, cancellationToken);
         if (!parentExists) return NotFound(new { message = "Parent post not found." });
         if (!TryCreateLegacyAttachments(request.Attachments, out var attachments, out var errorResult))
         {
@@ -214,22 +225,24 @@ public class ForumPostsController : ControllerBase
             Attachments = attachments
         };
 
+        await ApplyAiModerationAsync(post, cancellationToken);
         _db.ForumPosts.Add(post);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = post.Id }, new { post.Id });
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateForumPostRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateForumPostRequest request, CancellationToken cancellationToken)
     {
         var me = User.GetUserId();
-        var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id && p.UserId == me);
+        var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id && p.UserId == me, cancellationToken);
         if (post is null) return NotFound();
 
         post.Content = request.Content.Trim();
         post.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await ApplyAiModerationAsync(post, cancellationToken);
+        await _db.SaveChangesAsync(cancellationToken);
 
         return Ok(new { message = "Post updated." });
     }
@@ -378,7 +391,7 @@ public class ForumPostsController : ControllerBase
         var me = User.GetUserId();
         var post = await _db.ForumPosts
             .Include(p => p.Likes)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id && p.ModerationStatus != ForumModerationStatus.AutoHidden);
         if (post is null) return NotFound(new { message = "Post not found." });
 
         var alreadyLiked = post.Likes.Any(l => l.UserId == me);
@@ -444,7 +457,7 @@ public class ForumPostsController : ControllerBase
             post.UpdatedAt,
             post.IsAReply,
             post.ReplyingToPostId,
-            post.Replies.Count,
+            CountVisibleReplies(post.Replies),
             isBookmarkedByCurrentUser,
             isBookmarkedByCurrentUser,
             post.Bookmarks.Count,
@@ -564,6 +577,57 @@ public class ForumPostsController : ControllerBase
         return query.Where(p => !invisibleUserIds.Contains(p.UserId));
     }
 
+    private static IQueryable<ForumPostModel> ApplyVisibleModerationFilter(IQueryable<ForumPostModel> query) =>
+        query.Where(p => p.ModerationStatus != ForumModerationStatus.AutoHidden);
+
+    private async Task ApplyAiModerationAsync(ForumPostModel post, CancellationToken cancellationToken)
+    {
+        var result = await _forumTextModerationService.ModerateAsync(post.Content, cancellationToken);
+        var confidence = ClampConfidence(result.Confidence);
+
+        post.AiModerationLabel = result.Label;
+        post.AiModerationConfidence = confidence;
+        post.AiModerationReason = TruncateOptional(result.Reason, 1000);
+        post.ModerationStatus = DetermineModerationStatus(result.Label, confidence);
+        post.ModeratedAt = DateTimeOffset.UtcNow;
+        post.FinalModerationLabel = null;
+        post.ReviewedByAdminId = null;
+        post.ReviewedAt = null;
+        post.AdminModerationNotes = null;
+    }
+
+    private static ForumModerationStatus DetermineModerationStatus(ForumAiModerationLabel label, decimal confidence)
+    {
+        if (label == ForumAiModerationLabel.Safe)
+        {
+            return ForumModerationStatus.None;
+        }
+
+        if (confidence >= 0.90m && label is ForumAiModerationLabel.Spam or ForumAiModerationLabel.Abusive)
+        {
+            return ForumModerationStatus.AutoHidden;
+        }
+
+        return confidence >= 0.60m ? ForumModerationStatus.Flagged : ForumModerationStatus.None;
+    }
+
+    private static decimal ClampConfidence(decimal confidence) =>
+        Math.Min(1.0m, Math.Max(0.0m, confidence));
+
+    private static string? TruncateOptional(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static int CountVisibleReplies(IEnumerable<ForumPostModel> replies) =>
+        replies.Count(r => r.ModerationStatus != ForumModerationStatus.AutoHidden);
+
     private static IQueryable<ForumPostModel> ApplySorting(IQueryable<ForumPostModel> query, string sort)
     {
         var relevantSince = DateTimeOffset.UtcNow.AddDays(-7);
@@ -620,7 +684,7 @@ public class ForumPostsController : ControllerBase
                 p.UpdatedAt,
                 p.IsAReply,
                 p.ReplyingToPostId,
-                p.Replies.Count,
+                p.Replies.Count(r => r.ModerationStatus != ForumModerationStatus.AutoHidden),
                 p.Bookmarks.Count,
                 currentUserId.HasValue && p.Bookmarks.Any(b => b.UserId == currentUserId.Value),
                 p.Likes.Count,

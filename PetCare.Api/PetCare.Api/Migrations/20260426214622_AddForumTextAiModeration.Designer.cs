@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PetCare.Api.Data;
@@ -13,9 +14,11 @@ using PetCare.Api.Model;
 namespace PetCare.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260426214622_AddForumTextAiModeration")]
+    partial class AddForumTextAiModeration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -484,11 +487,6 @@ namespace PetCare.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("FinalModerationLabel")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("final_moderation_label");
-
                     b.Property<bool>("IsAReply")
                         .HasColumnType("boolean")
                         .HasColumnName("is_a_reply");
@@ -528,8 +526,6 @@ namespace PetCare.Api.Migrations
                     b.HasIndex("AiModerationLabel");
 
                     b.HasIndex("CreatedAt");
-
-                    b.HasIndex("FinalModerationLabel");
 
                     b.HasIndex("ModeratedAt");
 

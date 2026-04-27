@@ -17,4 +17,5 @@ public class AdminUser
     public List<AdminActionLog> ActionLogs { get; set; } = new();
     public List<PlaceOwnerApplicationModel> ReviewedPlaceOwnerApplications { get; set; } = new();
     public List<ReportModel> ReviewedReports { get; set; } = new();
+    public List<ForumPostModel> ReviewedForumPosts { get; set; } = new();
 }
