@@ -2,6 +2,7 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomInput from "@/components/CustomInput";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
+import { VideoThumbnail } from "@/components/VideoThumbnail";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { presentApiError } from "@/lib/api-feedback";
@@ -27,6 +28,25 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+function formatVideoDuration(durationMs?: number | null) {
+  if (!durationMs || durationMs < 1000) {
+    return null;
+  }
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(
+      seconds,
+    ).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 export default function CreateForumPostScreen() {
   const router = useRouter();
   const darkMode = useColorScheme() === "dark";
@@ -41,6 +61,7 @@ export default function CreateForumPostScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const remainingAttachmentSlots =
     MAX_FORUM_ATTACHMENTS - selectedImageAssets.length;
+  const selectedVideoDuration = formatVideoDuration(selectedVideoAsset?.duration);
 
   useFocusEffect(
     useCallback(() => {
@@ -327,14 +348,25 @@ export default function CreateForumPostScreen() {
 
           {selectedVideoAsset && (
             <View style={styles.videoCard}>
-              <Ionicons
-                name="film-outline"
-                size={28}
-                color={darkMode ? colors.white : colors.black}
-              />
-              <AdaptiveText style={styles.videoFileName} numberOfLines={1}>
-                {selectedVideoAsset.fileName ?? "video"}
-              </AdaptiveText>
+              <View style={styles.videoPreviewFrame}>
+                <VideoThumbnail
+                  uri={selectedVideoAsset.uri}
+                  style={styles.videoPreview}
+                />
+                <View style={styles.videoPreviewOverlay}>
+                  <Ionicons name="play" size={18} color={colors.white} />
+                </View>
+              </View>
+              <View style={styles.videoTextBlock}>
+                <AdaptiveText style={styles.videoFileName} numberOfLines={1}>
+                  {selectedVideoAsset.fileName ?? "Selected video"}
+                </AdaptiveText>
+                <AdaptiveText style={styles.videoMeta}>
+                  {selectedVideoDuration
+                    ? `Ready to upload · ${selectedVideoDuration}`
+                    : "Ready to upload"}
+                </AdaptiveText>
+              </View>
               <TouchableOpacity
                 onPress={handleRemoveVideo}
                 style={styles.removeImageButton}
@@ -473,10 +505,36 @@ const createStyles = ({ darkMode }: any) => {
       paddingHorizontal: 16,
       position: "relative",
     },
-    videoFileName: {
+    videoPreviewFrame: {
+      width: 92,
+      height: 68,
+      borderRadius: 12,
+      overflow: "hidden",
+      backgroundColor: colors.black,
+      position: "relative",
+    },
+    videoPreview: {
+      width: "100%",
+      height: "100%",
+    },
+    videoPreviewOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.16)",
+    },
+    videoTextBlock: {
       flex: 1,
+      gap: 2,
+    },
+    videoFileName: {
       fontFamily: "Poppins-Regular",
       fontSize: 14,
+    },
+    videoMeta: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 12,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
     },
     inputContainer: {
       width: "84%",

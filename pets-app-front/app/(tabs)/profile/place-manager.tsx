@@ -8,6 +8,7 @@ import { PlaceModel, PlaceOwnerApplicationModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { presentApiError } from "@/lib/api-feedback";
 import {
+  fetchMyPlaceOwnerAccessStatus,
   fetchMyPlaceOwnerApplication,
   fetchOwnedPlaces,
   formatPlaceOwnerApplicationStatusLabel,
@@ -140,11 +141,14 @@ export default function PlaceManagerScreen() {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, refreshProfile, user } = useAuth();
   const [application, setApplication] =
     useState<PlaceOwnerApplicationModel | null>(null);
   const [ownedPlaces, setOwnedPlaces] = useState<PlaceModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOwnerAccessActive, setIsOwnerAccessActive] = useState(
+    Boolean(user?.IsApprovedPlaceOwner),
+  );
 
   const loadManagerState = useCallback(async () => {
     if (!isAuthenticated || !user) {
@@ -157,15 +161,26 @@ export default function PlaceManagerScreen() {
     setIsLoading(true);
 
     try {
-      const nextApplication = await fetchMyPlaceOwnerApplication();
-      const nextOwnedPlaces = user.IsApprovedPlaceOwner
+      const [nextApplication, nextOwnerAccess] = await Promise.all([
+        fetchMyPlaceOwnerApplication(),
+        fetchMyPlaceOwnerAccessStatus(),
+      ]);
+      const nextOwnedPlaces = nextOwnerAccess
         ? await fetchOwnedPlaces(user.Id)
         : [];
 
       setApplication(nextApplication);
+      setIsOwnerAccessActive(nextOwnerAccess);
       setOwnedPlaces(nextOwnedPlaces);
+
+      if (nextOwnerAccess !== Boolean(user.IsApprovedPlaceOwner)) {
+        void refreshProfile().catch(() => {
+          return undefined;
+        });
+      }
     } catch (error) {
       setApplication(null);
+      setIsOwnerAccessActive(Boolean(user?.IsApprovedPlaceOwner));
       setOwnedPlaces([]);
       presentApiError("Could not load place manager", error, {
         fallbackMessage: "We couldn't load your place manager tools right now.",
@@ -173,7 +188,7 @@ export default function PlaceManagerScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, refreshProfile, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -185,8 +200,8 @@ export default function PlaceManagerScreen() {
   const { isRefreshing, onRefresh } = usePullToRefresh(loadManagerState);
   const showLoadingOverlay = isLoading && !isRefreshing;
   const managerState = useMemo(
-    () => getManagerState(application, Boolean(user?.IsApprovedPlaceOwner)),
-    [application, user?.IsApprovedPlaceOwner],
+    () => getManagerState(application, isOwnerAccessActive),
+    [application, isOwnerAccessActive],
   );
   const summary = getManagerSummary(managerState);
   const applicationTone = application
