@@ -62,7 +62,29 @@ type CreateForumPostResponse = {
   Id?: string;
 };
 
-const VIDEO_EXTENSIONS = [".mp4", ".mov", ".m4v", ".webm"];
+const VIDEO_EXTENSIONS = [
+  ".mp4",
+  ".mov",
+  ".m4v",
+  ".webm",
+  ".3gp",
+  ".3gpp",
+];
+
+function isVideoAsset(asset: ImagePicker.ImagePickerAsset) {
+  const normalizedMimeType = asset.mimeType?.toLowerCase() ?? "";
+  const normalizedAssetType =
+    typeof asset.type === "string" ? asset.type.toLowerCase() : "";
+  const normalizedFileName = asset.fileName?.trim().toLowerCase() ?? "";
+
+  return (
+    normalizedMimeType.startsWith("video/") ||
+    normalizedAssetType === "video" ||
+    VIDEO_EXTENSIONS.some((extension) =>
+      normalizedFileName.endsWith(extension),
+    )
+  );
+}
 
 function inferAttachmentMediaType(
   url: string,
@@ -179,12 +201,32 @@ function buildForumAttachmentsFormData(
 
   for (const [index, asset] of assets.entries()) {
     const normalizedMimeType = asset.mimeType?.toLowerCase() ?? "";
-    const isVideo = normalizedMimeType.startsWith("video/");
+    const isVideo = isVideoAsset(asset);
 
     if (isVideo) {
-      const ext = asset.fileName?.split(".").pop()?.toLowerCase() ?? "mp4";
-      const mimeType = normalizedMimeType || "video/mp4";
-      const name = asset.fileName?.trim() || `forum-video-${index + 1}.${ext}`;
+      const extensionFromMimeType =
+        normalizedMimeType === "video/quicktime"
+          ? "mov"
+          : normalizedMimeType === "video/webm"
+            ? "webm"
+            : normalizedMimeType === "video/3gpp"
+              ? "3gpp"
+              : "mp4";
+      const extensionFromFileName =
+        asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
+      const extension =
+        extensionFromFileName || extensionFromMimeType || "mp4";
+      const mimeType =
+        normalizedMimeType ||
+        (extension === "mov"
+          ? "video/quicktime"
+          : extension === "webm"
+            ? "video/webm"
+            : extension === "3gp" || extension === "3gpp"
+              ? "video/3gpp"
+              : "video/mp4");
+      const name =
+        asset.fileName?.trim() || `forum-video-${index + 1}.${extension}`;
       formData.append("files", { uri: asset.uri, name, type: mimeType } as any);
     } else {
       const extensionFromMimeType =

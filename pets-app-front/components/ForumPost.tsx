@@ -22,11 +22,13 @@ import {
   useColorScheme,
   View,
 } from "react-native";
+import { WebView } from "react-native-webview";
 import { goTo } from "../utils";
 import { AdaptiveText } from "./AdaptiveText";
 import { AdaptiveView } from "./AdaptiveView";
 import CustomImage from "./CustomImage";
 import CustomModal from "./CustomModal";
+import { VideoThumbnail } from "./VideoThumbnail";
 
 const REPORT_REASONS = [
   {
@@ -95,6 +97,53 @@ function getImageAttachments(attachments: ForumPostAttachmentModel[]) {
   );
 }
 
+function getVideoAttachments(attachments: ForumPostAttachmentModel[]) {
+  return attachments.filter(
+    (attachment) => attachment.MediaType === "Video" && Boolean(attachment.Url),
+  );
+}
+
+function buildVideoPlayerHtml(videoUrl: string) {
+  // Use the native WebView player so forum videos can play without another
+  // dedicated media dependency.
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #000;
+      }
+    </style>
+  </head>
+  <body>
+    <video
+      controls
+      playsinline
+      webkit-playsinline
+      preload="metadata"
+      src=${JSON.stringify(videoUrl)}
+    ></video>
+  </body>
+</html>`;
+}
+
 const ForumPost = ({
   item,
   size,
@@ -129,6 +178,8 @@ const ForumPost = ({
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState<
     number | null
   >(null);
+  const [selectedVideoAttachment, setSelectedVideoAttachment] =
+    useState<ForumPostAttachmentModel | null>(null);
   const { setShowFooter } = useGlobal();
   const attachmentViewerWidth = Dimensions.get("window").width;
   const attachmentViewerHeight = Dimensions.get("window").height;
@@ -138,6 +189,7 @@ const ForumPost = ({
   const detailedTimestamp = formatPostTimestamp(item.CreatedAt, "detailed");
   const isOwnPost = user ? String(user.Id) === String(item.UserId) : false;
   const imageAttachments = getImageAttachments(item.Attachments ?? []);
+  const videoAttachments = getVideoAttachments(item.Attachments ?? []);
   const selectedAttachment =
     selectedAttachmentIndex === null
       ? null
@@ -162,6 +214,10 @@ const ForumPost = ({
     setSelectedAttachmentIndex(null);
     attachmentViewerTranslateY.setValue(0);
   }, [attachmentViewerTranslateY]);
+
+  const closeVideoViewer = useCallback(() => {
+    setSelectedVideoAttachment(null);
+  }, []);
 
   const restoreAttachmentViewerPosition = useCallback(() => {
     Animated.spring(attachmentViewerTranslateY, {
@@ -570,6 +626,56 @@ const ForumPost = ({
     );
   };
 
+  const renderVideoAttachments = (variant: "small" | "big") => {
+    if (videoAttachments.length === 0) {
+      return null;
+    }
+
+    const isSmallVariant = variant === "small";
+
+    return (
+      <View
+        style={[
+          styles.attachmentsSection,
+          variant === "small"
+            ? styles.attachmentsSectionSmall
+            : styles.attachmentsSectionBig,
+        ]}
+      >
+        <View style={styles.videoAttachmentList}>
+          {videoAttachments.map((attachment) => (
+            <TouchableOpacity
+              key={String(attachment.Id)}
+              activeOpacity={0.92}
+              onPress={() => setSelectedVideoAttachment(attachment)}
+              style={[
+                styles.videoAttachmentCard,
+                isSmallVariant
+                  ? styles.videoAttachmentCardSmall
+                  : styles.videoAttachmentCardBig,
+              ]}
+            >
+              <VideoThumbnail
+                uri={attachment.Url}
+                style={styles.videoAttachmentThumbnail}
+              />
+              <View style={styles.videoAttachmentOverlay}>
+                <View style={styles.videoAttachmentPlayButton}>
+                  <Ionicons name="play" size={24} color={colors.white} />
+                </View>
+              </View>
+              <View style={styles.videoAttachmentFooter}>
+                <AdaptiveText style={styles.videoAttachmentFooterText}>
+                  Tap to play
+                </AdaptiveText>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   const renderAttachmentViewer = () => (
     <Modal
       visible={Boolean(selectedAttachment)}
@@ -637,6 +743,49 @@ const ForumPost = ({
             ))}
           </ScrollView>
         </Animated.View>
+      </View>
+    </Modal>
+  );
+
+  const renderVideoViewer = () => (
+    <Modal
+      visible={Boolean(selectedVideoAttachment)}
+      transparent
+      animationType="fade"
+      onRequestClose={closeVideoViewer}
+    >
+      <View style={styles.attachmentViewerOverlay}>
+        <View
+          style={[
+            styles.videoViewerFrame,
+            {
+              width: Math.max(attachmentViewerWidth - 24, 0),
+              height: Math.min(attachmentViewerHeight * 0.72, 520),
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={closeVideoViewer}
+            style={styles.videoViewerCloseButton}
+          >
+            <Ionicons name="close" size={22} color={colors.white} />
+          </TouchableOpacity>
+
+          {selectedVideoAttachment ? (
+            <WebView
+              originWhitelist={["*"]}
+              source={{
+                html: buildVideoPlayerHtml(selectedVideoAttachment.Url),
+              }}
+              allowsInlineMediaPlayback
+              allowsFullscreenVideo
+              mixedContentMode="always"
+              scrollEnabled={false}
+              bounces={false}
+              style={styles.videoViewerWebView}
+            />
+          ) : null}
+        </View>
       </View>
     </Modal>
   );
@@ -863,6 +1012,7 @@ const ForumPost = ({
                 </AdaptiveText>
 
                 {renderAttachments("small")}
+                {renderVideoAttachments("small")}
               </AdaptiveView>
             </AdaptiveView>
 
@@ -922,6 +1072,7 @@ const ForumPost = ({
         </View>
         {renderOptionsModal()}
         {renderAttachmentViewer()}
+        {renderVideoViewer()}
       </>
     );
   } else if (size === "big") {
@@ -963,6 +1114,7 @@ const ForumPost = ({
           </View>
           <AdaptiveText style={styles.postBody}>{item.Content}</AdaptiveText>
           {renderAttachments("big")}
+          {renderVideoAttachments("big")}
         </View>
 
         <View style={styles.additionalRowBig}>
@@ -1047,6 +1199,7 @@ const ForumPost = ({
         </View>
         {renderOptionsModal()}
         {renderAttachmentViewer()}
+        {renderVideoViewer()}
       </>
     );
   } else {
@@ -1189,6 +1342,55 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-Bold",
       fontSize: 24,
     },
+    videoAttachmentList: {
+      gap: 10,
+    },
+    videoAttachmentCard: {
+      width: "100%",
+      overflow: "hidden",
+      borderRadius: 18,
+      backgroundColor: colors.black,
+      position: "relative",
+    },
+    videoAttachmentCardSmall: {
+      height: 190,
+    },
+    videoAttachmentCardBig: {
+      height: 280,
+    },
+    videoAttachmentThumbnail: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    videoAttachmentOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.18)",
+    },
+    videoAttachmentPlayButton: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.48)",
+    },
+    videoAttachmentFooter: {
+      position: "absolute",
+      left: 12,
+      right: 12,
+      bottom: 12,
+      alignItems: "flex-start",
+    },
+    videoAttachmentFooterText: {
+      color: colors.white,
+      fontFamily: "Poppins-Medium",
+      fontSize: 13,
+      backgroundColor: "rgba(0, 0, 0, 0.58)",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+    },
     attachmentViewerOverlay: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.92)",
@@ -1236,6 +1438,27 @@ const createStyles = ({ darkMode }: any) => {
     attachmentViewerImage: {
       width: "100%",
       height: "82%",
+    },
+    videoViewerFrame: {
+      overflow: "hidden",
+      borderRadius: 22,
+      backgroundColor: colors.black,
+    },
+    videoViewerCloseButton: {
+      position: "absolute",
+      top: 14,
+      right: 14,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "rgba(255, 255, 255, 0.14)",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1,
+    },
+    videoViewerWebView: {
+      flex: 1,
+      backgroundColor: colors.black,
     },
     additionalRowSmall: {
       flexDirection: "row",
