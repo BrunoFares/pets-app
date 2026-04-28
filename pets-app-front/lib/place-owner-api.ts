@@ -66,6 +66,10 @@ type ApiPlaceResponse = {
   reviewsCount?: number;
 };
 
+type ApiCurrentUserAccessResponse = {
+  isApprovedPlaceOwner?: boolean;
+};
+
 export type PlaceOwnerApplicationInput = {
   businessName: string;
   phone: string;
@@ -234,6 +238,14 @@ export async function fetchMyPlaceOwnerApplication() {
 
     throw error;
   }
+}
+
+export async function fetchMyPlaceOwnerAccessStatus() {
+  const response = await apiRequest<ApiCurrentUserAccessResponse>(
+    "/api/Users/me",
+  );
+
+  return response.isApprovedPlaceOwner ?? false;
 }
 
 export async function createPlaceOwnerApplication(

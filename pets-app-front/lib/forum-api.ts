@@ -9,7 +9,7 @@ import {
   resolveApiUrlWithCacheBust,
 } from "@/lib/api";
 
-export const MAX_FORUM_ATTACHMENTS = 5;
+export const MAX_FORUM_ATTACHMENTS = 4;
 
 export type ApiForumPostAttachmentResponse = {
   id?: number | string;
@@ -62,7 +62,29 @@ type CreateForumPostResponse = {
   Id?: string;
 };
 
-const VIDEO_EXTENSIONS = [".mp4", ".mov", ".m4v", ".webm"];
+const VIDEO_EXTENSIONS = [
+  ".mp4",
+  ".mov",
+  ".m4v",
+  ".webm",
+  ".3gp",
+  ".3gpp",
+];
+
+function isVideoAsset(asset: ImagePicker.ImagePickerAsset) {
+  const normalizedMimeType = asset.mimeType?.toLowerCase() ?? "";
+  const normalizedAssetType =
+    typeof asset.type === "string" ? asset.type.toLowerCase() : "";
+  const normalizedFileName = asset.fileName?.trim().toLowerCase() ?? "";
+
+  return (
+    normalizedMimeType.startsWith("video/") ||
+    normalizedAssetType === "video" ||
+    VIDEO_EXTENSIONS.some((extension) =>
+      normalizedFileName.endsWith(extension),
+    )
+  );
+}
 
 function inferAttachmentMediaType(
   url: string,
@@ -178,35 +200,64 @@ function buildForumAttachmentsFormData(
   const formData = new FormData();
 
   for (const [index, asset] of assets.entries()) {
-    const normalizedMimeType = asset.mimeType?.toLowerCase();
-    const extensionFromMimeType =
-      normalizedMimeType === "image/png"
-        ? "png"
-        : normalizedMimeType === "image/webp"
-          ? "webp"
-          : "jpg";
-    const extensionFromFileName =
-      asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
-    const extension =
-      extensionFromFileName === "png" || extensionFromFileName === "webp"
-        ? extensionFromFileName
-        : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
-          ? "jpg"
-          : extensionFromMimeType;
-    const type =
-      extension === "png"
-        ? "image/png"
-        : extension === "webp"
-          ? "image/webp"
-          : "image/jpeg";
-    const name =
-      asset.fileName?.trim() || `forum-attachment-${index + 1}.${extension}`;
+    const normalizedMimeType = asset.mimeType?.toLowerCase() ?? "";
+    const isVideo = isVideoAsset(asset);
 
-    formData.append("files", {
-      uri: asset.uri,
-      name,
-      type,
-    } as any);
+    if (isVideo) {
+      const extensionFromMimeType =
+        normalizedMimeType === "video/quicktime"
+          ? "mov"
+          : normalizedMimeType === "video/webm"
+            ? "webm"
+            : normalizedMimeType === "video/3gpp"
+              ? "3gpp"
+              : "mp4";
+      const extensionFromFileName =
+        asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
+      const extension =
+        extensionFromFileName || extensionFromMimeType || "mp4";
+      const mimeType =
+        normalizedMimeType ||
+        (extension === "mov"
+          ? "video/quicktime"
+          : extension === "webm"
+            ? "video/webm"
+            : extension === "3gp" || extension === "3gpp"
+              ? "video/3gpp"
+              : "video/mp4");
+      const name =
+        asset.fileName?.trim() || `forum-video-${index + 1}.${extension}`;
+      formData.append("files", { uri: asset.uri, name, type: mimeType } as any);
+    } else {
+      const extensionFromMimeType =
+        normalizedMimeType === "image/png"
+          ? "png"
+          : normalizedMimeType === "image/webp"
+            ? "webp"
+            : "jpg";
+      const extensionFromFileName =
+        asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
+      const extension =
+        extensionFromFileName === "png" || extensionFromFileName === "webp"
+          ? extensionFromFileName
+          : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
+            ? "jpg"
+            : extensionFromMimeType;
+      const type =
+        extension === "png"
+          ? "image/png"
+          : extension === "webp"
+            ? "image/webp"
+            : "image/jpeg";
+      const name =
+        asset.fileName?.trim() || `forum-attachment-${index + 1}.${extension}`;
+
+      formData.append("files", {
+        uri: asset.uri,
+        name,
+        type,
+      } as any);
+    }
   }
 
   return formData;
