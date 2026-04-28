@@ -565,25 +565,34 @@ INSERT INTO public.forum_posts (
     is_a_reply,
     replying_to_post,
     created_at,
-    updated_at
+    updated_at,
+    moderation_status,
+    ai_moderation_label,
+    ai_moderation_confidence,
+    ai_moderation_reason,
+    moderated_at,
+    final_moderation_label,
+    reviewed_by_admin_id,
+    reviewed_at,
+    admin_moderation_notes
 )
 VALUES
-    ('40000000-0000-4000-8000-000000000001', 1, 'What is the best routine for keeping a cat calm during a two-hour car ride? Luna gets restless after the first half hour.', false, NULL, '2026-04-08T14:30:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000002', 2, 'Looking for dog-friendly parks with enough shade for a long afternoon walk and a good cooldown area afterwards.', false, NULL, '2026-04-09T10:15:00Z', '2026-04-09T10:42:00Z'),
-    ('40000000-0000-4000-8000-000000000003', 3, 'Rabbit owners: do you rotate dig boxes every week, or only when your rabbit stops interacting with them?', false, NULL, '2026-04-09T18:05:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000004', 4, 'Kiwi has been very vocal right before lights out lately. Any bird owners have a good evening wind-down routine?', false, NULL, '2026-04-10T07:50:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000005', 5, 'Tank owners: how often do you rewrite your maintenance checklist after introducing new plants or decorations?', false, NULL, '2026-04-10T16:20:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000006', 6, 'Has anyone adjusted a turtle basking setup after a shell-softness warning from the vet? Curious what made the biggest difference.', false, NULL, '2026-04-11T09:40:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000007', 7, 'What is the one apartment-proofing change that made ferret ownership easier for you?', false, NULL, '2026-04-11T20:10:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000008', 8, 'I finally built a proper emergency-contact card for trail days with Comet. Happy to share the checklist if anyone wants it.', false, NULL, '2026-04-12T12:00:00Z', '2026-04-12T12:30:00Z'),
-    ('40000000-0000-4000-8000-000000000009', 9, 'For older dogs with stiffness, do you plan recovery days after a long walk or just shorten the walk itself?', false, NULL, '2026-04-13T08:25:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000010', 10, 'Anyone have a reliable summer fly-control routine for a horse that is sensitive to stronger sprays?', false, NULL, '2026-04-13T17:10:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000011', 3, 'A carrier cover and one short practice drive the day before made a huge difference for my rabbit transport days.', true, '40000000-0000-4000-8000-000000000001', '2026-04-08T16:00:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000012', 6, 'We started doing ten-minute cooldown walks and it helped Milo settle faster after intense exercise.', true, '40000000-0000-4000-8000-000000000002', '2026-04-09T11:30:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000013', 8, 'For noisy evenings, lowering room activity thirty minutes before lights-out helped my bird a lot.', true, '40000000-0000-4000-8000-000000000004', '2026-04-10T08:40:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000014', 2, 'I update my maintenance checklist every time I change one piece of equipment so I do not forget the new order.', true, '40000000-0000-4000-8000-000000000005', '2026-04-10T18:00:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000015', 4, 'Securing under-sofa access was the biggest quality-of-life change for us. After that, everything else got easier.', true, '40000000-0000-4000-8000-000000000007', '2026-04-11T21:05:00Z', NULL),
-    ('40000000-0000-4000-8000-000000000016', 1, 'Would love that checklist. I keep one in the trailer now, but not one in the tack bag yet.', true, '40000000-0000-4000-8000-000000000008', '2026-04-12T13:15:00Z', NULL);
+    ('40000000-0000-4000-8000-000000000001', 1, 'What is the best routine for keeping a cat calm during a two-hour car ride? Luna gets restless after the first half hour.', false, NULL, '2026-04-08T14:30:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000002', 2, 'Looking for dog-friendly parks with enough shade for a long afternoon walk and a good cooldown area afterwards.', false, NULL, '2026-04-09T10:15:00Z', '2026-04-09T10:42:00Z', 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000003', 3, 'Rabbit owners: do you rotate dig boxes every week, or only when your rabbit stops interacting with them?', false, NULL, '2026-04-09T18:05:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000004', 4, 'Kiwi has been very vocal right before lights out lately. Any bird owners have a good evening wind-down routine?', false, NULL, '2026-04-10T07:50:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000005', 5, 'Tank owners: how often do you rewrite your maintenance checklist after introducing new plants or decorations?', false, NULL, '2026-04-10T16:20:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000006', 6, 'Has anyone adjusted a turtle basking setup after a shell-softness warning from the vet? Curious what made the biggest difference.', false, NULL, '2026-04-11T09:40:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000007', 7, 'What is the one apartment-proofing change that made ferret ownership easier for you?', false, NULL, '2026-04-11T20:10:00Z', NULL, 'Reviewed', 'Suspicious', 0.5800, 'Question pattern flagged as borderline; requires human review.', '2026-04-12T00:30:00Z', 'Safe', 5, '2026-04-20T09:35:00Z', 'Reviewed and confirmed as a valid care question. No action taken.'),
+    ('40000000-0000-4000-8000-000000000008', 8, 'I finally built a proper emergency-contact card for trail days with Comet. Happy to share the checklist if anyone wants it.', false, NULL, '2026-04-12T12:00:00Z', '2026-04-12T12:30:00Z', 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000009', 9, 'For older dogs with stiffness, do you plan recovery days after a long walk or just shorten the walk itself?', false, NULL, '2026-04-13T08:25:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000010', 10, 'Anyone have a reliable summer fly-control routine for a horse that is sensitive to stronger sprays?', false, NULL, '2026-04-13T17:10:00Z', NULL, 'AutoHidden', 'Spam', 0.8800, 'Post closely matches promotional spam patterns.', '2026-04-13T17:15:00Z', NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000011', 3, 'A carrier cover and one short practice drive the day before made a huge difference for my rabbit transport days.', true, '40000000-0000-4000-8000-000000000001', '2026-04-08T16:00:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000012', 6, 'We started doing ten-minute cooldown walks and it helped Milo settle faster after intense exercise.', true, '40000000-0000-4000-8000-000000000002', '2026-04-09T11:30:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000013', 8, 'For noisy evenings, lowering room activity thirty minutes before lights-out helped my bird a lot.', true, '40000000-0000-4000-8000-000000000004', '2026-04-10T08:40:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000014', 2, 'I update my maintenance checklist every time I change one piece of equipment so I do not forget the new order.', true, '40000000-0000-4000-8000-000000000005', '2026-04-10T18:00:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000015', 4, 'Securing under-sofa access was the biggest quality-of-life change for us. After that, everything else got easier.', true, '40000000-0000-4000-8000-000000000007', '2026-04-11T21:05:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000016', 1, 'Would love that checklist. I keep one in the trailer now, but not one in the tack bag yet.', true, '40000000-0000-4000-8000-000000000008', '2026-04-12T13:15:00Z', NULL, 'None', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 INSERT INTO public.forum_post_attachments (
     id,
@@ -778,6 +787,755 @@ VALUES
     (14, 3, 'ApprovePlaceOwnerApplication', 'PlaceOwnerApplication', '2', 'Approved Yara Rahal''s place-owner application for Cedar Grove Pet Supply.', 'Verified shop ownership and contact information.', '2026-04-20T10:05:00Z'),
     (15, 1, 'ResolveReport', 'Report', '3', 'Resolved report #3 against user ''rami.shaheen'' with ActionTaken status.', 'Matched repeated spam complaints to the banned account.', '2026-04-20T10:10:00Z'),
     (16, 5, 'RejectPlaceOwnerApplication', 'PlaceOwnerApplication', '4', 'Rejected Karim Farah''s place-owner application due to missing permit documents.', 'Application was incomplete and could not be approved.', '2026-04-20T10:15:00Z');
+
+-- ============================================================
+-- EXPANDED SEED DATA  (doubles all existing record counts)
+-- ============================================================
+
+-- Additional species (11–20)
+INSERT INTO public.species (id, code, name)
+VALUES
+    (11, 'guinea_pig',     'Guinea Pig'),
+    (12, 'snake',          'Snake'),
+    (13, 'lizard',         'Lizard'),
+    (14, 'hedgehog',       'Hedgehog'),
+    (15, 'chinchilla',     'Chinchilla'),
+    (16, 'gerbil',         'Gerbil'),
+    (17, 'axolotl',        'Axolotl'),
+    (18, 'bearded_dragon', 'Bearded Dragon'),
+    (19, 'chameleon',      'Chameleon'),
+    (20, 'cockatoo',       'Cockatoo');
+
+-- Additional breeds (21–50)
+INSERT INTO public.breeds (id, species_id, name)
+VALUES
+    (21, 1,  'Maine Coon'),
+    (22, 1,  'Bengal'),
+    (23, 2,  'Golden Retriever'),
+    (24, 2,  'Beagle'),
+    (25, 3,  'Lovebird'),
+    (26, 3,  'Macaw'),
+    (27, 4,  'Lionhead'),
+    (28, 4,  'Dutch'),
+    (29, 6,  'Guppy'),
+    (30, 6,  'Koi'),
+    (31, 7,  'Box Turtle'),
+    (32, 8,  'Thoroughbred'),
+    (33, 9,  'Albino Ferret'),
+    (34, 10, 'Blue-fronted Amazon'),
+    (35, 11, 'American Guinea Pig'),
+    (36, 11, 'Abyssinian Guinea Pig'),
+    (37, 12, 'Ball Python'),
+    (38, 12, 'Corn Snake'),
+    (39, 13, 'Green Iguana'),
+    (40, 13, 'Leopard Gecko'),
+    (41, 14, 'African Pygmy Hedgehog'),
+    (42, 15, 'Standard Chinchilla'),
+    (43, 15, 'Mutation Chinchilla'),
+    (44, 16, 'Mongolian Gerbil'),
+    (45, 17, 'Wild-type Axolotl'),
+    (46, 18, 'Inland Bearded Dragon'),
+    (47, 18, 'German Giant Bearded Dragon'),
+    (48, 19, 'Veiled Chameleon'),
+    (49, 19, 'Panther Chameleon'),
+    (50, 20, 'Sulphur-crested Cockatoo');
+
+-- Additional users (11–20)
+INSERT INTO public.users (
+    id,
+    username,
+    first_name,
+    last_name,
+    email,
+    password_hash,
+    email_verified,
+    email_verification_token_hash,
+    email_verification_token_expires_at,
+    avatar_url,
+    description,
+    is_banned,
+    is_approved_place_owner,
+    banned_at,
+    ban_reason,
+    created_at,
+    last_login
+)
+VALUES
+    (
+        11,
+        'nadia.khalil',
+        'Nadia',
+        'Khalil',
+        'nadia.khalil@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/women/67.jpg',
+        'Guinea pig owner who posts weekly weight updates and enrichment ideas.',
+        false,
+        true,
+        NULL,
+        NULL,
+        '2026-01-10T14:30:00Z',
+        '2026-04-21T10:15:00Z'
+    ),
+    (
+        12,
+        'firas.nassar',
+        'Firas',
+        'Nassar',
+        'firas.nassar@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/men/63.jpg',
+        'Reptile keeper with two snakes and a detailed feeding log spreadsheet.',
+        false,
+        true,
+        NULL,
+        NULL,
+        '2026-01-18T09:45:00Z',
+        '2026-04-22T08:30:00Z'
+    ),
+    (
+        13,
+        'hana.tabbara',
+        'Hana',
+        'Tabbara',
+        'hana.tabbara@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/women/75.jpg',
+        'Chinchilla enthusiast with a custom three-tier cage who tracks dust bath frequency.',
+        false,
+        true,
+        NULL,
+        NULL,
+        '2026-01-25T11:20:00Z',
+        '2026-04-21T16:00:00Z'
+    ),
+    (
+        14,
+        'samer.barakat',
+        'Samer',
+        'Barakat',
+        'samer.barakat@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/men/74.jpg',
+        'Bearded dragon owner who coordinates care schedules with the whole family.',
+        false,
+        true,
+        NULL,
+        NULL,
+        '2026-02-01T08:10:00Z',
+        '2026-04-20T19:45:00Z'
+    ),
+    (
+        15,
+        'lara.younes',
+        'Lara',
+        'Younes',
+        'lara.younes@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/women/82.jpg',
+        'Long-term rescue volunteer and hedgehog foster with a strict nighttime feeding routine.',
+        false,
+        true,
+        NULL,
+        NULL,
+        '2026-02-08T15:55:00Z',
+        '2026-04-23T09:20:00Z'
+    ),
+    (
+        16,
+        'tarek.mansour',
+        'Tarek',
+        'Mansour',
+        'tarek.mansour@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/men/85.jpg',
+        'Cockatoo owner studying parrot cognition and recording daily interaction notes.',
+        false,
+        false,
+        NULL,
+        NULL,
+        '2026-02-14T07:30:00Z',
+        '2026-04-22T11:30:00Z'
+    ),
+    (
+        17,
+        'dina.karam',
+        'Dina',
+        'Karam',
+        'dina.karam@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/women/88.jpg',
+        'Cat shelter volunteer using the app to log medication and weight notes for fosters.',
+        false,
+        false,
+        NULL,
+        NULL,
+        '2026-02-20T10:05:00Z',
+        '2026-04-21T14:40:00Z'
+    ),
+    (
+        18,
+        'joseph.azar',
+        'Joseph',
+        'Azar',
+        'joseph.azar@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/men/90.jpg',
+        'Aquarist with a planted community tank who carefully tracks water parameters.',
+        false,
+        false,
+        NULL,
+        NULL,
+        '2026-02-27T12:50:00Z',
+        '2026-04-20T21:00:00Z'
+    ),
+    (
+        19,
+        'rania.wehbe',
+        'Rania',
+        'Wehbe',
+        'rania.wehbe@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/women/93.jpg',
+        'Gerbil keeper with a sandbox enclosure who tracks social bonding behaviours.',
+        false,
+        false,
+        NULL,
+        NULL,
+        '2026-03-04T09:30:00Z',
+        '2026-04-22T17:15:00Z'
+    ),
+    (
+        20,
+        'hassan.ibrahim',
+        'Hassan',
+        'Ibrahim',
+        'hassan.ibrahim@example.com',
+        :'app_user_password_hash',
+        true,
+        NULL,
+        NULL,
+        'https://randomuser.me/api/portraits/men/95.jpg',
+        'Axolotl owner monitoring water temperature and regeneration progress with daily photos.',
+        false,
+        false,
+        NULL,
+        NULL,
+        '2026-03-10T16:00:00Z',
+        '2026-04-21T12:00:00Z'
+    );
+
+-- Additional admin users (11–20)
+INSERT INTO public.admin_users (id, username, first_name, last_name, email, password_hash, role, is_active, created_at, updated_at, last_login)
+VALUES
+    (11, 'carlos.khoury',  'Carlos',  'Khoury',  'carlos.khoury@petcare.local',  :'admin_user_password_hash', 'Manager', true,  '2025-12-10T10:30:00Z', '2026-04-22T09:00:00Z', '2026-04-22T09:00:00Z'),
+    (12, 'sara.nassar',    'Sara',    'Nassar',   'sara.nassar@petcare.local',    :'admin_user_password_hash', 'Admin',   true,  '2025-12-15T10:45:00Z', '2026-04-22T09:10:00Z', '2026-04-22T09:10:00Z'),
+    (13, 'mia.rahhal',     'Mia',     'Rahhal',   'mia.rahhal@petcare.local',     :'admin_user_password_hash', 'Manager', true,  '2025-12-20T11:00:00Z', '2026-04-21T10:30:00Z', '2026-04-21T10:30:00Z'),
+    (14, 'george.frem',    'George',  'Frem',     'george.frem@petcare.local',    :'admin_user_password_hash', 'Admin',   true,  '2025-12-26T11:15:00Z', '2026-04-21T11:00:00Z', '2026-04-21T11:00:00Z'),
+    (15, 'nour.helou',     'Nour',    'Helou',    'nour.helou@petcare.local',     :'admin_user_password_hash', 'Manager', true,  '2026-01-02T09:30:00Z', '2026-04-21T11:30:00Z', '2026-04-21T11:30:00Z'),
+    (16, 'jessica.ghanem', 'Jessica', 'Ghanem',   'jessica.ghanem@petcare.local', :'admin_user_password_hash', 'Admin',   true,  '2026-01-07T09:45:00Z', '2026-04-20T12:00:00Z', '2026-04-20T12:00:00Z'),
+    (17, 'pierre.saleh',   'Pierre',  'Saleh',    'pierre.saleh@petcare.local',   :'admin_user_password_hash', 'Manager', true,  '2026-01-13T10:00:00Z', '2026-04-20T12:30:00Z', '2026-04-20T12:30:00Z'),
+    (18, 'zeina.mroue',    'Zeina',   'Mroue',    'zeina.mroue@petcare.local',    :'admin_user_password_hash', 'Admin',   true,  '2026-01-19T10:15:00Z', '2026-04-19T14:00:00Z', '2026-04-19T14:00:00Z'),
+    (19, 'chadi.nasr',     'Chadi',   'Nasr',     'chadi.nasr@petcare.local',     :'admin_user_password_hash', 'Manager', true,  '2026-01-25T10:30:00Z', '2026-04-19T14:30:00Z', '2026-04-19T14:30:00Z'),
+    (20, 'maya.atallah',   'Maya',    'Atallah',  'maya.atallah@petcare.local',   :'admin_user_password_hash', 'Admin',   false, '2026-02-01T10:45:00Z', '2026-04-18T09:00:00Z', NULL);
+
+-- Additional pet places (11–20): includes 4 Charity places (11–14)
+INSERT INTO public.pet_places (
+    id,
+    owner_user_id,
+    name,
+    phone,
+    email,
+    photo,
+    description,
+    address_line1,
+    address_line2,
+    city,
+    country,
+    status,
+    type,
+    lat,
+    lon,
+    created_at
+)
+VALUES
+    ('10000000-0000-4000-8000-000000000011', 11,   'Paws for Hope Animal Charity',  '+1-206-555-0111', 'info@pawsforhope.test',        'https://picsum.photos/seed/petcare-place-11/1200/800.jpg', 'Community charity providing low-cost veterinary support, food drives, and adoption events for families in need.',       '340 Olive Way',       NULL,       'Seattle', 'United States', 'Active',   'Charity', 47.612500, -122.339000, '2025-12-10T09:00:00Z'),
+    ('10000000-0000-4000-8000-000000000012', 15,   'Furry Friends Foundation',       '+1-425-555-0112', 'hello@furryfriends.test',      'https://picsum.photos/seed/petcare-place-12/1200/800.jpg', 'Non-profit dedicated to rescue, rehabilitation, and re-homing of surrendered and stray animals.',                      '77 Bellevue Way NE',  'Suite 105','Bellevue','United States', 'Active',   'Charity', 47.610800, -122.200500, '2025-12-18T10:30:00Z'),
+    ('10000000-0000-4000-8000-000000000013', NULL, 'Second Chance Animal Fund',      '+1-503-555-0113', 'contact@secondchancefund.test', 'https://picsum.photos/seed/petcare-place-13/1200/800.jpg', 'Charity fund covering emergency medical bills for pet owners who cannot afford sudden vet costs.',                    '125 SE Morrison St',  NULL,       'Portland','United States', 'Active',   'Charity', 45.521000, -122.659000, '2026-01-05T08:45:00Z'),
+    ('10000000-0000-4000-8000-000000000014', 14,   'Hearts & Paws Charity',          '+1-303-555-0114', 'reach@heartsandpaws.test',     'https://picsum.photos/seed/petcare-place-14/1200/800.jpg', 'Animal welfare charity running weekend outreach clinics, spay and neuter drives, and pet food banks.',                '600 17th Street',     'Floor 3',  'Denver',  'United States', 'Active',   'Charity', 39.745000, -104.988000, '2026-01-14T11:00:00Z'),
+    ('10000000-0000-4000-8000-000000000015', NULL, 'Northside Veterinary Clinic',    '+1-503-555-0115', 'clinic@northsidevetpdx.test',  'https://picsum.photos/seed/petcare-place-15/1200/800.jpg', 'Friendly neighborhood clinic specializing in cats and dogs with wellness, dental, and senior-care programs.',         '88 N Williams Ave',   NULL,       'Portland','United States', 'Active',   'Vet',     45.538500, -122.671000, '2026-01-20T09:15:00Z'),
+    ('10000000-0000-4000-8000-000000000016', NULL, 'Valley Animal Hospital',         '+1-206-555-0116', 'appointments@valleyah.test',   'https://picsum.photos/seed/petcare-place-16/1200/800.jpg', 'Full-service hospital providing diagnostics, surgery, and rehabilitation for companion animals.',                     '2200 Rainier Ave S',  NULL,       'Seattle', 'United States', 'Active',   'Vet',     47.582000, -122.296000, '2026-01-28T08:00:00Z'),
+    ('10000000-0000-4000-8000-000000000017', 13,   'Urban Pets Boutique',            '+1-425-555-0117', 'shop@urbanpetsboutique.test',  'https://picsum.photos/seed/petcare-place-17/1200/800.jpg', 'Curated pet boutique with organic treats, stylish accessories, and personalized nutrition consultations.',            '410 Bellevue Square', NULL,       'Bellevue','United States', 'Active',   'PetShop', 47.617000, -122.201000, '2026-02-04T13:00:00Z'),
+    ('10000000-0000-4000-8000-000000000018', NULL, 'The Happy Hamster Shop',         '+1-303-555-0118', 'info@happyhamster.test',       'https://picsum.photos/seed/petcare-place-18/1200/800.jpg', 'Small-pet specialty shop with a wide range of enclosures, substrate types, and exotic-pet food brands.',             '900 Lincoln Street',  NULL,       'Denver',  'United States', 'Active',   'PetShop', 39.731000, -104.984000, '2026-02-12T10:45:00Z'),
+    ('10000000-0000-4000-8000-000000000019', NULL, 'Doggy Daycare Express',          '+1-509-555-0119', 'play@doggydaycareexp.test',    'https://picsum.photos/seed/petcare-place-19/1200/800.jpg', 'Supervised daycare facility with indoor and outdoor play areas, grooming stations, and behaviour monitoring.',        '350 W Riverside Ave', NULL,       'Spokane', 'United States', 'Active',   'Other',   47.654000, -117.430000, '2026-02-19T12:30:00Z'),
+    ('10000000-0000-4000-8000-000000000020', NULL, 'The Cat Lounge',                 '+1-208-555-0120', 'hello@thecatlounge.test',      'https://picsum.photos/seed/petcare-place-20/1200/800.jpg', 'Cat café and socialisation venue pairing adoptable cats with visitors in a calm, enriched environment.',              '200 S 8th Street',    NULL,       'Boise',   'United States', 'Inactive', 'Other',   43.617000, -116.201000, '2026-03-01T09:00:00Z');
+
+-- Additional place images (11–20)
+INSERT INTO public.pet_place_images (id, pet_place_id, url, created_at)
+VALUES
+    (11, '10000000-0000-4000-8000-000000000011', 'https://picsum.photos/seed/petcare-place-gallery-11/1600/1200.jpg', '2025-12-10T09:05:00Z'),
+    (12, '10000000-0000-4000-8000-000000000012', 'https://picsum.photos/seed/petcare-place-gallery-12/1600/1200.jpg', '2025-12-18T10:35:00Z'),
+    (13, '10000000-0000-4000-8000-000000000013', 'https://picsum.photos/seed/petcare-place-gallery-13/1600/1200.jpg', '2026-01-05T08:50:00Z'),
+    (14, '10000000-0000-4000-8000-000000000014', 'https://picsum.photos/seed/petcare-place-gallery-14/1600/1200.jpg', '2026-01-14T11:05:00Z'),
+    (15, '10000000-0000-4000-8000-000000000015', 'https://picsum.photos/seed/petcare-place-gallery-15/1600/1200.jpg', '2026-01-20T09:20:00Z'),
+    (16, '10000000-0000-4000-8000-000000000016', 'https://picsum.photos/seed/petcare-place-gallery-16/1600/1200.jpg', '2026-01-28T08:05:00Z'),
+    (17, '10000000-0000-4000-8000-000000000017', 'https://picsum.photos/seed/petcare-place-gallery-17/1600/1200.jpg', '2026-02-04T13:05:00Z'),
+    (18, '10000000-0000-4000-8000-000000000018', 'https://picsum.photos/seed/petcare-place-gallery-18/1600/1200.jpg', '2026-02-12T10:50:00Z'),
+    (19, '10000000-0000-4000-8000-000000000019', 'https://picsum.photos/seed/petcare-place-gallery-19/1600/1200.jpg', '2026-02-19T12:35:00Z'),
+    (20, '10000000-0000-4000-8000-000000000020', 'https://picsum.photos/seed/petcare-place-gallery-20/1600/1200.jpg', '2026-03-01T09:05:00Z');
+
+-- Additional place schedules (ids 71–140) for the 10 new places.
+-- Charity: Mon–Fri 09:00–17:00 with lunch break, Sat 10:00–14:00, Sun closed.
+-- Vet / PetShop / Other use the same patterns as the existing CTE-derived rows.
+INSERT INTO public.pet_place_schedules (
+    id,
+    pet_place_id,
+    day_of_week,
+    is_closed,
+    open_time,
+    close_time,
+    break_start_time,
+    break_end_time
+)
+VALUES
+    -- Place 11 (Charity – Paws for Hope)
+    (71,  '10000000-0000-4000-8000-000000000011', 'Monday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (72,  '10000000-0000-4000-8000-000000000011', 'Tuesday',   false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (73,  '10000000-0000-4000-8000-000000000011', 'Wednesday', false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (74,  '10000000-0000-4000-8000-000000000011', 'Thursday',  false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (75,  '10000000-0000-4000-8000-000000000011', 'Friday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (76,  '10000000-0000-4000-8000-000000000011', 'Saturday',  false, TIME '10:00', TIME '14:00', NULL,         NULL        ),
+    (77,  '10000000-0000-4000-8000-000000000011', 'Sunday',    true,  NULL,         NULL,         NULL,         NULL        ),
+    -- Place 12 (Charity – Furry Friends Foundation)
+    (78,  '10000000-0000-4000-8000-000000000012', 'Monday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (79,  '10000000-0000-4000-8000-000000000012', 'Tuesday',   false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (80,  '10000000-0000-4000-8000-000000000012', 'Wednesday', false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (81,  '10000000-0000-4000-8000-000000000012', 'Thursday',  false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (82,  '10000000-0000-4000-8000-000000000012', 'Friday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (83,  '10000000-0000-4000-8000-000000000012', 'Saturday',  false, TIME '10:00', TIME '14:00', NULL,         NULL        ),
+    (84,  '10000000-0000-4000-8000-000000000012', 'Sunday',    true,  NULL,         NULL,         NULL,         NULL        ),
+    -- Place 13 (Charity – Second Chance Animal Fund)
+    (85,  '10000000-0000-4000-8000-000000000013', 'Monday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (86,  '10000000-0000-4000-8000-000000000013', 'Tuesday',   false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (87,  '10000000-0000-4000-8000-000000000013', 'Wednesday', false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (88,  '10000000-0000-4000-8000-000000000013', 'Thursday',  false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (89,  '10000000-0000-4000-8000-000000000013', 'Friday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (90,  '10000000-0000-4000-8000-000000000013', 'Saturday',  false, TIME '10:00', TIME '14:00', NULL,         NULL        ),
+    (91,  '10000000-0000-4000-8000-000000000013', 'Sunday',    true,  NULL,         NULL,         NULL,         NULL        ),
+    -- Place 14 (Charity – Hearts & Paws Charity)
+    (92,  '10000000-0000-4000-8000-000000000014', 'Monday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (93,  '10000000-0000-4000-8000-000000000014', 'Tuesday',   false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (94,  '10000000-0000-4000-8000-000000000014', 'Wednesday', false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (95,  '10000000-0000-4000-8000-000000000014', 'Thursday',  false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (96,  '10000000-0000-4000-8000-000000000014', 'Friday',    false, TIME '09:00', TIME '17:00', TIME '13:00', TIME '13:30'),
+    (97,  '10000000-0000-4000-8000-000000000014', 'Saturday',  false, TIME '10:00', TIME '14:00', NULL,         NULL        ),
+    (98,  '10000000-0000-4000-8000-000000000014', 'Sunday',    true,  NULL,         NULL,         NULL,         NULL        ),
+    -- Place 15 (Vet – Northside Veterinary Clinic)
+    (99,  '10000000-0000-4000-8000-000000000015', 'Monday',    false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (100, '10000000-0000-4000-8000-000000000015', 'Tuesday',   false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (101, '10000000-0000-4000-8000-000000000015', 'Wednesday', false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (102, '10000000-0000-4000-8000-000000000015', 'Thursday',  false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (103, '10000000-0000-4000-8000-000000000015', 'Friday',    false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (104, '10000000-0000-4000-8000-000000000015', 'Saturday',  false, TIME '09:00', TIME '13:00', NULL,         NULL        ),
+    (105, '10000000-0000-4000-8000-000000000015', 'Sunday',    true,  NULL,         NULL,         NULL,         NULL        ),
+    -- Place 16 (Vet – Valley Animal Hospital)
+    (106, '10000000-0000-4000-8000-000000000016', 'Monday',    false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (107, '10000000-0000-4000-8000-000000000016', 'Tuesday',   false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (108, '10000000-0000-4000-8000-000000000016', 'Wednesday', false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (109, '10000000-0000-4000-8000-000000000016', 'Thursday',  false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (110, '10000000-0000-4000-8000-000000000016', 'Friday',    false, TIME '08:30', TIME '17:30', TIME '12:30', TIME '13:30'),
+    (111, '10000000-0000-4000-8000-000000000016', 'Saturday',  false, TIME '09:00', TIME '13:00', NULL,         NULL        ),
+    (112, '10000000-0000-4000-8000-000000000016', 'Sunday',    true,  NULL,         NULL,         NULL,         NULL        ),
+    -- Place 17 (PetShop – Urban Pets Boutique)
+    (113, '10000000-0000-4000-8000-000000000017', 'Monday',    false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (114, '10000000-0000-4000-8000-000000000017', 'Tuesday',   false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (115, '10000000-0000-4000-8000-000000000017', 'Wednesday', false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (116, '10000000-0000-4000-8000-000000000017', 'Thursday',  false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (117, '10000000-0000-4000-8000-000000000017', 'Friday',    false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (118, '10000000-0000-4000-8000-000000000017', 'Saturday',  false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (119, '10000000-0000-4000-8000-000000000017', 'Sunday',    false, TIME '11:00', TIME '18:00', NULL,         NULL        ),
+    -- Place 18 (PetShop – The Happy Hamster Shop)
+    (120, '10000000-0000-4000-8000-000000000018', 'Monday',    false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (121, '10000000-0000-4000-8000-000000000018', 'Tuesday',   false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (122, '10000000-0000-4000-8000-000000000018', 'Wednesday', false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (123, '10000000-0000-4000-8000-000000000018', 'Thursday',  false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (124, '10000000-0000-4000-8000-000000000018', 'Friday',    false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (125, '10000000-0000-4000-8000-000000000018', 'Saturday',  false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (126, '10000000-0000-4000-8000-000000000018', 'Sunday',    false, TIME '11:00', TIME '18:00', NULL,         NULL        ),
+    -- Place 19 (Other – Doggy Daycare Express)
+    (127, '10000000-0000-4000-8000-000000000019', 'Monday',    false, TIME '07:00', TIME '18:00', NULL,         NULL        ),
+    (128, '10000000-0000-4000-8000-000000000019', 'Tuesday',   false, TIME '07:00', TIME '18:00', NULL,         NULL        ),
+    (129, '10000000-0000-4000-8000-000000000019', 'Wednesday', false, TIME '07:00', TIME '18:00', NULL,         NULL        ),
+    (130, '10000000-0000-4000-8000-000000000019', 'Thursday',  false, TIME '07:00', TIME '18:00', NULL,         NULL        ),
+    (131, '10000000-0000-4000-8000-000000000019', 'Friday',    false, TIME '07:00', TIME '18:00', NULL,         NULL        ),
+    (132, '10000000-0000-4000-8000-000000000019', 'Saturday',  false, TIME '08:00', TIME '16:00', NULL,         NULL        ),
+    (133, '10000000-0000-4000-8000-000000000019', 'Sunday',    true,  NULL,         NULL,         NULL,         NULL        ),
+    -- Place 20 (Other – The Cat Lounge, inactive but schedule preserved)
+    (134, '10000000-0000-4000-8000-000000000020', 'Monday',    false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (135, '10000000-0000-4000-8000-000000000020', 'Tuesday',   false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (136, '10000000-0000-4000-8000-000000000020', 'Wednesday', false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (137, '10000000-0000-4000-8000-000000000020', 'Thursday',  false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (138, '10000000-0000-4000-8000-000000000020', 'Friday',    false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (139, '10000000-0000-4000-8000-000000000020', 'Saturday',  false, TIME '10:00', TIME '20:00', NULL,         NULL        ),
+    (140, '10000000-0000-4000-8000-000000000020', 'Sunday',    false, TIME '11:00', TIME '18:00', NULL,         NULL        );
+
+-- Additional place owner applications (6–10)
+INSERT INTO public.place_owner_applications (
+    id,
+    user_id,
+    business_name,
+    phone,
+    email,
+    description,
+    address_line1,
+    address_line2,
+    city,
+    country,
+    requested_place_type,
+    status,
+    rejection_reason,
+    admin_notes,
+    reviewed_by_admin_id,
+    reviewed_at,
+    created_at,
+    updated_at
+)
+VALUES
+    (6,  11, 'Paws for Hope Animal Charity', '+1-206-555-0111', 'info@pawsforhope.test',        'Charity application for Nadia''s low-cost vet support and food drive coordination program.',             '340 Olive Way',       NULL,       'Seattle', 'United States', 'Charity', 'Approved', NULL, 'Approved after reviewing charity registration documents and partner vet agreements.',           12, '2026-03-15T10:00:00Z', '2026-03-10T09:00:00Z', '2026-03-15T10:00:00Z'),
+    (7,  15, 'Furry Friends Foundation',      '+1-425-555-0112', 'hello@furryfriends.test',      'Application for Lara''s rescue charity focused on rehabilitation and re-homing of surrendered animals.', '77 Bellevue Way NE',  'Suite 105','Bellevue','United States', 'Charity', 'Approved', NULL, 'Verified non-profit registration and approved with a note to upload quarterly reports.',        11, '2026-03-28T14:30:00Z', '2026-03-22T11:00:00Z', '2026-03-28T14:30:00Z'),
+    (8,  13, 'Urban Pets Boutique',           '+1-425-555-0117', 'shop@urbanpetsboutique.test',  'Boutique application for Hana''s curated pet shop with organic treats and personalised consultations.',  '410 Bellevue Square', NULL,       'Bellevue','United States', 'PetShop', 'Approved', NULL, 'Approved after verifying business registration and product safety certifications.',             14, '2026-04-05T09:30:00Z', '2026-04-01T10:15:00Z', '2026-04-05T09:30:00Z'),
+    (9,  14, 'Hearts & Paws Charity',         '+1-303-555-0114', 'reach@heartsandpaws.test',     'Charity application for Samer''s weekend outreach clinic and spay drive coordination.',                  '600 17th Street',     'Floor 3',  'Denver',  'United States', 'Charity', 'Approved', NULL, 'Charity confirmed with state registration. Approved with request for annual impact report.',    15, '2026-04-12T11:30:00Z', '2026-04-07T08:45:00Z', '2026-04-12T11:30:00Z'),
+    (10, 16, 'Tarek''s Parrot Rescue Perch',  '+1-206-555-0131', 'birds@parrotrescueperch.test', 'Pending application for a small parrot rescue and behaviour-recovery program based in Seattle.',          '88 Westlake Ave N',   NULL,       'Seattle', 'United States', 'Charity', 'Pending',  NULL, NULL,                                                                                             NULL, NULL,                  '2026-04-25T09:00:00Z', '2026-04-25T09:00:00Z');
+
+-- Additional place owner application images (6–10)
+INSERT INTO public.place_owner_application_images (id, place_owner_application_id, url, created_at)
+VALUES
+    (6,  6,  'https://picsum.photos/seed/petcare-place-application-06/1600/1200.jpg', '2026-03-10T09:05:00Z'),
+    (7,  7,  'https://picsum.photos/seed/petcare-place-application-07/1600/1200.jpg', '2026-03-22T11:05:00Z'),
+    (8,  8,  'https://picsum.photos/seed/petcare-place-application-08/1600/1200.jpg', '2026-04-01T10:20:00Z'),
+    (9,  9,  'https://picsum.photos/seed/petcare-place-application-09/1600/1200.jpg', '2026-04-07T08:50:00Z'),
+    (10, 10, 'https://picsum.photos/seed/petcare-place-application-10/1600/1200.jpg', '2026-04-25T09:05:00Z');
+
+-- Additional pet place reviews (11–20)
+INSERT INTO public.pet_place_reviews (id, place_id, user_id, rating, comment, created_at, updated_at)
+VALUES
+    ('50000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000011', 11, 5, 'Paws for Hope covered Coco''s emergency vet bill when I had no savings left. Incredible service.',              '2026-04-05T10:30:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000012', '10000000-0000-4000-8000-000000000012', 15, 5, 'Found the most caring foster family for a surrendered hedgehog through Furry Friends. Highly recommended.',     '2026-04-06T09:15:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000013', '10000000-0000-4000-8000-000000000013', 12, 4, 'Second Chance covered most of Noodle''s emergency surgery. The application process was straightforward.',       '2026-04-07T14:00:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000014', '10000000-0000-4000-8000-000000000014', 14, 5, 'Hearts & Paws ran a free spay event in our neighborhood. Amazing coordination and professional vets.',          '2026-04-08T11:45:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000015', '10000000-0000-4000-8000-000000000015', 17, 4, 'Northside handled our foster cat''s dental with great care. The team gave clear aftercare instructions.',       '2026-04-09T16:20:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000016', '10000000-0000-4000-8000-000000000016', 18, 5, 'Valley Animal Hospital ran excellent water-parameter diagnostics for my aquarium fish. Very thorough.',         '2026-04-10T10:05:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000017', '10000000-0000-4000-8000-000000000017', 13, 5, 'Urban Pets Boutique has the best organic treats and the staff really understand chinchilla nutrition.',         '2026-04-11T13:50:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000018', '10000000-0000-4000-8000-000000000018', 19, 4, 'Good selection of gerbil substrate and enrichment toys. Staff knew exactly what I was looking for.',           '2026-04-12T09:30:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000019', '10000000-0000-4000-8000-000000000019', 20, 5, 'The steady temperature monitoring advice they recommended during daycare setup was invaluable for my axolotl.',  '2026-04-13T15:10:00Z', NULL),
+    ('50000000-0000-4000-8000-000000000020', '10000000-0000-4000-8000-000000000011', 16, 5, 'Paws for Hope ran a weekend adoption event where I met responsible new owners. Outstanding charity work.',      '2026-04-14T12:00:00Z', NULL);
+
+-- Additional pets (13–24)
+INSERT INTO public.pets (
+    id,
+    user_id,
+    name,
+    species_id,
+    breed_id,
+    sex,
+    birth_date,
+    weight_kg,
+    color,
+    neutered,
+    avatar_url,
+    notes,
+    created_at,
+    updated_at
+)
+VALUES
+    ('20000000-0000-4000-8000-000000000013', 11, 'Coco',    11, 35, 'female',  '2024-03-10T00:00:00Z', 0.95, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-coco/800/800.jpg',    'Very curious guinea pig with a love for bell peppers and extended floor time.',             '2026-03-15T10:00:00Z', '2026-04-20T10:00:00Z'),
+    ('20000000-0000-4000-8000-000000000014', 12, 'Noodle',  12, 37, 'male',    '2021-07-04T00:00:00Z', 1.40, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-noodle/800/800.jpg',  'Ball python on a strict bi-weekly feeding schedule with careful humidity logs.',            '2026-03-20T09:30:00Z', '2026-04-19T09:30:00Z'),
+    ('20000000-0000-4000-8000-000000000015', 13, 'Dusty',   15, 42, 'female',  '2022-11-19T00:00:00Z', 0.55, 'Gray',    false, 'https://picsum.photos/seed/petcare-pet-dusty/800/800.jpg',   'Standard chinchilla with a daily dust bath routine and a rotating toy selection.',          '2026-03-25T14:00:00Z', '2026-04-18T14:00:00Z'),
+    ('20000000-0000-4000-8000-000000000016', 14, 'Blaze',   18, 46, 'male',    '2022-06-12T00:00:00Z', 0.50, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-blaze/800/800.jpg',   'Inland bearded dragon with a structured basking and feeding schedule.',                    '2026-03-28T08:45:00Z', '2026-04-17T08:45:00Z'),
+    ('20000000-0000-4000-8000-000000000017', 15, 'Spike',   14, 41, 'male',    '2023-04-20T00:00:00Z', 0.06, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-spike/800/800.jpg',   'African pygmy hedgehog with a precise nighttime feeding window and exercise wheel.',        '2026-03-30T11:20:00Z', '2026-04-16T11:20:00Z'),
+    ('20000000-0000-4000-8000-000000000018', 16, 'Zeus',    20, 50, 'male',    '2019-08-15T00:00:00Z', 0.85, 'White',   false, 'https://picsum.photos/seed/petcare-pet-zeus/800/800.jpg',    'Sulphur-crested cockatoo requiring extensive daily socialisation and enrichment.',          '2026-04-01T09:00:00Z', '2026-04-21T09:00:00Z'),
+    ('20000000-0000-4000-8000-000000000019', 17, 'Mittens', 1,  21, 'female',  '2020-10-05T00:00:00Z', 5.20, 'Gray',    true,  'https://picsum.photos/seed/petcare-pet-mittens/800/800.jpg', 'Maine Coon foster with a calm temperament and a careful medication schedule.',             '2026-04-03T10:30:00Z', '2026-04-20T10:30:00Z'),
+    ('20000000-0000-4000-8000-000000000020', 18, 'Finn',    6,  29, 'male',    '2025-02-14T00:00:00Z', NULL, 'Orange',  false, 'https://picsum.photos/seed/petcare-pet-finn/800/800.jpg',    'Guppy in a planted community tank with weekly water-parameter tracking.',                  '2026-04-05T17:00:00Z', '2026-04-19T17:00:00Z'),
+    ('20000000-0000-4000-8000-000000000021', 19, 'Maple',   16, 44, 'female',  '2023-12-01T00:00:00Z', 0.09, 'Gray',    false, 'https://picsum.photos/seed/petcare-pet-maple/800/800.jpg',   'Mongolian gerbil sharing a large sandbox enclosure with her bonded pair partner.',         '2026-04-07T09:15:00Z', '2026-04-18T09:15:00Z'),
+    ('20000000-0000-4000-8000-000000000022', 20, 'Axel',    17, 45, 'unknown', '2023-05-30T00:00:00Z', 0.24, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-axel/800/800.jpg',    'Wild-type axolotl with daily temperature checks and a high-protein diet rotation.',        '2026-04-09T14:45:00Z', '2026-04-21T14:45:00Z'),
+    ('20000000-0000-4000-8000-000000000023', 11, 'Biscuit', 11, 36, 'male',    '2024-05-22T00:00:00Z', 0.88, 'Tan',     false, 'https://picsum.photos/seed/petcare-pet-biscuit/800/800.jpg', 'Abyssinian guinea pig with a rosette coat and very vocal feeding cues.',                   '2026-04-11T10:00:00Z', '2026-04-22T10:00:00Z'),
+    ('20000000-0000-4000-8000-000000000024', 12, 'Ember',   12, 38, 'female',  '2022-03-17T00:00:00Z', 0.38, 'Orange',  false, 'https://picsum.photos/seed/petcare-pet-ember/800/800.jpg',   'Corn snake on a monthly shedding cycle with careful post-shed health checks.',             '2026-04-13T08:30:00Z', '2026-04-23T08:30:00Z');
+
+-- Additional consultations (13–24)
+INSERT INTO public.consultations (
+    id,
+    user_id,
+    pet_id,
+    vet_place_id,
+    date,
+    details,
+    created_at,
+    updated_at
+)
+VALUES
+    (13, 11, '20000000-0000-4000-8000-000000000013', '10000000-0000-4000-8000-000000000015', '2026-03-18T11:00:00Z', 'Wellness check for Coco after weight drop and slight change in activity level.',              '2026-03-12T09:00:00Z', '2026-03-18T11:40:00Z'),
+    (14, 12, '20000000-0000-4000-8000-000000000014', '10000000-0000-4000-8000-000000000007', '2026-03-25T10:00:00Z', 'Routine health check for Noodle covering humidity levels, skin condition, and weight.',      '2026-03-18T08:30:00Z', '2026-03-25T10:30:00Z'),
+    (15, 13, '20000000-0000-4000-8000-000000000015', '10000000-0000-4000-8000-000000000007', '2026-04-02T14:00:00Z', 'Dental check for Dusty after owner noticed slower eating and selective veggie preference.', '2026-03-26T10:00:00Z', '2026-04-02T14:35:00Z'),
+    (16, 14, '20000000-0000-4000-8000-000000000016', '10000000-0000-4000-8000-000000000015', '2026-04-08T09:30:00Z', 'Annual wellness visit for Blaze with full body inspection and UVB schedule review.',         '2026-04-01T08:15:00Z', '2026-04-08T10:05:00Z'),
+    (17, 15, '20000000-0000-4000-8000-000000000017', '10000000-0000-4000-8000-000000000015', '2026-04-14T10:15:00Z', 'Wellness check for Spike after increased anointing behaviour and slightly reduced appetite.','2026-04-09T11:00:00Z', '2026-04-14T10:50:00Z'),
+    (18, 16, '20000000-0000-4000-8000-000000000018', '10000000-0000-4000-8000-000000000007', '2026-05-06T09:00:00Z', 'Upcoming feather and beak check for Zeus; owner reports increased screaming episodes.',     '2026-04-21T08:30:00Z', NULL),
+    (19, 17, '20000000-0000-4000-8000-000000000019', '10000000-0000-4000-8000-000000000016', '2026-04-20T13:30:00Z', 'Dental and senior health review for Mittens, the Maine Coon foster in Dina''s care.',       '2026-04-15T12:00:00Z', '2026-04-20T14:00:00Z'),
+    (20, 18, '20000000-0000-4000-8000-000000000020', '10000000-0000-4000-8000-000000000015', '2026-06-10T15:00:00Z', 'Scheduled fish health consultation for Finn to review tank chemistry and fin condition.',    '2026-04-22T09:00:00Z', NULL),
+    (21, 19, '20000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000016', '2026-05-20T11:00:00Z', 'Upcoming wellness and weight check for Maple after a period of reduced social play.',         '2026-04-20T10:30:00Z', NULL),
+    (22, 20, '20000000-0000-4000-8000-000000000022', '10000000-0000-4000-8000-000000000007', '2026-04-24T10:30:00Z', 'Axolotl health review for Axel covering limb regeneration progress and water temperature.',  '2026-04-18T14:30:00Z', NULL),
+    (23, 11, '20000000-0000-4000-8000-000000000023', '10000000-0000-4000-8000-000000000015', '2026-05-15T09:45:00Z', 'First wellness visit for Biscuit after owner noticed occasional head tilt and wheezing.',    '2026-04-23T11:00:00Z', NULL),
+    (24, 12, '20000000-0000-4000-8000-000000000024', '10000000-0000-4000-8000-000000000007', '2026-04-30T11:00:00Z', 'Post-shed health check for Ember to inspect scales, eye caps, and shedding quality.',       '2026-04-25T08:00:00Z', NULL);
+
+-- Additional forum posts (17–32)
+INSERT INTO public.forum_posts (
+    id,
+    user_id,
+    content,
+    is_a_reply,
+    replying_to_post,
+    created_at,
+    updated_at,
+    moderation_status,
+    ai_moderation_label,
+    ai_moderation_confidence,
+    ai_moderation_reason,
+    moderated_at,
+    final_moderation_label,
+    reviewed_by_admin_id,
+    reviewed_at,
+    admin_moderation_notes
+)
+VALUES
+    ('40000000-0000-4000-8000-000000000017', 11, 'How often should you weigh a guinea pig to catch weight-loss trends before they become serious?',                                          false, NULL,                                        '2026-04-14T09:00:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000018', 12, 'Any tips for keeping humidity stable in a ball python enclosure during dry winter months?',                                               false, NULL,                                        '2026-04-14T12:30:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000019', 13, 'Chinchilla owners: do you rotate dust bath houses daily or every few days?',                                                              false, NULL,                                        '2026-04-15T07:45:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000020', 14, 'Looking for advice on setting up a proper UVB and basking gradient for a new bearded dragon enclosure.',                                  false, NULL,                                        '2026-04-15T14:00:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000021', 15, 'My hedgehog started hibernation attempts last night. Any advice on heating setup to prevent it safely?',                                  false, NULL,                                        '2026-04-16T08:20:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000022', 16, 'Cockatoo owners: what is your routine to reduce screaming before and after meals?',                                                       false, NULL,                                        '2026-04-16T17:10:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000023', 17, 'Foster cat tips: how do you manage medication schedules for multiple cats with different doses?',                                         false, NULL,                                        '2026-04-17T09:40:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000024', 18, 'Planted tank owners: how do you balance CO2, lighting, and fertilisers without disrupting fish health?',                                  false, NULL,                                        '2026-04-17T16:00:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000025', 19, 'Anyone used a large sand cage for a bonded gerbil pair? Curious about digging depth recommendations.',                                    false, NULL,                                        '2026-04-18T08:10:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000026', 20, 'Axolotl keeps trying to eat gravel. Has anyone successfully transitioned to a bare-bottom tank setup?',                                   false, NULL,                                        '2026-04-18T15:30:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000027', 13, 'Weekly weighing in the same conditions worked well for Dusty. Consistent timing matters more than frequency.',                            true,  '40000000-0000-4000-8000-000000000017', '2026-04-14T11:00:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000028', 15, 'A humid hide on the cool side solved our winter humidity problem without much effort at all.',                                             true,  '40000000-0000-4000-8000-000000000018', '2026-04-14T13:30:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000029', 11, 'A ceramic heat emitter on a thermostat is the most reliable fix for hedgehog hibernation attempts.',                                      true,  '40000000-0000-4000-8000-000000000021', '2026-04-16T09:30:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000030', 14, 'I keep labelled pill organisers above each foster crate. Colour-coded per cat so no one gets the wrong dose.',                            true,  '40000000-0000-4000-8000-000000000023', '2026-04-17T11:00:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000031', 20, 'Bare-bottom worked for us after a week-long transition from fine sand. Very few incidents with Axel since.',                              true,  '40000000-0000-4000-8000-000000000026', '2026-04-18T17:00:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+    ('40000000-0000-4000-8000-000000000032', 16, 'Early foraging sessions in the morning reduced Zeus''s pre-meal screaming by about half.',                                                true,  '40000000-0000-4000-8000-000000000022', '2026-04-16T18:30:00Z', NULL,                  'None',     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- Additional forum post attachments (11–20)
+INSERT INTO public.forum_post_attachments (id, forum_post_id, url, media_type, file_size_bytes, created_at)
+VALUES
+    (11, '40000000-0000-4000-8000-000000000017', 'https://picsum.photos/seed/petcare-forum-11/1200/900.jpg', 'Image', 472310, '2026-04-14T09:02:00Z'),
+    (12, '40000000-0000-4000-8000-000000000018', 'https://picsum.photos/seed/petcare-forum-12/1200/900.jpg', 'Image', 518740, '2026-04-14T12:32:00Z'),
+    (13, '40000000-0000-4000-8000-000000000019', 'https://picsum.photos/seed/petcare-forum-13/1200/900.jpg', 'Image', 392500, '2026-04-15T07:47:00Z'),
+    (14, '40000000-0000-4000-8000-000000000020', 'https://picsum.photos/seed/petcare-forum-14/1200/900.jpg', 'Image', 610200, '2026-04-15T14:02:00Z'),
+    (15, '40000000-0000-4000-8000-000000000021', 'https://picsum.photos/seed/petcare-forum-15/1200/900.jpg', 'Image', 441080, '2026-04-16T08:22:00Z'),
+    (16, '40000000-0000-4000-8000-000000000022', 'https://picsum.photos/seed/petcare-forum-16/1200/900.jpg', 'Image', 529600, '2026-04-16T17:12:00Z'),
+    (17, '40000000-0000-4000-8000-000000000023', 'https://picsum.photos/seed/petcare-forum-17/1200/900.jpg', 'Image', 483900, '2026-04-17T09:42:00Z'),
+    (18, '40000000-0000-4000-8000-000000000024', 'https://picsum.photos/seed/petcare-forum-18/1200/900.jpg', 'Image', 557430, '2026-04-17T16:02:00Z'),
+    (19, '40000000-0000-4000-8000-000000000025', 'https://picsum.photos/seed/petcare-forum-19/1200/900.jpg', 'Image', 415700, '2026-04-18T08:12:00Z'),
+    (20, '40000000-0000-4000-8000-000000000026', 'https://picsum.photos/seed/petcare-forum-20/1200/900.jpg', 'Image', 601800, '2026-04-18T15:32:00Z');
+
+-- Additional forum post bookmarks
+INSERT INTO public.forum_post_bookmarks (user_id, forum_post_id, created_at)
+VALUES
+    (11, '40000000-0000-4000-8000-000000000018', '2026-04-14T13:00:00Z'),
+    (11, '40000000-0000-4000-8000-000000000021', '2026-04-16T09:00:00Z'),
+    (12, '40000000-0000-4000-8000-000000000017', '2026-04-14T10:00:00Z'),
+    (13, '40000000-0000-4000-8000-000000000020', '2026-04-15T15:00:00Z'),
+    (14, '40000000-0000-4000-8000-000000000023', '2026-04-17T10:30:00Z'),
+    (15, '40000000-0000-4000-8000-000000000019', '2026-04-15T08:30:00Z'),
+    (16, '40000000-0000-4000-8000-000000000024', '2026-04-17T17:00:00Z'),
+    (17, '40000000-0000-4000-8000-000000000017', '2026-04-14T10:15:00Z'),
+    (18, '40000000-0000-4000-8000-000000000026', '2026-04-18T16:00:00Z'),
+    (19, '40000000-0000-4000-8000-000000000025', '2026-04-18T09:00:00Z'),
+    (20, '40000000-0000-4000-8000-000000000022', '2026-04-16T18:00:00Z'),
+    (12, '40000000-0000-4000-8000-000000000026', '2026-04-18T16:30:00Z');
+
+-- Additional forum post likes
+INSERT INTO public.forum_post_likes (user_id, forum_post_id, created_at)
+VALUES
+    (11, '40000000-0000-4000-8000-000000000018', '2026-04-14T12:45:00Z'),
+    (12, '40000000-0000-4000-8000-000000000017', '2026-04-14T09:30:00Z'),
+    (13, '40000000-0000-4000-8000-000000000019', '2026-04-15T08:00:00Z'),
+    (14, '40000000-0000-4000-8000-000000000020', '2026-04-15T14:30:00Z'),
+    (15, '40000000-0000-4000-8000-000000000021', '2026-04-16T08:45:00Z'),
+    (16, '40000000-0000-4000-8000-000000000022', '2026-04-16T17:30:00Z'),
+    (17, '40000000-0000-4000-8000-000000000023', '2026-04-17T10:00:00Z'),
+    (18, '40000000-0000-4000-8000-000000000024', '2026-04-17T16:30:00Z'),
+    (19, '40000000-0000-4000-8000-000000000025', '2026-04-18T08:30:00Z'),
+    (20, '40000000-0000-4000-8000-000000000026', '2026-04-18T15:45:00Z'),
+    (11, '40000000-0000-4000-8000-000000000027', '2026-04-14T11:30:00Z'),
+    (13, '40000000-0000-4000-8000-000000000028', '2026-04-14T14:00:00Z'),
+    (15, '40000000-0000-4000-8000-000000000029', '2026-04-16T09:45:00Z'),
+    (17, '40000000-0000-4000-8000-000000000030', '2026-04-17T11:30:00Z'),
+    (12, '40000000-0000-4000-8000-000000000031', '2026-04-18T17:30:00Z'),
+    (14, '40000000-0000-4000-8000-000000000032', '2026-04-16T19:00:00Z'),
+    (20, '40000000-0000-4000-8000-000000000017', '2026-04-14T10:00:00Z'),
+    (16, '40000000-0000-4000-8000-000000000021', '2026-04-16T10:00:00Z');
+
+-- Additional reports (7–12)
+INSERT INTO public.reports (
+    id,
+    reporter_user_id,
+    target_type,
+    target_id,
+    reason_type,
+    description,
+    status,
+    reviewed_by_admin_id,
+    reviewed_at,
+    created_at
+)
+VALUES
+    (7,  12, 'ForumPost', '40000000-0000-4000-8000-000000000010', 'Spam',               'Post seemed to promote a product rather than share a genuine care tip.',                    'Pending',     NULL, NULL,                  '2026-04-15T08:00:00Z'),
+    (8,  13, 'User',      '10',                                   'InappropriateContent','This user sent unsolicited sales messages through the forum thread.',                      'Reviewed',    11,   '2026-04-22T10:00:00Z', '2026-04-15T14:30:00Z'),
+    (9,  14, 'ForumPost', '40000000-0000-4000-8000-000000000022', 'Harassment',          'Received a comment on my cockatoo post that felt dismissive and unkind.',                  'Dismissed',   12,   '2026-04-23T09:00:00Z', '2026-04-16T18:00:00Z'),
+    (10, 11, 'User',      '20',                                   'Scam',                'Someone posing as a breeder offering paid placements contacted me through this profile.',  'Pending',     NULL, NULL,                  '2026-04-18T10:00:00Z'),
+    (11, 19, 'ForumPost', '40000000-0000-4000-8000-000000000014', 'Other',               'Post contained outdated care advice that could mislead new owners.',                       'Reviewed',    13,   '2026-04-24T11:00:00Z', '2026-04-20T09:30:00Z'),
+    (12, 20, 'ForumPost', '40000000-0000-4000-8000-000000000023', 'InappropriateContent','The reply in this thread was condescending toward new pet owners asking basic questions.',  'ActionTaken', 11,   '2026-04-24T14:00:00Z', '2026-04-21T07:45:00Z');
+
+-- Additional vaccine records (16–30)
+INSERT INTO public.vaccine_records (
+    id,
+    pet_id,
+    vaccine_name,
+    status,
+    date_administered,
+    next_due_date,
+    notes,
+    veterinarian,
+    created_at,
+    updated_at
+)
+VALUES
+    (16, '20000000-0000-4000-8000-000000000013', 'Bordetella',                           'Done',    '2026-01-15T10:00:00Z', '2027-01-15T10:00:00Z', 'Routine preventive for Coco administered after adoption placement.',                          'Dr. Sonia Hart',    '2026-01-15T10:20:00Z', '2026-01-15T10:20:00Z'),
+    (17, '20000000-0000-4000-8000-000000000013', 'Lymphocytic Choriomeningitis',          'Due',     '2025-07-10T09:00:00Z', '2026-07-10T09:00:00Z', 'Annual booster reminder added to the care calendar.',                                        'Dr. Sonia Hart',    '2025-07-10T09:15:00Z', '2026-03-15T10:00:00Z'),
+    (18, '20000000-0000-4000-8000-000000000014', 'IBD screening',                         'NotDone', NULL,                   NULL,                   'Inclusion Body Disease screening recommended but not yet completed; sourcing specialist.',    NULL,                '2026-03-20T09:40:00Z', '2026-03-20T09:40:00Z'),
+    (19, '20000000-0000-4000-8000-000000000015', 'Rabies (chinchilla protocol)',           'NotDone', NULL,                   '2026-08-01T09:00:00Z', 'Vet confirmed the protocol differs by region; appointment pending.',                         NULL,                '2026-03-25T14:10:00Z', '2026-03-25T14:10:00Z'),
+    (20, '20000000-0000-4000-8000-000000000016', 'Salmonella screening',                  'Done',    '2026-01-20T09:30:00Z', '2027-01-20T09:30:00Z', 'Routine screen for reptiles; results clear.',                                                'Dr. Aaron Price',   '2026-01-20T09:50:00Z', '2026-01-20T09:50:00Z'),
+    (21, '20000000-0000-4000-8000-000000000016', 'Parasite prevention',                   'Due',     '2025-09-15T10:00:00Z', '2026-09-15T10:00:00Z', 'Annual anti-parasite round for Blaze.',                                                      'Dr. Aaron Price',   '2025-09-15T10:20:00Z', '2026-04-08T09:35:00Z'),
+    (22, '20000000-0000-4000-8000-000000000017', 'Distemper (hedgehog protocol)',          'Done',    '2025-10-01T09:00:00Z', '2026-10-01T09:00:00Z', 'Completed with no post-vaccine reactions noted.',                                            'Dr. Elaine Brooks', '2025-10-01T09:20:00Z', '2025-10-01T09:20:00Z'),
+    (23, '20000000-0000-4000-8000-000000000018', 'PBFD screening',                        'Done',    '2025-12-05T10:30:00Z', '2026-12-05T10:30:00Z', 'Psittacine Beak and Feather Disease test came back negative.',                               'Dr. Nina Patel',    '2025-12-05T10:50:00Z', '2025-12-05T10:50:00Z'),
+    (24, '20000000-0000-4000-8000-000000000018', 'Polyomavirus',                          'Due',     '2025-06-20T09:00:00Z', '2026-06-20T09:00:00Z', 'Due mid-year; scheduling around the upcoming feather check.',                                'Dr. Nina Patel',    '2025-06-20T09:20:00Z', '2026-04-21T09:10:00Z'),
+    (25, '20000000-0000-4000-8000-000000000019', 'FVRCP',                                 'Done',    '2025-05-12T10:00:00Z', '2026-05-12T10:00:00Z', 'Mittens was brought up to date at shelter intake.',                                          'Dr. Marcus Lee',    '2025-05-12T10:20:00Z', '2025-05-12T10:20:00Z'),
+    (26, '20000000-0000-4000-8000-000000000019', 'Rabies',                                'Due',     '2025-05-12T10:05:00Z', '2026-05-12T10:05:00Z', 'Due date approaching; appointment being arranged through foster coordinator.',               'Dr. Marcus Lee',    '2025-05-12T10:25:00Z', '2026-04-03T10:40:00Z'),
+    (27, '20000000-0000-4000-8000-000000000021', 'Tyzzer''s Disease prevention',          'NotDone', NULL,                   NULL,                   'Specific protocol varies; owner researching options with the exotics vet.',                  NULL,                '2026-04-07T09:25:00Z', '2026-04-07T09:25:00Z'),
+    (28, '20000000-0000-4000-8000-000000000022', 'Chytrid screening',                     'Done',    '2026-02-10T11:00:00Z', '2027-02-10T11:00:00Z', 'Axolotl screened for chytrid fungus at the aquatics specialist clinic.',                     'Dr. Aaron Price',   '2026-02-10T11:20:00Z', '2026-02-10T11:20:00Z'),
+    (29, '20000000-0000-4000-8000-000000000023', 'Bordetella',                            'Due',     '2025-11-22T09:00:00Z', '2026-11-22T09:00:00Z', 'Reminder set ahead of the upcoming first wellness visit.',                                   'Dr. Sonia Hart',    '2025-11-22T09:15:00Z', '2026-04-11T10:05:00Z'),
+    (30, '20000000-0000-4000-8000-000000000024', 'Inclusion Body Disease screening',      'Done',    '2026-01-28T10:00:00Z', '2027-01-28T10:00:00Z', 'Screen came back negative; monitoring continues.',                                           'Dr. Elaine Brooks', '2026-01-28T10:20:00Z', '2026-01-28T10:20:00Z');
+
+-- Additional illness records (11–20)
+INSERT INTO public.illness_records (
+    id,
+    pet_id,
+    illness_name,
+    diagnosis_date,
+    status,
+    description,
+    notes,
+    cured_date,
+    created_at,
+    updated_at
+)
+VALUES
+    (11, '20000000-0000-4000-8000-000000000013', 'Upper respiratory infection',      '2026-03-12T10:00:00Z', 'Resolved', 'Mild sneezing and discharge noticed after a new hay batch was introduced.',                     'Resolved after removing the new hay and adding a short antibiotic course.',    '2026-03-22T10:00:00Z', '2026-03-12T10:15:00Z', '2026-03-22T10:00:00Z'),
+    (12, '20000000-0000-4000-8000-000000000014', 'Incomplete shedding (dysecdysis)', '2026-03-08T09:00:00Z', 'Resolved', 'Retained eye caps and tail-tip patches found after the last shed cycle.',                      'Resolved with a warm soak routine and careful manual removal.',                '2026-03-15T09:00:00Z', '2026-03-08T09:15:00Z', '2026-03-15T09:00:00Z'),
+    (13, '20000000-0000-4000-8000-000000000015', 'Malocclusion',                     '2026-04-02T14:10:00Z', 'Ongoing',  'Teeth misalignment reducing Dusty''s ability to grind pellets normally.',                     'Dietary adjustments in place; scheduled for a dental trim at the next visit.', NULL,                   '2026-04-02T14:20:00Z', '2026-04-20T14:20:00Z'),
+    (14, '20000000-0000-4000-8000-000000000016', 'Metabolic Bone Disease (early)',   '2026-04-08T09:40:00Z', 'Ongoing',  'Early indicators seen during wellness visit; UVB output had been too low.',                   'UVB bulb replaced and calcium dusting schedule increased.',                    NULL,                   '2026-04-08T09:50:00Z', '2026-04-20T09:50:00Z'),
+    (15, '20000000-0000-4000-8000-000000000017', 'Hibernation attempt',              '2026-04-14T10:20:00Z', 'Resolved', 'Torpor-like state triggered by a room temperature drop overnight.',                           'Resolved after warming measures and a heating pad schedule was introduced.',   '2026-04-15T10:00:00Z', '2026-04-14T10:30:00Z', '2026-04-15T10:00:00Z'),
+    (16, '20000000-0000-4000-8000-000000000018', 'Feather destructive behaviour',    '2026-04-06T09:00:00Z', 'Ongoing',  'Zeus began plucking feathers on his lower chest during understimulated afternoons.',           'Foraging schedule doubled and cage enrichment expanded significantly.',        NULL,                   '2026-04-06T09:10:00Z', '2026-04-21T09:10:00Z'),
+    (17, '20000000-0000-4000-8000-000000000019', 'Ear infection',                    '2026-04-16T13:00:00Z', 'Ongoing',  'Mild otitis in Mittens''s right ear detected during a routine foster check-up.',              'Ear drops prescribed; re-check scheduled in two weeks.',                      NULL,                   '2026-04-16T13:15:00Z', '2026-04-20T13:15:00Z'),
+    (18, '20000000-0000-4000-8000-000000000020', 'Swim bladder irregularity',        '2026-04-10T17:00:00Z', 'Resolved', 'Finn observed floating at an unusual angle after a rapid tank temperature drop.',              'Temperature stabilised; Finn returned to normal buoyancy within 48 hours.',   '2026-04-12T17:00:00Z', '2026-04-10T17:10:00Z', '2026-04-12T17:00:00Z'),
+    (19, '20000000-0000-4000-8000-000000000021', 'Social stress behaviour',          '2026-04-10T09:00:00Z', 'Ongoing',  'Maple displaying excessive barbering of her bonded pair partner.',                            'Pair temporarily separated; reintroduction plan in progress with the vet.',   NULL,                   '2026-04-10T09:10:00Z', '2026-04-20T09:10:00Z'),
+    (20, '20000000-0000-4000-8000-000000000022', 'Fungal gill infection',            '2026-03-20T10:00:00Z', 'Resolved', 'Axel presented with white patches on external gills.',                                        'Treated with a salt-bath protocol; gills fully recovered within three weeks.','2026-04-10T10:00:00Z', '2026-03-20T10:15:00Z', '2026-04-10T10:00:00Z');
+
+-- Additional medication records (13–24)
+INSERT INTO public.medication_records (
+    id,
+    illness_id,
+    medication_name,
+    dosage,
+    instructions,
+    start_date,
+    end_date,
+    frequency_in_days,
+    times,
+    reminder_enabled,
+    is_active,
+    created_at,
+    updated_at
+)
+VALUES
+    (13, 11, 'Trimethoprim-sulfamethoxazole', '0.1 mL',          'Administer orally twice daily for ten days.',                                              '2026-03-12T09:00:00Z', '2026-03-22T09:00:00Z', 1, ARRAY['09:00', '21:00']::text[], true,  false, '2026-03-12T09:00:00Z', '2026-03-22T09:00:00Z'),
+    (14, 12, 'Warm soak solution',            '1 tsp/litre',      'Soak for fifteen minutes; gently assist with any retained patches after soaking.',        '2026-03-08T19:00:00Z', '2026-03-15T19:00:00Z', 1, ARRAY['19:00']::text[],         false, false, '2026-03-08T19:00:00Z', '2026-03-15T19:00:00Z'),
+    (15, 13, 'High-fibre critical feed',      '5 mL',             'Syringe-feed twice daily alongside softened pellets.',                                     '2026-04-02T08:00:00Z', NULL,                   1, ARRAY['08:00', '20:00']::text[], true,  true,  '2026-04-02T08:00:00Z', '2026-04-20T14:25:00Z'),
+    (16, 14, 'Calcium gluconate dusting',     '0.2 g per feed',   'Dust feeder insects before every feeding session.',                                       '2026-04-08T10:00:00Z', NULL,                   1, ARRAY['10:00']::text[],         false, true,  '2026-04-08T10:00:00Z', '2026-04-20T09:55:00Z'),
+    (17, 14, 'UVB bulb upgrade',              'N/A',              'Run new bulb on a 12-hour day cycle; use ceramic heat emitter overnight.',                '2026-04-08T10:00:00Z', NULL,                   1, ARRAY['07:00']::text[],         true,  true,  '2026-04-08T10:00:00Z', '2026-04-20T09:56:00Z'),
+    (18, 15, 'Spot temperature correction',   'N/A',              'Set ceramic heat emitter thermostat to maintain floor temperature above 22°C.',           '2026-04-14T21:00:00Z', '2026-04-15T09:00:00Z', 1, ARRAY['21:00']::text[],         false, false, '2026-04-14T21:00:00Z', '2026-04-15T09:00:00Z'),
+    (19, 16, 'Foraging enrichment protocol',  'N/A',              'Hide three foraging stations per session; run morning and afternoon sessions daily.',     '2026-04-06T07:00:00Z', NULL,                   1, ARRAY['07:00', '15:00']::text[], true,  true,  '2026-04-06T07:00:00Z', '2026-04-21T09:15:00Z'),
+    (20, 17, 'Otibiotic ear drops',           '3 drops',          'Apply to the affected ear canal twice daily; avoid excess head-shaking after dosing.',   '2026-04-16T08:00:00Z', NULL,                   1, ARRAY['08:00', '20:00']::text[], true,  true,  '2026-04-16T08:00:00Z', '2026-04-20T13:20:00Z'),
+    (21, 18, 'Temperature stabiliser',        'N/A',              'Maintain tank heater within 18–20°C; check thermometer twice daily during recovery.',    '2026-04-10T18:00:00Z', '2026-04-12T18:00:00Z', 1, ARRAY['09:00', '18:00']::text[], false, false, '2026-04-10T18:00:00Z', '2026-04-12T17:00:00Z'),
+    (22, 19, 'Separation and reintroduction', 'N/A',              'Keep pair in adjacent but separate enclosures; allow five-minute supervised contact daily.','2026-04-10T09:00:00Z', NULL,                  1, ARRAY['17:00']::text[],         true,  true,  '2026-04-10T09:00:00Z', '2026-04-20T09:15:00Z'),
+    (23, 20, 'Aquarium salt bath',            '1 tsp/gal',        'Prepare a hospital tank with salt solution; soak axolotl for 10 minutes twice daily.',   '2026-03-20T10:00:00Z', '2026-04-10T10:00:00Z', 1, ARRAY['10:00', '22:00']::text[], false, false, '2026-03-20T10:00:00Z', '2026-04-10T10:00:00Z'),
+    (24, 20, 'Methylene blue rinse',          '1 drop/gal',       'Add to the soak water during the second week to accelerate gill recovery.',               '2026-03-27T10:00:00Z', '2026-04-10T10:00:00Z', 1, ARRAY['10:00']::text[],         false, false, '2026-03-27T10:00:00Z', '2026-04-10T10:00:00Z');
+
+-- Additional admin action logs (17–32)
+INSERT INTO public.admin_action_logs (
+    id,
+    admin_user_id,
+    action_type,
+    target_type,
+    target_id,
+    description,
+    reason,
+    created_at
+)
+VALUES
+    (17, 11, 'AdminLogin',                   'AdminUser',             '11',                                   'Admin ''carlos.khoury'' logged in.',                                                                             NULL,                                                          '2026-04-22T09:00:00Z'),
+    (18, 12, 'AdminLogin',                   'AdminUser',             '12',                                   'Admin ''sara.nassar'' logged in.',                                                                               NULL,                                                          '2026-04-22T09:10:00Z'),
+    (19, 12, 'ApprovePlaceOwnerApplication', 'PlaceOwnerApplication', '6',                                    'Approved Nadia Khalil''s charity application for Paws for Hope Animal Charity.',                                'Charity registration verified.',                              '2026-03-15T10:00:00Z'),
+    (20, 11, 'ApprovePlaceOwnerApplication', 'PlaceOwnerApplication', '7',                                    'Approved Lara Younes''s charity application for Furry Friends Foundation.',                                     'Non-profit documents verified.',                              '2026-03-28T14:30:00Z'),
+    (21, 14, 'ApprovePlaceOwnerApplication', 'PlaceOwnerApplication', '8',                                    'Approved Hana Tabbara''s application for Urban Pets Boutique.',                                                 'Business documents and certifications confirmed.',            '2026-04-05T09:30:00Z'),
+    (22, 15, 'ApprovePlaceOwnerApplication', 'PlaceOwnerApplication', '9',                                    'Approved Samer Barakat''s charity application for Hearts & Paws Charity.',                                      'State charity registration confirmed.',                       '2026-04-12T11:30:00Z'),
+    (23, 11, 'ReviewUserProfile',            'User',                  '16',                                   'Reviewed Tarek Mansour''s profile as part of the pending parrot rescue application review.',                    'Routine applicant background check.',                         '2026-04-25T10:00:00Z'),
+    (24, 13, 'UpdatePetPlace',               'PetPlace',              '10000000-0000-4000-8000-000000000011', 'Updated Paws for Hope Animal Charity listing with corrected contact email.',                                    'Applicant reported a typo in the original submission.',       '2026-04-22T10:30:00Z'),
+    (25, 16, 'ReviewForumPost',              'ForumPost',             '40000000-0000-4000-8000-000000000022', 'Reviewed cockatoo screaming thread following a harassment report and left it visible.',                         'No policy violation found after full thread review.',         '2026-04-23T09:05:00Z'),
+    (26, 12, 'ResolveReport',                'Report',                '9',                                    'Dismissed report #9 against the cockatoo thread; content was safe.',                                            'Post was critical but not harassing.',                        '2026-04-23T09:10:00Z'),
+    (27, 11, 'ReviewUserProfile',            'User',                  '20',                                   'Flagged user ''hassan.ibrahim'' for a potential scam report; account under review.',                            'Scam report #10 filed against this user.',                    '2026-04-18T11:00:00Z'),
+    (28, 18, 'CreateSpecies',                'Species',               '11',                                   'Created species ''Guinea Pig'' with code ''guinea_pig''.',                                                       'Seed dataset coverage for small mammals.',                    '2026-04-22T10:00:00Z'),
+    (29, 18, 'CreateBreed',                  'Breed',                 '35',                                   'Created breed ''American Guinea Pig'' for the guinea pig species.',                                              'Seed dataset coverage for small mammals.',                    '2026-04-22T10:01:00Z'),
+    (30, 19, 'UpdatePetPlace',               'PetPlace',              '10000000-0000-4000-8000-000000000020', 'Confirmed inactive status for The Cat Lounge pending licence renewal.',                                         'Licensing pause pending renewal review.',                     '2026-04-22T11:00:00Z'),
+    (31, 14, 'ReviewForumPost',              'ForumPost',             '40000000-0000-4000-8000-000000000014', 'Reviewed forum post flagged in report #11 and confirmed advice accuracy with the vet team.',                    'Outdated care advice corrected via a follow-up post.',        '2026-04-24T11:05:00Z'),
+    (32, 11, 'ResolveReport',                'Report',                '12',                                   'Resolved report #12; deleted the condescending reply and issued a warning to the author.',                      'Policy violation confirmed: dismissive tone toward new users.','2026-04-24T14:05:00Z');
 
 SELECT setval(pg_get_serial_sequence('public.users', 'id'), (SELECT MAX(id) FROM public.users), true);
 SELECT setval(pg_get_serial_sequence('public.admin_users', 'id'), (SELECT MAX(id) FROM public.admin_users), true);

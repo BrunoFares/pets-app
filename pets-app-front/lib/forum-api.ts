@@ -9,7 +9,7 @@ import {
   resolveApiUrlWithCacheBust,
 } from "@/lib/api";
 
-export const MAX_FORUM_ATTACHMENTS = 5;
+export const MAX_FORUM_ATTACHMENTS = 4;
 
 export type ApiForumPostAttachmentResponse = {
   id?: number | string;
@@ -178,35 +178,44 @@ function buildForumAttachmentsFormData(
   const formData = new FormData();
 
   for (const [index, asset] of assets.entries()) {
-    const normalizedMimeType = asset.mimeType?.toLowerCase();
-    const extensionFromMimeType =
-      normalizedMimeType === "image/png"
-        ? "png"
-        : normalizedMimeType === "image/webp"
-          ? "webp"
-          : "jpg";
-    const extensionFromFileName =
-      asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
-    const extension =
-      extensionFromFileName === "png" || extensionFromFileName === "webp"
-        ? extensionFromFileName
-        : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
-          ? "jpg"
-          : extensionFromMimeType;
-    const type =
-      extension === "png"
-        ? "image/png"
-        : extension === "webp"
-          ? "image/webp"
-          : "image/jpeg";
-    const name =
-      asset.fileName?.trim() || `forum-attachment-${index + 1}.${extension}`;
+    const normalizedMimeType = asset.mimeType?.toLowerCase() ?? "";
+    const isVideo = normalizedMimeType.startsWith("video/");
 
-    formData.append("files", {
-      uri: asset.uri,
-      name,
-      type,
-    } as any);
+    if (isVideo) {
+      const ext = asset.fileName?.split(".").pop()?.toLowerCase() ?? "mp4";
+      const mimeType = normalizedMimeType || "video/mp4";
+      const name = asset.fileName?.trim() || `forum-video-${index + 1}.${ext}`;
+      formData.append("files", { uri: asset.uri, name, type: mimeType } as any);
+    } else {
+      const extensionFromMimeType =
+        normalizedMimeType === "image/png"
+          ? "png"
+          : normalizedMimeType === "image/webp"
+            ? "webp"
+            : "jpg";
+      const extensionFromFileName =
+        asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
+      const extension =
+        extensionFromFileName === "png" || extensionFromFileName === "webp"
+          ? extensionFromFileName
+          : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
+            ? "jpg"
+            : extensionFromMimeType;
+      const type =
+        extension === "png"
+          ? "image/png"
+          : extension === "webp"
+            ? "image/webp"
+            : "image/jpeg";
+      const name =
+        asset.fileName?.trim() || `forum-attachment-${index + 1}.${extension}`;
+
+      formData.append("files", {
+        uri: asset.uri,
+        name,
+        type,
+      } as any);
+    }
   }
 
   return formData;
