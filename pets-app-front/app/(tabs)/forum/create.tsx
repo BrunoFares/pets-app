@@ -36,6 +36,8 @@ export default function CreateForumPostScreen() {
   const [selectedImageAssets, setSelectedImageAssets] = useState<
     ImagePicker.ImagePickerAsset[]
   >([]);
+  const [selectedVideoAsset, setSelectedVideoAsset] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const remainingAttachmentSlots =
     MAX_FORUM_ATTACHMENTS - selectedImageAssets.length;
@@ -51,7 +53,7 @@ export default function CreateForumPostScreen() {
   );
 
   const handlePickImages = async () => {
-    if (isSubmitting || remainingAttachmentSlots <= 0) {
+    if (isSubmitting || remainingAttachmentSlots <= 0 || selectedVideoAsset) {
       return;
     }
 
@@ -103,6 +105,40 @@ export default function CreateForumPostScreen() {
     });
   };
 
+  const handlePickVideo = async () => {
+    if (isSubmitting || selectedImageAssets.length > 0) {
+      return;
+    }
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert(
+        "Permission required",
+        "Please allow photo library access so you can attach a video to your post.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["videos"],
+      allowsEditing: false,
+      allowsMultipleSelection: false,
+      quality: 1,
+    });
+
+    if (result.canceled || result.assets.length === 0) {
+      return;
+    }
+
+    setSelectedVideoAsset(result.assets[0]);
+  };
+
+  const handleRemoveVideo = () => {
+    setSelectedVideoAsset(null);
+  };
+
   const handleRemoveImage = (assetToRemove: ImagePicker.ImagePickerAsset) => {
     setSelectedImageAssets((currentAssets) =>
       currentAssets.filter((asset) => asset.uri !== assetToRemove.uri),
@@ -122,22 +158,26 @@ export default function CreateForumPostScreen() {
       const createResponse = await createForumPost(trimmedContent);
       const createdPostId = getForumPostIdFromCreateResponse(createResponse);
 
-      if (selectedImageAssets.length > 0) {
+      const attachmentAssets = selectedVideoAsset
+        ? [selectedVideoAsset]
+        : selectedImageAssets;
+
+      if (attachmentAssets.length > 0) {
         if (!createdPostId) {
           Alert.alert(
-            "Post published without images",
-            "Your post was published, but the app could not attach the selected images.",
+            "Post published without media",
+            "Your post was published, but the app could not attach the selected media.",
           );
           router.back();
           return;
         }
 
         try {
-          await uploadForumPostAttachments(createdPostId, selectedImageAssets);
+          await uploadForumPostAttachments(createdPostId, attachmentAssets);
         } catch {
           Alert.alert(
-            "Post published without images",
-            "Your text was published, but the selected images could not be uploaded.",
+            "Post published without media",
+            "Your text was published, but the selected media could not be uploaded.",
           );
           router.back();
           return;
@@ -166,7 +206,9 @@ export default function CreateForumPostScreen() {
         contentContainerStyle={styles.content}
       >
         <View style={styles.copyBlock}>
-          <AdaptiveText style={styles.title}>Share with the community</AdaptiveText>
+          <AdaptiveText style={styles.title}>
+            Share with the community
+          </AdaptiveText>
           <AdaptiveText style={styles.subtitle}>
             Ask a question, share advice, or post an update for other pet
             owners.
@@ -186,6 +228,7 @@ export default function CreateForumPostScreen() {
         />
 
         <View style={styles.attachmentsSection}>
+          {/* Images */}
           <View style={styles.attachmentsHeader}>
             <AdaptiveText style={styles.label}>Images</AdaptiveText>
             <AdaptiveText style={styles.attachmentsCounter}>
@@ -194,17 +237,23 @@ export default function CreateForumPostScreen() {
           </View>
 
           <AdaptiveText style={styles.attachmentsHint}>
-            Add up to {MAX_FORUM_ATTACHMENTS} images to give your post more
-            context.
+            Add up to {MAX_FORUM_ATTACHMENTS} images, or attach one video
+            instead — not both.
           </AdaptiveText>
 
           <TouchableOpacity
             style={[
               styles.imagePickerButton,
-              (isSubmitting || remainingAttachmentSlots <= 0) &&
+              (isSubmitting ||
+                remainingAttachmentSlots <= 0 ||
+                !!selectedVideoAsset) &&
                 styles.imagePickerButtonDisabled,
             ]}
-            disabled={isSubmitting || remainingAttachmentSlots <= 0}
+            disabled={
+              isSubmitting ||
+              remainingAttachmentSlots <= 0 ||
+              !!selectedVideoAsset
+            }
             onPress={handlePickImages}
           >
             <Ionicons
@@ -213,21 +262,20 @@ export default function CreateForumPostScreen() {
               color={darkMode ? colors.white : colors.black}
             />
             <AdaptiveText style={styles.imagePickerButtonText}>
-              {remainingAttachmentSlots <= 0
-                ? "Image limit reached"
-                : selectedImageAssets.length > 0
-                  ? "Add more images"
-                  : "Choose images"}
+              {selectedVideoAsset
+                ? "Remove video to add images"
+                : remainingAttachmentSlots <= 0
+                  ? "Image limit reached"
+                  : selectedImageAssets.length > 0
+                    ? "Add more images"
+                    : "Choose images"}
             </AdaptiveText>
           </TouchableOpacity>
 
           {selectedImageAssets.length > 0 ? (
             <View style={styles.imageGrid}>
               {selectedImageAssets.map((asset) => (
-                <View
-                  key={asset.assetId ?? asset.uri}
-                  style={styles.imageCard}
-                >
+                <View key={asset.assetId ?? asset.uri} style={styles.imageCard}>
                   <Image
                     source={{ uri: asset.uri }}
                     style={styles.imagePreview}
@@ -236,16 +284,65 @@ export default function CreateForumPostScreen() {
                     onPress={() => handleRemoveImage(asset)}
                     style={styles.removeImageButton}
                   >
-                    <Ionicons
-                      name="close"
-                      size={14}
-                      color={colors.white}
-                    />
+                    <Ionicons name="close" size={14} color={colors.white} />
                   </TouchableOpacity>
                 </View>
               ))}
             </View>
           ) : null}
+
+          {/* Video */}
+          <View style={[styles.attachmentsHeader, { marginTop: 10 }]}>
+            <AdaptiveText style={styles.label}>Video</AdaptiveText>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.imagePickerButton,
+              (isSubmitting ||
+                !!selectedVideoAsset ||
+                selectedImageAssets.length > 0) &&
+                styles.imagePickerButtonDisabled,
+            ]}
+            disabled={
+              isSubmitting ||
+              !!selectedVideoAsset ||
+              selectedImageAssets.length > 0
+            }
+            onPress={handlePickVideo}
+          >
+            <Ionicons
+              name="videocam-outline"
+              size={18}
+              color={darkMode ? colors.white : colors.black}
+            />
+            <AdaptiveText style={styles.imagePickerButtonText}>
+              {selectedImageAssets.length > 0
+                ? "Remove images to add a video"
+                : selectedVideoAsset
+                  ? "Video selected"
+                  : "Choose a video"}
+            </AdaptiveText>
+          </TouchableOpacity>
+
+          {selectedVideoAsset && (
+            <View style={styles.videoCard}>
+              <Ionicons
+                name="film-outline"
+                size={28}
+                color={darkMode ? colors.white : colors.black}
+              />
+              <AdaptiveText style={styles.videoFileName} numberOfLines={1}>
+                {selectedVideoAsset.fileName ?? "video"}
+              </AdaptiveText>
+              <TouchableOpacity
+                onPress={handleRemoveVideo}
+                style={styles.removeImageButton}
+              >
+                <Ionicons name="close" size={14} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity
@@ -292,7 +389,6 @@ const createStyles = ({ darkMode }: any) => {
     },
     label: {
       width: "84%",
-      marginBottom: 8,
       fontFamily: "Poppins-Medium",
     },
     attachmentsSection: {
@@ -364,6 +460,23 @@ const createStyles = ({ darkMode }: any) => {
       backgroundColor: "rgba(0, 0, 0, 0.72)",
       alignItems: "center",
       justifyContent: "center",
+    },
+    videoCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      borderWidth: 1,
+      borderColor: darkMode ? colors.mildDarkGrey : colors.lightGrey,
+      borderRadius: 18,
+      backgroundColor: darkMode ? colors.averageDarkGrey : "#F7F7F7",
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      position: "relative",
+    },
+    videoFileName: {
+      flex: 1,
+      fontFamily: "Poppins-Regular",
+      fontSize: 14,
     },
     inputContainer: {
       width: "84%",
