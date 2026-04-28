@@ -6,17 +6,20 @@ import CustomInput from "@/components/CustomInput";
 import CustomModal from "@/components/CustomModal";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
+import PhoneNumberInput from "@/components/PhoneNumberInput";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PlaceModel, PlaceOwnerApplicationModel } from "@/data/models";
+import { ApiRequestError } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
 import { fetchPlaceById } from "@/lib/discovery-api";
 import {
   createManagedPlace,
   createPlaceOwnerApplication,
   deleteManagedPlace,
+  fetchMyPlaceOwnerAccessStatus,
   ManagedPlaceInput,
   MAX_PLACE_IMAGES,
   uploadManagedPlaceImages,
@@ -266,10 +269,14 @@ export default function PlaceEditorScreen() {
   const styles = createStyles({ darkMode });
   const router = useRouter();
   const { id, payload } = useLocalSearchParams<{ id?: string; payload?: string }>();
-  const { user } = useAuth();
+  const { refreshProfile, user } = useAuth();
   const { setShowFooter } = useGlobal();
   const isEditing = Boolean(id);
-  const isOwnerActive = Boolean(user?.IsApprovedPlaceOwner);
+  const [isOwnerAccessActive, setIsOwnerAccessActive] = useState(
+    Boolean(user?.IsApprovedPlaceOwner),
+  );
+  const [isCheckingOwnerAccess, setIsCheckingOwnerAccess] = useState(!isEditing);
+  const isOwnerActive = isOwnerAccessActive;
   const isApplicationMode = !isEditing && !isOwnerActive;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -405,15 +412,41 @@ export default function PlaceEditorScreen() {
     }
   }, [applyPlaceToForm, id, user]);
 
+  const loadOwnerAccessStatus = useCallback(async () => {
+    if (!user || isEditing) {
+      setIsOwnerAccessActive(Boolean(user?.IsApprovedPlaceOwner));
+      setIsCheckingOwnerAccess(false);
+      return;
+    }
+
+    setIsCheckingOwnerAccess(true);
+
+    try {
+      const nextOwnerAccess = await fetchMyPlaceOwnerAccessStatus();
+      setIsOwnerAccessActive(nextOwnerAccess);
+
+      if (nextOwnerAccess !== Boolean(user.IsApprovedPlaceOwner)) {
+        void refreshProfile().catch(() => {
+          return undefined;
+        });
+      }
+    } catch {
+      setIsOwnerAccessActive(Boolean(user?.IsApprovedPlaceOwner));
+    } finally {
+      setIsCheckingOwnerAccess(false);
+    }
+  }, [isEditing, refreshProfile, user]);
+
   useFocusEffect(
     useCallback(() => {
       setShowFooter?.(false);
+      void loadOwnerAccessStatus();
       void loadPlace();
 
       return () => {
         setShowFooter?.(true);
       };
-    }, [loadPlace, setShowFooter]),
+    }, [loadOwnerAccessStatus, loadPlace, setShowFooter]),
   );
 
   const updateScheduleEntry = useCallback(
@@ -723,6 +756,15 @@ export default function PlaceEditorScreen() {
 
       router.back();
     } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 403) {
+        Alert.alert(
+          "Place-owner access required",
+          "This session is not currently allowed to publish places. If your place-owner approval was granted recently, refresh Place Manager or sign out and back in, then try again.",
+        );
+        void loadOwnerAccessStatus();
+        return;
+      }
+
       presentApiError("Could not save place", error, {
         fallbackMessage: "We couldn't save your place details right now.",
       });
@@ -765,7 +807,7 @@ export default function PlaceEditorScreen() {
     );
   }, [id, router]);
 
-  const showLoadingOverlay = isSubmitting || isDeleting;
+  const showLoadingOverlay = isSubmitting || isDeleting || isCheckingOwnerAccess;
 
   if (!user) {
     return (
@@ -894,7 +936,7 @@ export default function PlaceEditorScreen() {
         <CustomInput value={name} onChangeText={setName} />
 
         <AdaptiveText style={styles.sectionLabel}>Phone</AdaptiveText>
-        <CustomInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <PhoneNumberInput value={phone} onChangeText={setPhone} />
 
         <AdaptiveText style={styles.sectionLabel}>Email</AdaptiveText>
         <CustomInput

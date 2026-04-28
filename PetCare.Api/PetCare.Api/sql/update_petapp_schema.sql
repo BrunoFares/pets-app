@@ -1231,6 +1231,142 @@ START TRANSACTION;
 
 DO $EF$
 BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD admin_moderation_notes character varying(1000);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD ai_moderation_confidence numeric(5,4);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD ai_moderation_label character varying(30);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD ai_moderation_reason character varying(1000);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD moderated_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD moderation_status character varying(30) NOT NULL DEFAULT 'None';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD reviewed_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD reviewed_by_admin_id bigint;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    CREATE INDEX "IX_forum_posts_ai_moderation_label" ON public.forum_posts (ai_moderation_label);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    CREATE INDEX "IX_forum_posts_moderated_at" ON public.forum_posts (moderated_at);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    CREATE INDEX "IX_forum_posts_moderation_status" ON public.forum_posts (moderation_status);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    CREATE INDEX "IX_forum_posts_moderation_status_created_at" ON public.forum_posts (moderation_status, created_at);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    CREATE INDEX "IX_forum_posts_reviewed_by_admin_id" ON public.forum_posts (reviewed_by_admin_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    ALTER TABLE public.forum_posts ADD CONSTRAINT "FK_forum_posts_admin_users_reviewed_by_admin_id" FOREIGN KEY (reviewed_by_admin_id) REFERENCES public.admin_users (id) ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426214622_AddForumTextAiModeration') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260426214622_AddForumTextAiModeration', '8.0.20');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426222554_AddForumFinalModerationLabel') THEN
+    ALTER TABLE public.forum_posts ADD final_moderation_label character varying(30);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426222554_AddForumFinalModerationLabel') THEN
+    CREATE INDEX "IX_forum_posts_final_moderation_label" ON public.forum_posts (final_moderation_label);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260426222554_AddForumFinalModerationLabel') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260426222554_AddForumFinalModerationLabel', '8.0.20');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
     IF EXISTS (
         SELECT 1
         FROM pg_roles

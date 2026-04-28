@@ -11,8 +11,8 @@ import {
   PetModel,
 } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   DEFAULT_MEDICATION_REMINDER_TIMES,
   normalizeMedicationReminderTimes,
@@ -34,6 +34,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -44,11 +45,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type MedicationForm = {
   apiId?: string;
   dosage: string;
+  endDate: Date | null;
   frequency: string;
   id: number;
   instructions: string;
   name: string;
   reminderEnabled: boolean;
+  startDate: Date;
   times: string[];
 };
 
@@ -60,9 +63,15 @@ const createMedicationForm = (
   apiId: medication ? String(medication.Id) : undefined,
   name: medication?.medicationName ?? "",
   dosage: medication?.dosage ?? "",
-  frequency: medication ? String(medication.frequencyInDays) : "",
+  frequency: medication ? String(medication.frequencyInDays) : "1",
   instructions: medication?.instructions ?? "",
-  reminderEnabled: medication ? medication.reminderEnabled || medication.isActive : true,
+  reminderEnabled: medication
+    ? medication.reminderEnabled || medication.isActive
+    : true,
+  startDate: medication?.startDate
+    ? new Date(medication.startDate)
+    : new Date(),
+  endDate: medication?.endDate ? new Date(medication.endDate) : null,
   times: medication
     ? normalizeMedicationReminderTimes(medication.times)
     : [...DEFAULT_MEDICATION_REMINDER_TIMES],
@@ -88,11 +97,24 @@ const ModifyAddIllness = () => {
   const [statusModal, setStatusModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingMedications, setIsLoadingMedications] = useState(false);
-  const [initialMedicationIds, setInitialMedicationIds] = useState<string[]>([]);
+  const [initialMedicationIds, setInitialMedicationIds] = useState<string[]>(
+    [],
+  );
   const [medications, setMedications] = useState<MedicationForm[]>([
     createMedicationForm(),
   ]);
   const isLoading = isSubmitting || isLoadingMedications;
+
+  const [showStartDatePickers, setShowStartDatePickers] = useState<
+    Record<number, boolean>
+  >({});
+  const [showEndDatePickers, setShowEndDatePickers] = useState<
+    Record<number, boolean>
+  >({});
+  const [activeTimePicker, setActiveTimePicker] = useState<{
+    medId: number;
+    timeIndex: number;
+  } | null>(null);
 
   const statusToChoose = useMemo(
     () => [
@@ -133,7 +155,9 @@ const ModifyAddIllness = () => {
     setSelectedNotes(parsed.item.notes ?? "");
 
     if (parsed.item.medications?.length) {
-      setInitialMedicationIds(parsed.item.medications.map((item) => String(item.Id)));
+      setInitialMedicationIds(
+        parsed.item.medications.map((item) => String(item.Id)),
+      );
       setMedications(
         parsed.item.medications.map((medication, index) =>
           createMedicationForm(medication, index),
@@ -145,30 +169,33 @@ const ModifyAddIllness = () => {
     }
   }, [payload]);
 
-  const loadMedications = useCallback(async (force = false) => {
-    if (!illness || (!force && medications.some((item) => item.apiId))) {
-      setIsLoadingMedications(false);
-      return;
-    }
-
-    setIsLoadingMedications(true);
-
-    try {
-      const response = await fetchIllnessMedications(illness.Id);
-      if (response.length > 0) {
-        setInitialMedicationIds(response.map((item) => String(item.Id)));
-        setMedications(
-          response.map((medication, index) =>
-            createMedicationForm(medication, index),
-          ),
-        );
+  const loadMedications = useCallback(
+    async (force = false) => {
+      if (!illness || (!force && medications.some((item) => item.apiId))) {
+        setIsLoadingMedications(false);
+        return;
       }
-    } catch (error) {
-      console.error("[illness] Failed to load medications", error);
-    } finally {
-      setIsLoadingMedications(false);
-    }
-  }, [illness, medications]);
+
+      setIsLoadingMedications(true);
+
+      try {
+        const response = await fetchIllnessMedications(illness.Id);
+        if (response.length > 0) {
+          setInitialMedicationIds(response.map((item) => String(item.Id)));
+          setMedications(
+            response.map((medication, index) =>
+              createMedicationForm(medication, index),
+            ),
+          );
+        }
+      } catch (error) {
+        console.error("[illness] Failed to load medications", error);
+      } finally {
+        setIsLoadingMedications(false);
+      }
+    },
+    [illness, medications],
+  );
 
   useEffect(() => {
     void loadMedications();
@@ -189,7 +216,10 @@ const ModifyAddIllness = () => {
   };
 
   const addMedication = () => {
-    setMedications((prev) => [...prev, createMedicationForm(undefined, prev.length)]);
+    setMedications((prev) => [
+      ...prev,
+      createMedicationForm(undefined, prev.length),
+    ]);
   };
 
   const removeMedication = (id: number) => {
@@ -199,10 +229,58 @@ const ModifyAddIllness = () => {
   const updateMedication = (
     id: number,
     field: keyof MedicationForm,
-    value: string,
+    value: MedicationForm[keyof MedicationForm],
   ) => {
     setMedications((prev) =>
       prev.map((med) => (med.id === id ? { ...med, [field]: value } : med)),
+    );
+  };
+
+  const timeStringToDate = (timeStr: string): Date => {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    const d = new Date();
+    d.setHours(hours || 0, minutes || 0, 0, 0);
+    return d;
+  };
+
+  const dateToTimeString = (d: Date): string => {
+    const h = d.getHours().toString().padStart(2, "0");
+    const m = d.getMinutes().toString().padStart(2, "0");
+    return `${h}:${m}`;
+  };
+
+  const addReminderTime = (medId: number) => {
+    setMedications((prev) =>
+      prev.map((med) =>
+        med.id === medId ? { ...med, times: [...med.times, "09:00"] } : med,
+      ),
+    );
+  };
+
+  const removeReminderTime = (medId: number, timeIndex: number) => {
+    setMedications((prev) =>
+      prev.map((med) =>
+        med.id === medId
+          ? { ...med, times: med.times.filter((_, i) => i !== timeIndex) }
+          : med,
+      ),
+    );
+  };
+
+  const updateReminderTime = (
+    medId: number,
+    timeIndex: number,
+    newTime: string,
+  ) => {
+    setMedications((prev) =>
+      prev.map((med) =>
+        med.id === medId
+          ? {
+              ...med,
+              times: med.times.map((t, i) => (i === timeIndex ? newTime : t)),
+            }
+          : med,
+      ),
     );
   };
 
@@ -324,18 +402,18 @@ const ModifyAddIllness = () => {
       );
 
       for (const medication of filledMedications) {
+        const medIsActive =
+          !medication.endDate || medication.endDate.getTime() > Date.now();
         const medicationBody = {
           medicationName: medication.name.trim(),
           dosage: medication.dosage.trim() || null,
           instructions: medication.instructions.trim() || null,
-          startDate: diagnosisDate.toISOString(),
-          endDate:
-            selectedStatus === "Resolved" ? curedDate.toISOString() : null,
+          startDate: medication.startDate.toISOString(),
+          endDate: medication.endDate ? medication.endDate.toISOString() : null,
           frequencyInDays: Number(medication.frequency),
           times: normalizeMedicationReminderTimes(medication.times),
-          reminderEnabled:
-            selectedStatus === "Ongoing" ? medication.reminderEnabled : false,
-          isActive: selectedStatus === "Ongoing",
+          reminderEnabled: medication.reminderEnabled,
+          isActive: medIsActive,
         };
 
         if (medication.apiId) {
@@ -498,10 +576,15 @@ const ModifyAddIllness = () => {
         />
 
         <View style={styles.medicationsHeaderRow}>
-          <AdaptiveText style={{ fontFamily: "Poppins-SemiBold", fontSize: 20 }}>
+          <AdaptiveText
+            style={{ fontFamily: "Poppins-SemiBold", fontSize: 20 }}
+          >
             Medications
           </AdaptiveText>
-          <TouchableOpacity style={styles.addMedicationBtn} onPress={addMedication}>
+          <TouchableOpacity
+            style={styles.addMedicationBtn}
+            onPress={addMedication}
+          >
             <Feather
               name="plus"
               size={16}
@@ -525,7 +608,9 @@ const ModifyAddIllness = () => {
               )}
             </View>
 
-            <AdaptiveText style={styles.labelInner}>Medication Name</AdaptiveText>
+            <AdaptiveText style={styles.labelInner}>
+              Medication Name
+            </AdaptiveText>
             <CustomInput
               value={med.name}
               onChangeText={(text) => updateMedication(med.id, "name", text)}
@@ -548,7 +633,9 @@ const ModifyAddIllness = () => {
               style={styles.medInput}
             />
 
-            <AdaptiveText style={styles.labelInner}>Frequency (days)</AdaptiveText>
+            <AdaptiveText style={styles.labelInner}>
+              Frequency (days)
+            </AdaptiveText>
             <CustomInput
               value={med.frequency}
               onChangeText={(text) =>
@@ -557,6 +644,203 @@ const ModifyAddIllness = () => {
               keyboardType="number-pad"
               style={styles.medInput}
             />
+
+            {/* Start Date */}
+            <AdaptiveText style={[styles.labelInner, { marginTop: 8 }]}>
+              Start Date
+            </AdaptiveText>
+            {Platform.OS === "android" && (
+              <TouchableOpacity
+                style={styles.medDateButton}
+                onPress={() =>
+                  setShowStartDatePickers((prev) => ({
+                    ...prev,
+                    [med.id]: true,
+                  }))
+                }
+              >
+                <AdaptiveText style={styles.medDateButtonText}>
+                  {med.startDate.toLocaleDateString()}
+                </AdaptiveText>
+              </TouchableOpacity>
+            )}
+            {(showStartDatePickers[med.id] || Platform.OS === "ios") && (
+              <DateTimePicker
+                value={med.startDate}
+                mode="date"
+                onChange={(_e, selected) => {
+                  setShowStartDatePickers((prev) => ({
+                    ...prev,
+                    [med.id]: false,
+                  }));
+                  if (selected) updateMedication(med.id, "startDate", selected);
+                }}
+              />
+            )}
+
+            {/* End Date */}
+            <View style={styles.medEndDateRow}>
+              <AdaptiveText
+                style={[styles.labelInner, { marginTop: 8, flex: 1 }]}
+              >
+                End Date
+              </AdaptiveText>
+              {med.endDate && (
+                <TouchableOpacity
+                  onPress={() => updateMedication(med.id, "endDate", null)}
+                  style={styles.medClearDateBtn}
+                >
+                  <AdaptiveText style={styles.medClearDateText}>
+                    Clear
+                  </AdaptiveText>
+                </TouchableOpacity>
+              )}
+            </View>
+            {!med.endDate ? (
+              <TouchableOpacity
+                style={styles.medDateButton}
+                onPress={() => {
+                  updateMedication(med.id, "endDate", new Date());
+                  setShowEndDatePickers((prev) => ({
+                    ...prev,
+                    [med.id]: true,
+                  }));
+                }}
+              >
+                <AdaptiveText style={styles.medDateButtonText}>
+                  Set end date (optional)
+                </AdaptiveText>
+              </TouchableOpacity>
+            ) : (
+              <>
+                {Platform.OS === "android" && (
+                  <TouchableOpacity
+                    style={styles.medDateButton}
+                    onPress={() =>
+                      setShowEndDatePickers((prev) => ({
+                        ...prev,
+                        [med.id]: true,
+                      }))
+                    }
+                  >
+                    <AdaptiveText style={styles.medDateButtonText}>
+                      {med.endDate.toLocaleDateString()}
+                    </AdaptiveText>
+                  </TouchableOpacity>
+                )}
+                {(showEndDatePickers[med.id] || Platform.OS === "ios") && (
+                  <DateTimePicker
+                    value={med.endDate}
+                    mode="date"
+                    onChange={(_e, selected) => {
+                      setShowEndDatePickers((prev) => ({
+                        ...prev,
+                        [med.id]: false,
+                      }));
+                      if (selected)
+                        updateMedication(med.id, "endDate", selected);
+                    }}
+                  />
+                )}
+              </>
+            )}
+
+            {/* Reminder Enabled */}
+            <View style={styles.medReminderRow}>
+              <AdaptiveText style={styles.labelInner}>
+                Reminders enabled
+              </AdaptiveText>
+              <Switch
+                value={med.reminderEnabled}
+                onValueChange={(val) =>
+                  updateMedication(med.id, "reminderEnabled", val)
+                }
+                trackColor={{ false: colors.lightGrey, true: colors.green }}
+                thumbColor={colors.white}
+              />
+            </View>
+
+            {/* Reminder Times */}
+            {med.reminderEnabled && (
+              <>
+                <View style={styles.medTimesHeaderRow}>
+                  <AdaptiveText style={styles.labelInner}>
+                    Reminder times
+                  </AdaptiveText>
+                  <TouchableOpacity
+                    onPress={() => addReminderTime(med.id)}
+                    style={styles.addTimeBtn}
+                  >
+                    <Feather
+                      name="plus"
+                      size={14}
+                      color={darkMode ? colors.white : colors.black}
+                    />
+                    <AdaptiveText style={styles.addTimeBtnText}>
+                      Add
+                    </AdaptiveText>
+                  </TouchableOpacity>
+                </View>
+
+                {med.times.map((time, timeIndex) => (
+                  <View key={timeIndex} style={styles.timeEntryRow}>
+                    {Platform.OS === "android" ? (
+                      <TouchableOpacity
+                        style={styles.timeChip}
+                        onPress={() =>
+                          setActiveTimePicker({ medId: med.id, timeIndex })
+                        }
+                      >
+                        <AdaptiveText style={styles.timeChipText}>
+                          {time}
+                        </AdaptiveText>
+                      </TouchableOpacity>
+                    ) : (
+                      <DateTimePicker
+                        value={timeStringToDate(time)}
+                        mode="time"
+                        is24Hour
+                        onChange={(_e, selected) => {
+                          if (selected)
+                            updateReminderTime(
+                              med.id,
+                              timeIndex,
+                              dateToTimeString(selected),
+                            );
+                        }}
+                      />
+                    )}
+
+                    {activeTimePicker?.medId === med.id &&
+                      activeTimePicker?.timeIndex === timeIndex && (
+                        <DateTimePicker
+                          value={timeStringToDate(time)}
+                          mode="time"
+                          is24Hour
+                          onChange={(_e, selected) => {
+                            setActiveTimePicker(null);
+                            if (selected)
+                              updateReminderTime(
+                                med.id,
+                                timeIndex,
+                                dateToTimeString(selected),
+                              );
+                          }}
+                        />
+                      )}
+
+                    {med.times.length > 1 && (
+                      <TouchableOpacity
+                        onPress={() => removeReminderTime(med.id, timeIndex)}
+                        style={styles.removeTimeBtn}
+                      >
+                        <Feather name="x" size={16} color={colors.red} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </>
+            )}
           </View>
         ))}
 
@@ -687,6 +971,80 @@ const createStyles = ({ darkMode }: any) => {
     },
     medInput: {
       width: "100%",
+    },
+    medDateButton: {
+      borderWidth: 1,
+      borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      borderRadius: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      alignSelf: "flex-start",
+      marginTop: 2,
+    },
+    medDateButtonText: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 14,
+    },
+    medEndDateRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    medClearDateBtn: {
+      marginTop: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    medClearDateText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 13,
+      color: colors.red,
+    },
+    medReminderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      width: "84%",
+      marginTop: 8,
+    },
+    medTimesHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      width: "80%",
+      justifyContent: "space-between",
+      marginTop: 6,
+    },
+    addTimeBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 10,
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.lightGrey,
+    },
+    addTimeBtnText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 13,
+    },
+    timeEntryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 4,
+    },
+    timeChip: {
+      borderWidth: 1,
+      borderColor: darkMode ? colors.darkGrey : colors.lightGrey,
+      borderRadius: 10,
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+    },
+    timeChipText: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 14,
+    },
+    removeTimeBtn: {
+      padding: 4,
     },
   });
 };

@@ -1,6 +1,9 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
+import PlaceImageGallery, {
+  getPlaceGalleryImageUrls,
+} from "@/components/PlaceImageGallery";
 import { PlaceReviewsSection } from "@/components/PlaceReviewsSection";
 import { PlaceScheduleSection } from "@/components/PlaceScheduleSection";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
@@ -15,9 +18,8 @@ import {
   formatPlaceLocation,
 } from "@/lib/discovery-api";
 import { isCharityPlaceType } from "@/lib/place-type-utils";
-import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -79,6 +81,7 @@ export default function PlaceDetails() {
     Boolean(place?.OwnerUserId) &&
     Boolean(user?.IsApprovedPlaceOwner) &&
     String(place?.OwnerUserId) === String(user?.Id);
+  const galleryImages = useMemo(() => getPlaceGalleryImageUrls(place), [place]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,15 +98,7 @@ export default function PlaceDetails() {
       >
         {place ? (
           <>
-            {place.Photo ? (
-              <Image
-                source={{ uri: place.Photo }}
-                style={styles.image}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.imagePlaceholder} />
-            )}
+            <PlaceImageGallery imageUrls={galleryImages} />
 
             <View style={styles.section}>
               <AdaptiveText style={styles.name}>{place.Name}</AdaptiveText>
@@ -194,15 +189,6 @@ const createStyles = ({ darkMode }: any) => {
     },
     content: {
       paddingBottom: 36,
-    },
-    image: {
-      width: "100%",
-      height: 320,
-    },
-    imagePlaceholder: {
-      width: "100%",
-      height: 320,
-      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
     },
     section: {
       marginHorizontal: 16,
