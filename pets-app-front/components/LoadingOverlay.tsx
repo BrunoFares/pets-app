@@ -68,7 +68,7 @@ export const LoadingOverlay = ({
     <View style={styles.overlay} pointerEvents="auto">
       <Animated.View style={[styles.logoWrap, defaultLogoAnimation]}>
         <Image
-          source={logoSource ?? (darkMode ? lightLogo : darkLogo)}
+          source={logoSource ?? lightLogo}
           style={styles.logo}
           resizeMode="contain"
         />
