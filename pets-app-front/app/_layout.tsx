@@ -29,6 +29,7 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
     const isIndexRoute = pathname === "/" && firstSegment !== "(tabs)";
     const isPublicRoute =
       firstSegment === "login-screen" ||
+      firstSegment === "forgot-password-screen" ||
       firstSegment === "register-screen" ||
       firstSegment === "verify-email-screen";
 
@@ -70,6 +71,10 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
     <Stack initialRouteName="index">
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login-screen" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="forgot-password-screen"
+        options={{ headerShown: false }}
+      />
       <Stack.Screen name="register-screen" options={{ headerShown: false }} />
       <Stack.Screen
         name="verify-email-screen"
