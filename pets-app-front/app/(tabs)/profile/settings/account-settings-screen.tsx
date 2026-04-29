@@ -2,7 +2,9 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { goTo } from "@/utils";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   Platform,
   ScrollView,
@@ -14,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AccountSettingsScreen() {
+  const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
 
@@ -66,7 +69,13 @@ export default function AccountSettingsScreen() {
           Account Settings
         </AdaptiveText>
         <AdaptiveView style={styles.container}>
-          {settingsPage("Change email", "alternate-email", () => {})}
+          {settingsPage("Change email", "alternate-email", () => {
+            goTo(
+              {},
+              "/(tabs)/profile/settings/change-email-screen",
+              router,
+            );
+          })}
           {settingsPage("Change password", "password", () => {})}
         </AdaptiveView>
       </ScrollView>

@@ -9,6 +9,10 @@ export default function ItemsStack() {
         options={{ title: "Account Settings" }}
       />
       <Stack.Screen
+        name="change-email-screen"
+        options={{ title: "Change Email" }}
+      />
+      <Stack.Screen
         name="location-settings-screen"
         options={{ title: "Location Settings" }}
       />
