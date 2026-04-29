@@ -6,15 +6,13 @@ import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { presentApiError } from "@/lib/api-feedback";
-import {
-  confirmEmailChange,
-  requestEmailChange,
-} from "@/lib/profile-api";
+import { confirmEmailChange, requestEmailChange } from "@/lib/profile-api";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Keyboard,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -88,10 +86,7 @@ export default function ChangeEmailScreen() {
     }
 
     if (!currentPassword.trim()) {
-      Alert.alert(
-        "Missing information",
-        "Please enter your current password.",
-      );
+      Alert.alert("Missing information", "Please enter your current password.");
       return;
     }
 
@@ -119,18 +114,12 @@ export default function ChangeEmailScreen() {
     const normalizedCode = verificationCode.trim();
 
     if (!normalizedCode) {
-      Alert.alert(
-        "Missing information",
-        "Please enter the verification code.",
-      );
+      Alert.alert("Missing information", "Please enter the verification code.");
       return;
     }
 
     if (!/^\d{6}$/.test(normalizedCode)) {
-      Alert.alert(
-        "Invalid code",
-        "The verification code must be 6 digits.",
-      );
+      Alert.alert("Invalid code", "The verification code must be 6 digits.");
       return;
     }
 
@@ -311,7 +300,10 @@ const createStyles = ({ darkMode }: any) => {
     },
     inputText: {
       width: "84%",
-      marginBottom: -7,
+      marginBottom: Platform.select({
+        ios: -3,
+        android: -10,
+      }),
     },
     buttonSave: {
       backgroundColor: colors.green,

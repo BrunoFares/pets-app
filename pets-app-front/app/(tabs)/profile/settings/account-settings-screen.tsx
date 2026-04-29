@@ -76,7 +76,13 @@ export default function AccountSettingsScreen() {
               router,
             );
           })}
-          {settingsPage("Change password", "password", () => {})}
+          {settingsPage("Change password", "password", () => {
+            goTo(
+              {},
+              "/(tabs)/profile/settings/change-password-screen",
+              router,
+            );
+          })}
         </AdaptiveView>
       </ScrollView>
     </SafeAreaView>
