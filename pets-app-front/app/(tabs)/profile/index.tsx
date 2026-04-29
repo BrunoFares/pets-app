@@ -217,6 +217,10 @@ export default function Profile() {
               <View
                 style={{
                   width: "95%",
+                  marginTop:
+                    pets.length === 0 && !profileInfo.IsApprovedPlaceOwner
+                      ? -16
+                      : 0,
                   flexDirection: "row",
                   alignSelf: "center",
                   gap: 14,

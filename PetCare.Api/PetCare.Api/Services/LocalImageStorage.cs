@@ -45,6 +45,48 @@ public static class LocalImageStorage
         return await SaveFileAsync(env, file, fileNamePrefix, normalizedExtension, relativeSegments);
     }
 
+    public static string? TryCopyStoredFile(
+        IWebHostEnvironment env,
+        string? storedPath,
+        string fileNamePrefix,
+        params string[] relativeSegments)
+    {
+        if (string.IsNullOrWhiteSpace(storedPath))
+        {
+            return null;
+        }
+
+        var sourceRelativePath = storedPath.Split('?', 2)[0].TrimStart('/');
+        var sourceExtension = Path.GetExtension(sourceRelativePath);
+        var webRoot = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var sourceFullPath = Path.Combine(
+            webRoot,
+            sourceRelativePath.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!System.IO.File.Exists(sourceFullPath))
+        {
+            return null;
+        }
+
+        Directory.CreateDirectory(webRoot);
+
+        var uploadsRoot = Path.Combine(webRoot, "uploads");
+        Directory.CreateDirectory(uploadsRoot);
+
+        var targetDirectory = relativeSegments.Aggregate(uploadsRoot, Path.Combine);
+        Directory.CreateDirectory(targetDirectory);
+
+        var fileName = $"{fileNamePrefix}-{Guid.NewGuid():N}{sourceExtension}";
+        var destinationFullPath = Path.Combine(targetDirectory, fileName);
+        System.IO.File.Copy(sourceFullPath, destinationFullPath, overwrite: false);
+
+        var destinationRelativePath = new[] { "uploads" }
+            .Concat(relativeSegments)
+            .Concat(new[] { fileName });
+
+        return "/" + string.Join("/", destinationRelativePath);
+    }
+
     public static void TryDeleteFile(IWebHostEnvironment env, string? storedPath)
     {
         if (string.IsNullOrWhiteSpace(storedPath))
