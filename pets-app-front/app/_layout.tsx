@@ -87,6 +87,10 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
         name="pet-translator-screen"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="place-editor-screen"
+        options={{ headerShown: false }}
+      />
     </Stack>
   );
 }

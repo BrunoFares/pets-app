@@ -8,6 +8,11 @@ import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest } from "@/lib/api";
 import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
+import {
+  applyRegisteredPlaceFlag,
+  applyRegisteredPlaceFlags,
+  getRegisteredPlaceOwnerIds,
+} from "@/lib/place-owner-lookup";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -36,14 +41,23 @@ const PostScreen = () => {
     const avatarCacheKey = Date.now();
 
     try {
-      const [post, postReplies] = await Promise.all([
+      const [post, postReplies, ownerIds] = await Promise.all([
         apiRequest<ApiForumPostResponse>(`/api/ForumPosts/${postId}`),
         apiRequest<ApiForumPostResponse[]>(`/api/ForumPosts/${postId}/replies`),
+        getRegisteredPlaceOwnerIds(),
       ]);
 
-      setItem(normalizeForumPost(post, avatarCacheKey));
+      setItem(
+        applyRegisteredPlaceFlag(
+          normalizeForumPost(post, avatarCacheKey),
+          ownerIds,
+        ),
+      );
       setReplies(
-        postReplies.map((reply) => normalizeForumPost(reply, avatarCacheKey)),
+        applyRegisteredPlaceFlags(
+          postReplies.map((reply) => normalizeForumPost(reply, avatarCacheKey)),
+          ownerIds,
+        ),
       );
     } catch {
       setItem(undefined);
@@ -85,7 +99,13 @@ const PostScreen = () => {
     }
 
     if (selectedPost) {
-      setItem(selectedPost);
+      void getRegisteredPlaceOwnerIds()
+        .then((ownerIds) => {
+          setItem(applyRegisteredPlaceFlag(selectedPost, ownerIds));
+        })
+        .catch(() => {
+          setItem(selectedPost);
+        });
     }
 
     if (!id) {

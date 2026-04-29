@@ -1,6 +1,7 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomImage from "@/components/CustomImage";
 import CustomInput from "@/components/CustomInput";
+import CustomModal from "@/components/CustomModal";
 import ListWithoutConfirmationModal from "@/components/ListWithoutConfirmationModal";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,8 +10,8 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { BreedModel, Color, PetModel, Sex, SpeciesModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { presentApiError } from "@/lib/api-feedback";
 import { apiRequest } from "@/lib/api";
+import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchBreedOptions,
   fetchPetById,
@@ -22,8 +23,8 @@ import {
 } from "@/lib/profile-api";
 import { AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -41,7 +42,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const EditPet = () => {
   const darkMode = useColorScheme() === "dark";
-  const styles = createStyles({ darkMode });
   const { setShowFooter } = useGlobal();
   const { refreshProfile } = useAuth();
   const router = useRouter();
@@ -52,6 +52,7 @@ const EditPet = () => {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingPet, setIsLoadingPet] = useState(true);
   const [isLoadingSpecies, setIsLoadingSpecies] = useState(true);
   const [isLoadingBreeds, setIsLoadingBreeds] = useState(false);
@@ -74,8 +75,15 @@ const EditPet = () => {
   const [breedModal, setBreedModal] = useState(false);
   const [colorModal, setColorModal] = useState(false);
   const [neuteredModal, setNeuteredModal] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const isLoading =
-    isSubmitting || isLoadingPet || isLoadingSpecies || isLoadingBreeds;
+    isSubmitting ||
+    isDeleting ||
+    isLoadingPet ||
+    isLoadingSpecies ||
+    isLoadingBreeds;
+
+  const styles = createStyles({ darkMode, isDeleting });
 
   const colorsToChoose = useMemo(
     () =>
@@ -204,37 +212,40 @@ const EditPet = () => {
     }
   }, [payload, speciesToChoose]);
 
-  const loadBreeds = useCallback(async (speciesId?: number | null) => {
-    if (!speciesId) {
-      setBreedsToChoose([]);
-      setSelectedBreed(undefined);
-      setIsLoadingBreeds(false);
-      return;
-    }
-
-    setIsLoadingBreeds(true);
-
-    try {
-      const breeds = await fetchBreedOptions(speciesId);
-      setBreedsToChoose(breeds);
-
-      const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
-      const currentBreedId = parsed?.pet?.BreedId;
-
-      if (currentBreedId) {
-        const matchingBreed = breeds.find(
-          (item) => Number(item.id) === Number(currentBreedId),
-        );
-        setSelectedBreed(matchingBreed);
-      } else {
+  const loadBreeds = useCallback(
+    async (speciesId?: number | null) => {
+      if (!speciesId) {
+        setBreedsToChoose([]);
         setSelectedBreed(undefined);
+        setIsLoadingBreeds(false);
+        return;
       }
-    } catch (error) {
-      presentApiError("Unable to load breeds", error);
-    } finally {
-      setIsLoadingBreeds(false);
-    }
-  }, [payload]);
+
+      setIsLoadingBreeds(true);
+
+      try {
+        const breeds = await fetchBreedOptions(speciesId);
+        setBreedsToChoose(breeds);
+
+        const parsed = parseRoutePayload<{ pet?: PetModel }>(payload);
+        const currentBreedId = parsed?.pet?.BreedId;
+
+        if (currentBreedId) {
+          const matchingBreed = breeds.find(
+            (item) => Number(item.id) === Number(currentBreedId),
+          );
+          setSelectedBreed(matchingBreed);
+        } else {
+          setSelectedBreed(undefined);
+        }
+      } catch (error) {
+        presentApiError("Unable to load breeds", error);
+      } finally {
+        setIsLoadingBreeds(false);
+      }
+    },
+    [payload],
+  );
 
   useEffect(() => {
     void loadBreeds(selectedSpecies?.id ? Number(selectedSpecies.id) : null);
@@ -253,7 +264,10 @@ const EditPet = () => {
 
   const handleSave = async () => {
     if (!petId) {
-      Alert.alert("Pet unavailable", "We couldn't determine which pet to update.");
+      Alert.alert(
+        "Pet unavailable",
+        "We couldn't determine which pet to update.",
+      );
       return;
     }
 
@@ -290,10 +304,15 @@ const EditPet = () => {
       trimmedWeight.length > 0 ? Number(trimmedWeight) : null;
     const isInvalidWeight =
       trimmedWeight.length > 0 &&
-      (parsedWeight === null || !Number.isFinite(parsedWeight) || parsedWeight < 0);
+      (parsedWeight === null ||
+        !Number.isFinite(parsedWeight) ||
+        parsedWeight < 0);
 
     if (isInvalidWeight) {
-      Alert.alert("Invalid weight", "Please enter a valid weight in kilograms.");
+      Alert.alert(
+        "Invalid weight",
+        "Please enter a valid weight in kilograms.",
+      );
       return;
     }
 
@@ -330,6 +349,38 @@ const EditPet = () => {
       setIsSubmitting(false);
     }
   };
+
+  const closeDeleteModal = useCallback(() => {
+    if (isDeleting) {
+      return;
+    }
+
+    setDeleteModalVisible(false);
+  }, [isDeleting]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!petId || isDeleting) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await apiRequest(`/api/Pets/${petId}`, {
+        method: "DELETE",
+      });
+      setDeleteModalVisible(false);
+      await refreshProfile();
+      router.replace("/(tabs)/profile");
+    } catch (error) {
+      presentApiError("Unable to delete pet", error, {
+        networkMessage:
+          "We couldn't reach the server, so this pet was not deleted.",
+        fallbackMessage: "We couldn't delete this pet right now.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [isDeleting, petId, refreshProfile, router]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -408,7 +459,10 @@ const EditPet = () => {
         </View>
 
         <AdaptiveText style={{ width: "84%" }}>Species</AdaptiveText>
-        <TouchableOpacity style={styles.picker} onPress={() => setSpeciesModal(true)}>
+        <TouchableOpacity
+          style={styles.picker}
+          onPress={() => setSpeciesModal(true)}
+        >
           <AdaptiveText style={styles.textPicker}>
             {selectedSpecies?.Name || "Select species..."}
           </AdaptiveText>
@@ -423,7 +477,10 @@ const EditPet = () => {
         {selectedSpecies && (
           <>
             <AdaptiveText style={{ width: "84%" }}>Breed</AdaptiveText>
-            <TouchableOpacity style={styles.picker} onPress={() => setBreedModal(true)}>
+            <TouchableOpacity
+              style={styles.picker}
+              onPress={() => setBreedModal(true)}
+            >
               <AdaptiveText style={styles.textPicker}>
                 {selectedBreed?.Name || "Select breed..."}
               </AdaptiveText>
@@ -438,7 +495,10 @@ const EditPet = () => {
         )}
 
         <AdaptiveText style={{ width: "84%" }}>Sex</AdaptiveText>
-        <TouchableOpacity style={styles.picker} onPress={() => setSexModal(true)}>
+        <TouchableOpacity
+          style={styles.picker}
+          onPress={() => setSexModal(true)}
+        >
           <AdaptiveText style={styles.textPicker}>
             {selectedSex || "Select sex..."}
           </AdaptiveText>
@@ -475,7 +535,10 @@ const EditPet = () => {
         />
 
         <AdaptiveText style={{ width: "84%" }}>Color</AdaptiveText>
-        <TouchableOpacity style={styles.picker} onPress={() => setColorModal(true)}>
+        <TouchableOpacity
+          style={styles.picker}
+          onPress={() => setColorModal(true)}
+        >
           <AdaptiveText style={styles.textPicker}>
             {selectedColor || "Select color..."}
           </AdaptiveText>
@@ -489,11 +552,21 @@ const EditPet = () => {
 
         <TouchableOpacity
           style={styles.buttonSave}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isDeleting}
           onPress={handleSave}
         >
           <Text style={styles.btnTextSave}>
             {isSubmitting ? "Saving..." : "Save changes"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.buttonDelete}
+          disabled={isSubmitting || isDeleting}
+          onPress={() => setDeleteModalVisible(true)}
+        >
+          <Text style={styles.btnTextDelete}>
+            {isDeleting ? "Deleting..." : "Delete pet"}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -556,6 +629,37 @@ const EditPet = () => {
         }}
       />
 
+      <CustomModal visible={deleteModalVisible} onClose={closeDeleteModal}>
+        <AdaptiveText style={styles.deleteModalTitle}>
+          Delete this pet?
+        </AdaptiveText>
+        <AdaptiveText style={styles.deleteModalSubtitle}>
+          This will permanently remove the pet and its profile details.
+        </AdaptiveText>
+
+        <View style={styles.deleteModalActions}>
+          <TouchableOpacity
+            style={styles.deleteModalConfirmButton}
+            disabled={isDeleting}
+            onPress={() => {
+              void confirmDelete();
+            }}
+          >
+            <Text style={styles.deleteModalConfirmText}>
+              {isDeleting ? "Deleting..." : "Delete pet"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.deleteModalCancelButton}
+            disabled={isDeleting}
+            onPress={closeDeleteModal}
+          >
+            <Text style={styles.deleteModalCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
+
       {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
@@ -563,7 +667,7 @@ const EditPet = () => {
 
 export default EditPet;
 
-const createStyles = ({ darkMode }: any) => {
+const createStyles = ({ darkMode, isDeleting }: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -593,13 +697,73 @@ const createStyles = ({ darkMode }: any) => {
     buttonSave: {
       backgroundColor: colors.green,
       paddingVertical: 20,
-      paddingHorizontal: 80,
       borderRadius: 20,
-      marginBottom: "10%",
+      width: "70%",
       marginTop: 20,
     },
     btnTextSave: {
       color: colors.white,
+      fontFamily: "Poppins-Bold",
+      fontSize: 18,
+      textAlign: "center",
+    },
+    buttonDelete: {
+      backgroundColor: colors.red,
+      paddingVertical: 18,
+      width: "70%",
+      borderRadius: 20,
+      marginTop: 6,
+      marginBottom: "10%",
+    },
+    btnTextDelete: {
+      color: colors.white,
+      fontFamily: "Poppins-Bold",
+      fontSize: 18,
+      textAlign: "center",
+    },
+    deleteModalTitle: {
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-Bold",
+      fontSize: 24,
+      textAlign: "center",
+    },
+    deleteModalSubtitle: {
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+      fontFamily: "Poppins-Regular",
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: "center",
+      marginTop: 12,
+      marginBottom: 24,
+    },
+    deleteModalActions: {
+      width: "100%",
+      gap: 10,
+      alignItems: "center",
+      marginBottom: 40,
+    },
+    deleteModalConfirmButton: {
+      backgroundColor: colors.red,
+      paddingVertical: 18,
+      borderRadius: 20,
+      width: "100%",
+      opacity: isDeleting ? 0.7 : 1,
+    },
+    deleteModalConfirmText: {
+      color: colors.white,
+      fontFamily: "Poppins-Bold",
+      fontSize: 18,
+      textAlign: "center",
+    },
+    deleteModalCancelButton: {
+      backgroundColor: darkMode ? colors.mildDarkGrey : colors.lightGrey,
+      paddingVertical: 18,
+      borderRadius: 20,
+      width: "100%",
+      opacity: isDeleting ? 0.7 : 1,
+    },
+    deleteModalCancelText: {
+      color: darkMode ? colors.white : colors.black,
       fontFamily: "Poppins-Bold",
       fontSize: 18,
       textAlign: "center",

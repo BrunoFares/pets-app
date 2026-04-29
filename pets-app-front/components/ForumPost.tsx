@@ -204,6 +204,7 @@ const ForumPost = ({
   const compactTimestamp = formatPostTimestamp(item.CreatedAt, "compact");
   const detailedTimestamp = formatPostTimestamp(item.CreatedAt, "detailed");
   const isOwnPost = user ? String(user.Id) === String(item.UserId) : false;
+  const isVerifiedUser = Boolean(item.HasRegisteredPlace);
   const imageAttachments = getImageAttachments(item.Attachments ?? []);
   const videoAttachments = getVideoAttachments(item.Attachments ?? []);
   const selectedAttachment = imageAttachments[selectedAttachmentIndex] ?? null;
@@ -997,9 +998,19 @@ const ForumPost = ({
                 <View style={{ flexDirection: "row" }}>
                   <TouchableOpacity onPress={handleProfilePress}>
                     <View style={styles.postHeaderText}>
-                      <AdaptiveText style={styles.postTitle}>
-                        {item.UserName}
-                      </AdaptiveText>
+                      <View style={styles.postTitleRow}>
+                        <AdaptiveText style={styles.postTitle}>
+                          {item.UserName}
+                        </AdaptiveText>
+                        {isVerifiedUser ? (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color={colors.green}
+                            style={styles.verifiedBadge}
+                          />
+                        ) : null}
+                      </View>
                       {compactTimestamp ? (
                         <AdaptiveText style={styles.postTimestamp}>
                           {compactTimestamp}
@@ -1116,9 +1127,19 @@ const ForumPost = ({
                 customStyles={styles.placeholder}
               />
               <View style={styles.postHeaderText}>
-                <AdaptiveText style={styles.postTitle}>
-                  {item.UserName}
-                </AdaptiveText>
+                <View style={styles.postTitleRow}>
+                  <AdaptiveText style={styles.postTitle}>
+                    {item.UserName}
+                  </AdaptiveText>
+                  {isVerifiedUser ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={colors.green}
+                      style={styles.verifiedBadge}
+                    />
+                  ) : null}
+                </View>
                 {detailedTimestamp ? (
                   <AdaptiveText style={styles.postTimestamp}>
                     {detailedTimestamp}
@@ -1267,13 +1288,18 @@ const createStyles = ({ darkMode }: any) => {
       fontSize: 18,
       marginBottom: -6,
     },
+    postTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      flexWrap: "wrap",
+    },
     postHeaderText: {
       marginLeft: 10,
       flexShrink: 1,
-      gap: Platform.select({
-        ios: 6,
-        android: 0,
-      }),
+    },
+    verifiedBadge: {
+      marginTop: 1,
     },
     optionsButton: {
       alignItems: "center",
@@ -1299,6 +1325,10 @@ const createStyles = ({ darkMode }: any) => {
       fontFamily: "Poppins-Regular",
       fontSize: 12,
       color: darkMode ? colors.lightGrey : colors.darkGrey,
+      marginTop: Platform.select({
+        ios: 4,
+        android: -2,
+      }),
     },
     postContent: {
       fontFamily: "Poppins-Light",

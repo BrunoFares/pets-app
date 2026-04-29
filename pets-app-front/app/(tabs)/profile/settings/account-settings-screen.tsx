@@ -19,7 +19,7 @@ export default function AccountSettingsScreen() {
 
   const settingsPage = (
     title: string,
-    imageTitle: "password" | "drive-file-rename-outline" | "alternate-email",
+    imageTitle: "password" | "alternate-email",
     fn: () => void,
   ) => {
     return (
@@ -66,7 +66,6 @@ export default function AccountSettingsScreen() {
           Account Settings
         </AdaptiveText>
         <AdaptiveView style={styles.container}>
-          {settingsPage("Change name", "drive-file-rename-outline", () => {})}
           {settingsPage("Change email", "alternate-email", () => {})}
           {settingsPage("Change password", "password", () => {})}
         </AdaptiveView>

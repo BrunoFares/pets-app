@@ -11,6 +11,10 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
 import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
+import {
+  applyRegisteredPlaceFlags,
+  getRegisteredPlaceOwnerIds,
+} from "@/lib/place-owner-lookup";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +23,7 @@ import {
   Animated,
   FlatList,
   Keyboard,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -116,9 +121,8 @@ const ProfileScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
   const [optionsStep, setOptionsStep] = useState<"menu" | "report">("menu");
-  const [selectedReason, setSelectedReason] = useState<ReportReasonValue>(
-    "Spam",
-  );
+  const [selectedReason, setSelectedReason] =
+    useState<ReportReasonValue>("Spam");
   const [reportDescription, setReportDescription] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const selectedPost = useMemo(() => {
@@ -136,6 +140,9 @@ const ProfileScreen = () => {
       }
     }
   }, [payload]);
+  const [isVerifiedUser, setIsVerifiedUser] = useState(
+    Boolean(selectedPost?.HasRegisteredPlace),
+  );
   const selectedUserID = useMemo(() => {
     if (selectedPost?.UserId !== undefined && selectedPost?.UserId !== null) {
       return String(selectedPost.UserId);
@@ -171,12 +178,38 @@ const ProfileScreen = () => {
   const isOwnProfile = currentUser
     ? String(currentUser.Id) === String(selectedUserID)
     : false;
+  const displayedUsername = useMemo(() => {
+    if (isOwnProfile && currentUser?.Username) {
+      return currentUser.Username;
+    }
+
+    if (selectedPost?.UserName) {
+      return selectedPost.UserName;
+    }
+
+    if (posts?.[0]?.UserName) {
+      return posts[0].UserName;
+    }
+
+    if (replies?.[0]?.UserName) {
+      return replies[0].UserName;
+    }
+
+    return null;
+  }, [
+    currentUser?.Username,
+    isOwnProfile,
+    posts,
+    replies,
+    selectedPost?.UserName,
+  ]);
 
   const loadProfile = useCallback(async () => {
     if (!selectedUserID || !fallbackUser) {
       setUser(undefined);
       setPosts([]);
       setReplies([]);
+      setIsVerifiedUser(false);
       setIsLoading(false);
       return;
     }
@@ -187,12 +220,14 @@ const ProfileScreen = () => {
     setIsLoading(true);
     const avatarCacheKey = Date.now();
 
-    const [forumUserResult, allPostsResult] = await Promise.allSettled([
-      apiRequest<ApiForumUserProfileResponse>(
-        `/api/Users/${selectedUserID}/forum-profile`,
-      ),
-      apiRequest<any[]>("/api/ForumPosts"),
-    ]);
+    const [forumUserResult, allPostsResult, ownerIdsResult] =
+      await Promise.allSettled([
+        apiRequest<ApiForumUserProfileResponse>(
+          `/api/Users/${selectedUserID}/forum-profile`,
+        ),
+        apiRequest<ApiForumPostResponse[]>("/api/ForumPosts"),
+        getRegisteredPlaceOwnerIds(),
+      ]);
 
     if (forumUserResult.status === "fulfilled") {
       setUser(mapApiForumUserToModel(forumUserResult.value, avatarCacheKey));
@@ -202,10 +237,16 @@ const ProfileScreen = () => {
 
     if (allPostsResult.status === "fulfilled") {
       const normalizedPosts = allPostsResult.value.map((item) =>
-        normalizeForumPost(item as ApiForumPostResponse, avatarCacheKey),
+        normalizeForumPost(item, avatarCacheKey),
       );
+      const ownerIds =
+        ownerIdsResult.status === "fulfilled"
+          ? ownerIdsResult.value
+          : new Set<string>();
+      setIsVerifiedUser(ownerIds.has(String(selectedUserID)));
+      const flaggedPosts = applyRegisteredPlaceFlags(normalizedPosts, ownerIds);
 
-      const displayPosts = normalizedPosts.filter(
+      const displayPosts = flaggedPosts.filter(
         (item) => String(item.UserId) === String(selectedUserID),
       );
 
@@ -214,14 +255,19 @@ const ProfileScreen = () => {
     } else {
       setPosts([]);
       setReplies([]);
+      setIsVerifiedUser(Boolean(selectedPost?.HasRegisteredPlace));
     }
 
     setIsLoading(false);
-  }, [fallbackUser, selectedUserID]);
+  }, [fallbackUser, selectedPost?.HasRegisteredPlace, selectedUserID]);
 
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
+
+  useEffect(() => {
+    setIsVerifiedUser(Boolean(selectedPost?.HasRegisteredPlace));
+  }, [selectedPost?.HasRegisteredPlace]);
 
   const { isRefreshing, onRefresh } = usePullToRefresh(loadProfile);
   const showLoadingOverlay = isLoading && !isRefreshing;
@@ -258,7 +304,10 @@ const ProfileScreen = () => {
 
   const submitUserReport = async () => {
     if (!selectedUserID) {
-      Alert.alert("Profile unavailable", "We couldn't determine which user to report.");
+      Alert.alert(
+        "Profile unavailable",
+        "We couldn't determine which user to report.",
+      );
       return;
     }
 
@@ -462,14 +511,34 @@ const ProfileScreen = () => {
               customStyles={styles.placeholder}
             />
 
-            <AdaptiveText
-              style={{
-                fontFamily: "Poppins-SemiBold",
-                fontSize: 20,
-              }}
-            >
-              {displayedUser.Name}
-            </AdaptiveText>
+            <View style={styles.headerCopy}>
+              <AdaptiveText style={styles.headerName}>
+                {displayedUser.Name}
+              </AdaptiveText>
+
+              {displayedUsername ? (
+                <View style={styles.usernameRow}>
+                  <AdaptiveText style={styles.usernameText}>
+                    @{displayedUsername}
+                  </AdaptiveText>
+                  {isVerifiedUser ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={colors.green}
+                      style={styles.verifiedBadge}
+                    />
+                  ) : null}
+                </View>
+              ) : isVerifiedUser ? (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.green}
+                  style={styles.verifiedBadgeStandalone}
+                />
+              ) : null}
+            </View>
 
             <TouchableOpacity
               style={{
@@ -483,24 +552,22 @@ const ProfileScreen = () => {
               }}
               onPress={() => router.push("/(tabs)/forum/create")}
             >
-              <Ionicons
-                name="add"
-                size={24}
-                color={darkMode ? colors.white : colors.black}
-              />
+              <Ionicons name="add" size={24} color={colors.white} />
             </TouchableOpacity>
           </View>
 
-          <AdaptiveText
-            style={{
-              fontFamily: "Poppins-Regular",
-              fontSize: 14,
-              marginHorizontal: 20,
-              marginVertical: 10,
-            }}
-          >
-            {displayedUser.Description}
-          </AdaptiveText>
+          {displayedUser.Description && (
+            <AdaptiveText
+              style={{
+                fontFamily: "Poppins-Regular",
+                fontSize: 14,
+                marginHorizontal: 20,
+                marginVertical: 10,
+              }}
+            >
+              {displayedUser.Description}
+            </AdaptiveText>
+          )}
 
           {/* Header area (sliding) */}
           <View style={styles.tabs}>
@@ -622,11 +689,39 @@ const createStyles = ({ darkMode }: any) => {
       alignItems: "center",
       gap: 20,
     },
+    headerCopy: {
+      flex: 1,
+    },
+    headerName: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 20,
+    },
     placeholder: {
       backgroundColor: colors.lightGrey,
       borderRadius: 70,
       width: 70,
       height: 70,
+    },
+    usernameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: Platform.select({
+        ios: 0,
+        android: -8,
+      }),
+      flexWrap: "wrap",
+    },
+    usernameText: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 14,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    verifiedBadge: {
+      marginTop: 1,
+    },
+    verifiedBadgeStandalone: {
+      marginTop: 4,
     },
     headerOptionsButton: {
       alignItems: "center",
