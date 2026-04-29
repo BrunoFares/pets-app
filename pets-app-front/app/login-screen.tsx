@@ -212,7 +212,15 @@ export default function LoginScreen() {
           onChangeText={setPassword}
         />
 
-        <TouchableOpacity style={{ alignSelf: "flex-end" }}>
+        <TouchableOpacity
+          style={{ alignSelf: "flex-end" }}
+          onPress={() =>
+            router.push({
+              pathname: "/forgot-password-screen",
+              params: { email: email.trim().toLowerCase() || undefined },
+            })
+          }
+        >
           <AdaptiveText
             style={{
               marginRight: 30,

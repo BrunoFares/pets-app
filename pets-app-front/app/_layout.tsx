@@ -3,23 +3,16 @@ import { SoftErrorBanner } from "@/components/SoftErrorBanner";
 import { AuthProvider, useAuth } from "@/contexts/AuthProvider";
 import { useFonts } from "expo-font";
 import {
+  addNotificationReceivedListener,
+  addNotificationResponseReceivedListener,
   clearMedicationReminderNotifications,
+  configureNotificationHandler,
   registerForPushNotificationsAsync,
   syncMedicationReminderNotifications,
 } from "@/lib/notifications";
-import * as Notifications from "expo-notifications";
 import { Stack, router, usePathname, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
 
 function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
   const appRouter = useRouter();
@@ -36,10 +29,11 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
     const isIndexRoute = pathname === "/" && firstSegment !== "(tabs)";
     const isPublicRoute =
       firstSegment === "login-screen" ||
+      firstSegment === "forgot-password-screen" ||
       firstSegment === "register-screen" ||
       firstSegment === "verify-email-screen";
 
-    if (!isAuthenticated && !isIndexRoute && !isPublicRoute) {
+    if (!isAuthenticated && (isIndexRoute || !isPublicRoute)) {
       appRouter.replace("/login-screen");
       return;
     }
@@ -77,6 +71,10 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
     <Stack initialRouteName="index">
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login-screen" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="forgot-password-screen"
+        options={{ headerShown: false }}
+      />
       <Stack.Screen name="register-screen" options={{ headerShown: false }} />
       <Stack.Screen
         name="verify-email-screen"
@@ -92,6 +90,10 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
       />
       <Stack.Screen
         name="pet-translator-screen"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="place-editor-screen"
         options={{ headerShown: false }}
       />
     </Stack>
@@ -111,28 +113,25 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    registerForPushNotificationsAsync();
+    configureNotificationHandler();
+    void registerForPushNotificationsAsync();
 
-    const receivedSub = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log("Notification received:", notification);
-      },
-    );
+    const receivedSub = addNotificationReceivedListener((notification) => {
+      console.log("Notification received:", notification);
+    });
 
-    const responseSub = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        console.log("Notification tapped:", response);
+    const responseSub = addNotificationResponseReceivedListener((response) => {
+      console.log("Notification tapped:", response);
 
-        const url = response.notification.request.content.data?.url;
-        if (typeof url === "string") {
-          router.push(url as any);
-        }
-      },
-    );
+      const url = (response as any)?.notification?.request?.content?.data?.url;
+      if (typeof url === "string") {
+        router.push(url as any);
+      }
+    });
 
     return () => {
-      receivedSub.remove();
-      responseSub.remove();
+      receivedSub?.remove();
+      responseSub?.remove();
     };
   }, []);
 

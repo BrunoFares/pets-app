@@ -24,6 +24,7 @@ export interface ForumPostsModel {
   UserId: string | number;
   UserName: string;
   UserImage?: string | null;
+  HasRegisteredPlace?: boolean;
   Content: string;
   Attachments: ForumPostAttachmentModel[];
   CreatedAt: number | string;

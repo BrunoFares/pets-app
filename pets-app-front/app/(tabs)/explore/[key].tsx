@@ -153,7 +153,7 @@ export default function PlaceDetails() {
                   style={styles.manageButton}
                   onPress={() =>
                     router.push({
-                      pathname: "/profile/place-editor",
+                      pathname: "/place-editor-screen",
                       params: { id: place.Id },
                     })
                   }

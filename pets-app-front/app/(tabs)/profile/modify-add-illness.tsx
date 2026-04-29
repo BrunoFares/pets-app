@@ -871,8 +871,6 @@ const ModifyAddIllness = () => {
   );
 };
 
-export default ModifyAddIllness;
-
 const createStyles = ({ darkMode }: any) => {
   return StyleSheet.create({
     container: {
@@ -1048,3 +1046,5 @@ const createStyles = ({ darkMode }: any) => {
     },
   });
 };
+
+export default ModifyAddIllness;
