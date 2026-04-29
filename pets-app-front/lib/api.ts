@@ -5,6 +5,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const API_PORT = "5063";
+const API_REQUEST_TIMEOUT_MS = 8000;
 const ACCESS_TOKEN_KEY = "access_token";
 const USER_ID_KEY = "user_id";
 const LAST_OPENED_AT_KEY = "auth_last_opened_at";
@@ -132,9 +133,9 @@ function dedupeApiBaseUrls(urls: (string | null | undefined)[]) {
 function getApiBaseUrlCandidates() {
   return dedupeApiBaseUrls([
     normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL),
-    getDefaultApiBaseUrl(),
     normalizeApiBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl),
     getExpoHostApiBaseUrl(),
+    getDefaultApiBaseUrl(),
   ]);
 }
 
@@ -160,6 +161,44 @@ function extractApiErrorMessage(payload: ApiErrorPayload | null) {
   }
 
   return payload.message ?? payload.detail ?? payload.title ?? null;
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = API_REQUEST_TIMEOUT_MS,
+) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  const externalSignal = init.signal;
+  const abortFromExternalSignal = () => controller.abort();
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener("abort", abortFromExternalSignal, {
+        once: true,
+      });
+    }
+  }
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+    externalSignal?.removeEventListener("abort", abortFromExternalSignal);
+  }
 }
 
 export const API_BASE_URL = getApiBaseUrlCandidates()[0] ?? getDefaultApiBaseUrl();
@@ -343,7 +382,7 @@ export async function apiRequest<T>(
     attemptedUrls.push(url);
 
     try {
-      response = await fetch(url, {
+      response = await fetchWithTimeout(url, {
         ...init,
         headers,
       });
@@ -356,7 +395,9 @@ export async function apiRequest<T>(
       console.warn("[apiRequest] Network failure", {
         url,
         method: init.method ?? "GET",
-        error,
+        error: isAbortError(error)
+          ? `Request timed out after ${API_REQUEST_TIMEOUT_MS}ms`
+          : error,
       });
     }
   }

@@ -37,9 +37,8 @@ export default function ForumScreen() {
     const avatarCacheKey = Date.now();
 
     try {
-      const forumPosts = await apiRequest<ApiForumPostResponse[]>(
-        "/api/ForumPosts",
-      );
+      const forumPosts =
+        await apiRequest<ApiForumPostResponse[]>("/api/ForumPosts");
 
       setPosts(
         forumPosts.map((post) => normalizeForumPost(post, avatarCacheKey)),
@@ -108,11 +107,7 @@ export default function ForumScreen() {
             ]}
             onPress={() => router.push("/(tabs)/forum/create")}
           >
-            <Ionicons
-              name="add"
-              size={24}
-              color={darkMode ? colors.white : colors.black}
-            />
+            <Ionicons name="add" size={24} color={colors.white} />
           </TouchableOpacity>
         </Animated.View>
 

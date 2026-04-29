@@ -1,12 +1,53 @@
 import Constants from "expo-constants";
-// import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { fetchMedicationReminders } from "@/lib/profile-api";
 import { getMedicationReminderDates } from "@/lib/medication-reminders";
 import { Platform } from "react-native";
 
+type NotificationsModule = typeof import("expo-notifications");
+
+export type NotificationPermissionState = {
+  granted: boolean;
+  status: string;
+};
+
+type NotificationSubscription = {
+  remove: () => void;
+};
+
 const MEDICATION_REMINDER_PREFIX = "medication-reminder:";
+const NOTIFICATIONS_UNAVAILABLE_MESSAGE =
+  "Notifications are unavailable in Expo Go on Android. Use a development build to test notification features.";
+
+let notificationsModule: NotificationsModule | null | undefined;
 let notificationRegistrationPromise: Promise<string | null> | null = null;
+let unavailableWarningLogged = false;
+
+function logNotificationsUnavailable(error: unknown) {
+  if (unavailableWarningLogged) {
+    return;
+  }
+
+  unavailableWarningLogged = true;
+  console.warn("[notifications] Notification features disabled.", {
+    reason: NOTIFICATIONS_UNAVAILABLE_MESSAGE,
+    error,
+  });
+}
+
+function getNotificationsModule() {
+  if (notificationsModule !== undefined) {
+    return notificationsModule;
+  }
+
+  try {
+    notificationsModule = require("expo-notifications") as NotificationsModule;
+  } catch (error) {
+    notificationsModule = null;
+    logNotificationsUnavailable(error);
+  }
+
+  return notificationsModule;
+}
 
 function createMedicationReminderIdentifier(
   medicationId: string | number,
@@ -19,7 +60,82 @@ function isMedicationReminderIdentifier(identifier: string) {
   return identifier.startsWith(MEDICATION_REMINDER_PREFIX);
 }
 
+export function getNotificationsUnavailableMessage() {
+  return NOTIFICATIONS_UNAVAILABLE_MESSAGE;
+}
+
+export function configureNotificationHandler() {
+  const Notifications = getNotificationsModule();
+
+  if (!Notifications) {
+    return false;
+  }
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+
+  return true;
+}
+
+export function addNotificationReceivedListener(
+  listener: (notification: unknown) => void,
+): NotificationSubscription | null {
+  const Notifications = getNotificationsModule();
+  return Notifications
+    ? Notifications.addNotificationReceivedListener(listener as never)
+    : null;
+}
+
+export function addNotificationResponseReceivedListener(
+  listener: (response: unknown) => void,
+): NotificationSubscription | null {
+  const Notifications = getNotificationsModule();
+  return Notifications
+    ? Notifications.addNotificationResponseReceivedListener(listener as never)
+    : null;
+}
+
+export async function getNotificationPermissionAsync() {
+  const Notifications = getNotificationsModule();
+
+  if (!Notifications) {
+    return null;
+  }
+
+  const permission = await Notifications.getPermissionsAsync();
+  return {
+    granted: permission.granted,
+    status: String(permission.status),
+  } satisfies NotificationPermissionState;
+}
+
+export async function requestNotificationPermissionAsync() {
+  const Notifications = getNotificationsModule();
+
+  if (!Notifications) {
+    return null;
+  }
+
+  const permission = await Notifications.requestPermissionsAsync();
+  return {
+    granted: permission.granted,
+    status: String(permission.status),
+  } satisfies NotificationPermissionState;
+}
+
 export async function clearMedicationReminderNotifications() {
+  const Notifications = getNotificationsModule();
+
+  if (!Notifications) {
+    return;
+  }
+
   const scheduledNotifications =
     await Notifications.getAllScheduledNotificationsAsync();
   const medicationReminderIds = scheduledNotifications
@@ -45,6 +161,12 @@ async function scheduleMedicationReminderNotification(
   dosage: string | undefined,
   reminderDate: Date,
 ) {
+  const Notifications = getNotificationsModule();
+
+  if (!Notifications) {
+    return;
+  }
+
   const body = dosage?.trim()
     ? `Time to give ${medicationName} (${dosage.trim()}).`
     : `Time to give ${medicationName}.`;
@@ -69,6 +191,12 @@ async function scheduleMedicationReminderNotification(
 }
 
 export async function syncMedicationReminderNotifications() {
+  const Notifications = getNotificationsModule();
+
+  if (!Notifications) {
+    return;
+  }
+
   try {
     const permission = await Notifications.getPermissionsAsync();
 
@@ -99,6 +227,12 @@ export async function syncMedicationReminderNotifications() {
 }
 
 export async function registerForPushNotificationsAsync() {
+  const Notifications = getNotificationsModule();
+
+  if (!Notifications) {
+    return null;
+  }
+
   if (notificationRegistrationPromise) {
     return notificationRegistrationPromise;
   }
@@ -110,11 +244,6 @@ export async function registerForPushNotificationsAsync() {
         importance: Notifications.AndroidImportance.MAX,
       });
     }
-
-    //   if (!Device.isDevice) {
-    //     console.log("Must use a real device for push notifications");
-    //     return null;
-    //   }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;

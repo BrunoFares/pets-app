@@ -49,12 +49,11 @@ export default function PlaceImageGallery({
   const galleryCardWidth = Math.min(screenWidth - 48, 360);
   const viewerWidth = screenWidth;
   const viewerScrollRef = useRef<ScrollView>(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
-    null,
-  );
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
-    if (selectedImageIndex === null) {
+    if (!isViewerVisible) {
       return;
     }
 
@@ -64,18 +63,19 @@ export default function PlaceImageGallery({
         animated: false,
       });
     });
-  }, [selectedImageIndex, viewerWidth]);
+  }, [isViewerVisible, selectedImageIndex, viewerWidth]);
 
   useEffect(() => {
-    if (selectedImageIndex !== null && selectedImageIndex >= imageUrls.length) {
-      setSelectedImageIndex(null);
+    if (selectedImageIndex >= imageUrls.length) {
+      setSelectedImageIndex(Math.max(0, imageUrls.length - 1));
+    }
+
+    if (imageUrls.length === 0) {
+      setIsViewerVisible(false);
     }
   }, [imageUrls.length, selectedImageIndex]);
 
-  const selectedImageUrl =
-    selectedImageIndex === null
-      ? null
-      : (imageUrls[selectedImageIndex] ?? null);
+  const selectedImageUrl = imageUrls[selectedImageIndex] ?? null;
   const galleryLabel = useMemo(() => {
     if (imageUrls.length === 1) {
       return "1 photo";
@@ -83,6 +83,15 @@ export default function PlaceImageGallery({
 
     return `${imageUrls.length} photos`;
   }, [imageUrls.length]);
+
+  const openViewer = (index: number) => {
+    setSelectedImageIndex(index);
+    setIsViewerVisible(true);
+  };
+
+  const closeViewer = () => {
+    setIsViewerVisible(false);
+  };
 
   if (imageUrls.length === 0) {
     return <View style={styles.imagePlaceholder} />;
@@ -96,7 +105,7 @@ export default function PlaceImageGallery({
             <TouchableOpacity
               key={`${url}-${index}`}
               activeOpacity={0.92}
-              onPress={() => setSelectedImageIndex(index)}
+              onPress={() => openViewer(index)}
               style={[
                 styles.galleryCard,
                 {
@@ -124,23 +133,23 @@ export default function PlaceImageGallery({
       </View>
 
       <Modal
-        visible={Boolean(selectedImageUrl)}
+        visible={isViewerVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedImageIndex(null)}
+        onRequestClose={closeViewer}
       >
         <View style={styles.viewerOverlay}>
           <TouchableOpacity
-            onPress={() => setSelectedImageIndex(null)}
+            onPress={closeViewer}
             style={styles.viewerCloseButton}
           >
             <Ionicons name="close" size={22} color={colors.white} />
           </TouchableOpacity>
 
-          {selectedImageUrl ? (
+          {isViewerVisible && selectedImageUrl ? (
             <View style={styles.viewerCounter}>
               <AdaptiveText style={styles.viewerCounterText}>
-                {selectedImageIndex! + 1} / {imageUrls.length}
+                {selectedImageIndex + 1} / {imageUrls.length}
               </AdaptiveText>
             </View>
           ) : null}
@@ -152,6 +161,10 @@ export default function PlaceImageGallery({
             showsHorizontalScrollIndicator={false}
             bounces={false}
             onMomentumScrollEnd={(event) => {
+              if (!isViewerVisible) {
+                return;
+              }
+
               const nextIndex = Math.round(
                 event.nativeEvent.contentOffset.x / viewerWidth,
               );
@@ -238,7 +251,7 @@ const createStyles = ({ darkMode }: any) =>
       borderRadius: 999,
       paddingHorizontal: 12,
       paddingVertical: 6,
-      backgroundColor: "rgba(255, 255, 255, 0.14)",
+      backgroundColor: "rgba(255, 255, 255, 0)",
       zIndex: 1,
     },
     viewerCounterText: {

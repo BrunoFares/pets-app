@@ -15,6 +15,7 @@ import {
   Keyboard,
   Modal,
   PanResponder,
+  Platform,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -134,12 +135,27 @@ function buildVideoPlayerHtml(videoUrl: string) {
   </head>
   <body>
     <video
+      id="player"
       controls
       playsinline
       webkit-playsinline
-      preload="metadata"
+      preload="auto"
+      autoplay
       src=${JSON.stringify(videoUrl)}
     ></video>
+    <script>
+      const video = document.getElementById("player");
+
+      async function attemptPlayback() {
+        try {
+          await video.play();
+        } catch {}
+      }
+
+      window.addEventListener("load", attemptPlayback);
+      video.addEventListener("canplay", attemptPlayback);
+      video.addEventListener("loadedmetadata", attemptPlayback);
+    </script>
   </body>
 </html>`;
 }
@@ -175,9 +191,9 @@ const ForumPost = ({
     useState<ReportReasonValue>("Spam");
   const [reportDescription, setReportDescription] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-  const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState<
-    number | null
-  >(null);
+  const [isAttachmentViewerVisible, setIsAttachmentViewerVisible] =
+    useState(false);
+  const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(0);
   const [selectedVideoAttachment, setSelectedVideoAttachment] =
     useState<ForumPostAttachmentModel | null>(null);
   const { setShowFooter } = useGlobal();
@@ -190,10 +206,7 @@ const ForumPost = ({
   const isOwnPost = user ? String(user.Id) === String(item.UserId) : false;
   const imageAttachments = getImageAttachments(item.Attachments ?? []);
   const videoAttachments = getVideoAttachments(item.Attachments ?? []);
-  const selectedAttachment =
-    selectedAttachmentIndex === null
-      ? null
-      : (imageAttachments[selectedAttachmentIndex] ?? null);
+  const selectedAttachment = imageAttachments[selectedAttachmentIndex] ?? null;
   const handlePostPress =
     onClickPost ?? (() => goTo(item, "/(tabs)/forum/post/[id]", router));
   const handleProfilePress =
@@ -210,8 +223,13 @@ const ForumPost = ({
       });
     });
 
+  const openAttachmentViewer = useCallback((index: number) => {
+    setSelectedAttachmentIndex(index);
+    setIsAttachmentViewerVisible(true);
+  }, []);
+
   const closeAttachmentViewer = useCallback(() => {
-    setSelectedAttachmentIndex(null);
+    setIsAttachmentViewerVisible(false);
     attachmentViewerTranslateY.setValue(0);
   }, [attachmentViewerTranslateY]);
 
@@ -271,7 +289,7 @@ const ForumPost = ({
   }, [item.Id, item.IsBookmarked, item.IsLikedByCurrentUser, item.LikesCount]);
 
   useEffect(() => {
-    if (selectedAttachmentIndex === null) {
+    if (!isAttachmentViewerVisible) {
       return;
     }
 
@@ -286,14 +304,16 @@ const ForumPost = ({
   }, [
     attachmentViewerTranslateY,
     attachmentViewerWidth,
+    isAttachmentViewerVisible,
     selectedAttachmentIndex,
   ]);
 
   useEffect(() => {
-    if (
-      selectedAttachmentIndex !== null &&
-      selectedAttachmentIndex >= imageAttachments.length
-    ) {
+    if (selectedAttachmentIndex >= imageAttachments.length) {
+      setSelectedAttachmentIndex(Math.max(0, imageAttachments.length - 1));
+    }
+
+    if (imageAttachments.length === 0) {
       closeAttachmentViewer();
     }
   }, [closeAttachmentViewer, imageAttachments.length, selectedAttachmentIndex]);
@@ -478,7 +498,7 @@ const ForumPost = ({
         <TouchableOpacity
           key={`${attachment.Id}-${index}`}
           activeOpacity={0.92}
-          onPress={() => setSelectedAttachmentIndex(index)}
+          onPress={() => openAttachmentViewer(index)}
           style={[styles.attachmentTile, customStyle]}
         >
           <Image
@@ -678,7 +698,7 @@ const ForumPost = ({
 
   const renderAttachmentViewer = () => (
     <Modal
-      visible={Boolean(selectedAttachment)}
+      visible={isAttachmentViewerVisible}
       transparent
       animationType="fade"
       onRequestClose={closeAttachmentViewer}
@@ -700,10 +720,10 @@ const ForumPost = ({
             <Ionicons name="close" size={22} color={colors.white} />
           </TouchableOpacity>
 
-          {selectedAttachment ? (
+          {isAttachmentViewerVisible && selectedAttachment ? (
             <View style={styles.attachmentViewerCounter}>
               <AdaptiveText style={styles.attachmentViewerCounterText}>
-                {selectedAttachmentIndex! + 1} / {imageAttachments.length}
+                {selectedAttachmentIndex + 1} / {imageAttachments.length}
               </AdaptiveText>
             </View>
           ) : null}
@@ -715,6 +735,10 @@ const ForumPost = ({
             showsHorizontalScrollIndicator={false}
             bounces={false}
             onMomentumScrollEnd={(event) => {
+              if (!isAttachmentViewerVisible) {
+                return;
+              }
+
               const nextIndex = Math.round(
                 event.nativeEvent.contentOffset.x / attachmentViewerWidth,
               );
@@ -778,6 +802,7 @@ const ForumPost = ({
                 html: buildVideoPlayerHtml(selectedVideoAttachment.Url),
               }}
               allowsInlineMediaPlayback
+              mediaPlaybackRequiresUserAction={false}
               allowsFullscreenVideo
               mixedContentMode="always"
               scrollEnabled={false}
@@ -1043,7 +1068,9 @@ const ForumPost = ({
                     color={darkMode ? colors.white : colors.black}
                   />
                 )}
-                <AdaptiveText style={styles.actionCount}>
+                <AdaptiveText
+                  style={[styles.actionCount, liked && { color: colors.green }]}
+                >
                   {likesCount}
                 </AdaptiveText>
               </TouchableOpacity>
@@ -1141,7 +1168,11 @@ const ForumPost = ({
                 color={darkMode ? colors.white : colors.black}
               />
             )}
-            <AdaptiveText style={styles.actionCount}>{likesCount}</AdaptiveText>
+            <AdaptiveText
+              style={[styles.actionCount, liked && { color: colors.green }]}
+            >
+              {likesCount}
+            </AdaptiveText>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={bookmarkPost}>
@@ -1239,6 +1270,10 @@ const createStyles = ({ darkMode }: any) => {
     postHeaderText: {
       marginLeft: 10,
       flexShrink: 1,
+      gap: Platform.select({
+        ios: 6,
+        android: 0,
+      }),
     },
     optionsButton: {
       alignItems: "center",
@@ -1421,7 +1456,7 @@ const createStyles = ({ darkMode }: any) => {
       borderRadius: 999,
       paddingHorizontal: 12,
       paddingVertical: 6,
-      backgroundColor: "rgba(255, 255, 255, 0.14)",
+      backgroundColor: "rgba(255, 255, 255, 0)",
       zIndex: 1,
     },
     attachmentViewerCounterText: {
