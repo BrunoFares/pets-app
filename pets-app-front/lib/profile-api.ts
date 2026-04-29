@@ -302,6 +302,45 @@ export async function fetchPetById(petId: string) {
   return mapApiPetToModel(response);
 }
 
+export async function requestEmailChange(
+  newEmail: string,
+  currentPassword: string,
+) {
+  return apiRequest<{ message: string }>("/api/Users/change-email/request", {
+    method: "POST",
+    body: JSON.stringify({
+      newEmail,
+      currentPassword,
+    }),
+  });
+}
+
+export async function confirmEmailChange(code: string) {
+  return apiRequest<{
+    message: string;
+    email: string;
+    accessToken: string;
+  }>("/api/Users/change-email/confirm", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmNewPassword: string,
+) {
+  return apiRequest<{ message: string }>("/api/Users/change-password", {
+    method: "POST",
+    body: JSON.stringify({
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
+    }),
+  });
+}
+
 export async function fetchPetConsultations(petId: string) {
   const response = await apiRequest<ApiConsultationResponse[]>(
     `/api/Pets/${petId}/consultations`,

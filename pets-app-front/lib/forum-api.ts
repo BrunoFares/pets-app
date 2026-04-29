@@ -33,6 +33,8 @@ export type ApiForumPostResponse = {
   UserName?: string;
   userImage?: string | null;
   UserImage?: string | null;
+  hasRegisteredPlace?: boolean;
+  HasRegisteredPlace?: boolean;
   content?: string;
   Content?: string;
   attachments?: (ApiForumPostAttachmentResponse | string)[] | null;
@@ -170,6 +172,8 @@ export function normalizeForumPost(
       post.userImage ?? post.UserImage ?? null,
       avatarCacheKey,
     ),
+    HasRegisteredPlace:
+      post.hasRegisteredPlace ?? post.HasRegisteredPlace ?? false,
     Content: post.content ?? post.Content ?? "",
     Attachments: rawAttachments
       .map(normalizeForumPostAttachment)

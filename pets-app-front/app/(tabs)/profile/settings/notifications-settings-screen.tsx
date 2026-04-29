@@ -2,9 +2,14 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import {
+  getNotificationPermissionAsync,
+  getNotificationsUnavailableMessage,
+  type NotificationPermissionState,
+  requestNotificationPermissionAsync,
+} from "@/lib/notifications";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Notifications from "expo-notifications";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Linking,
@@ -22,22 +27,37 @@ export default function NotificationSettingsScreen() {
   const styles = createStyles({ darkMode });
 
   const [notificationPermission, setNotificationPermission] =
-    useState<Notifications.NotificationPermissionsStatus | null>(null);
+    useState<NotificationPermissionState | null>(null);
 
-  const getNotificationPermission = async () => {
+  const showNotificationsUnavailableAlert = () => {
+    Alert.alert("Notifications unavailable", getNotificationsUnavailableMessage());
+  };
+
+  const getNotificationPermission = useCallback(async () => {
     try {
-      const current = await Notifications.getPermissionsAsync();
+      const current = await getNotificationPermissionAsync();
+
+      if (!current) {
+        showNotificationsUnavailableAlert();
+        return null;
+      }
+
       setNotificationPermission(current);
       return current;
     } catch (e: any) {
       Alert.alert("Error", e?.message ?? "Unexpected error.");
       return null;
     }
-  };
+  }, []);
 
   const requestNotificationPermission = async () => {
     try {
-      const current = await Notifications.getPermissionsAsync();
+      const current = await getNotificationPermissionAsync();
+
+      if (!current) {
+        showNotificationsUnavailableAlert();
+        return;
+      }
 
       if (current.granted) {
         Alert.alert(
@@ -48,7 +68,13 @@ export default function NotificationSettingsScreen() {
         return;
       }
 
-      const requested = await Notifications.requestPermissionsAsync();
+      const requested = await requestNotificationPermissionAsync();
+
+      if (!requested) {
+        showNotificationsUnavailableAlert();
+        return;
+      }
+
       setNotificationPermission(requested);
 
       if (requested.granted) {
@@ -97,7 +123,7 @@ export default function NotificationSettingsScreen() {
   };
 
   const getPermissionLabel = () => {
-    if (!notificationPermission) return "unknown";
+    if (!notificationPermission) return "unavailable";
     return notificationPermission.granted
       ? "granted"
       : notificationPermission.status;
@@ -141,8 +167,8 @@ export default function NotificationSettingsScreen() {
   };
 
   useEffect(() => {
-    getNotificationPermission();
-  }, []);
+    void getNotificationPermission();
+  }, [getNotificationPermission]);
 
   return (
     <SafeAreaView style={styles.container}>

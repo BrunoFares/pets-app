@@ -16,11 +16,16 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly AdminAuditLogger _auditLogger;
+    private readonly IWebHostEnvironment _env;
 
-    public AdminPlaceOwnerApplicationsController(AppDbContext db, AdminAuditLogger auditLogger)
+    public AdminPlaceOwnerApplicationsController(
+        AppDbContext db,
+        AdminAuditLogger auditLogger,
+        IWebHostEnvironment env)
     {
         _db = db;
         _auditLogger = auditLogger;
+        _env = env;
     }
 
     [HttpGet]
@@ -160,6 +165,7 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
         var adminUserId = User.GetAdminId();
         var application = await _db.PlaceOwnerApplications
             .Include(a => a.User)
+            .Include(a => a.Images)
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (application is null)
@@ -179,6 +185,7 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
         application.ReviewedAt = DateTimeOffset.UtcNow;
         application.UpdatedAt = DateTimeOffset.UtcNow;
         application.User.IsApprovedPlaceOwner = true;
+        await EnsureApprovedPlaceRegisteredAsync(application);
 
         _auditLogger.Log(
             adminUserId,
@@ -246,5 +253,94 @@ public class AdminPlaceOwnerApplicationsController : ControllerBase
         var trimmed = value.Trim();
         return trimmed.Length == 0 ? null : trimmed;
     }
+
+    private async Task EnsureApprovedPlaceRegisteredAsync(PlaceOwnerApplicationModel application)
+    {
+        var matchingPlace = await FindMatchingPlaceAsync(application);
+
+        if (matchingPlace is not null)
+        {
+            if (matchingPlace.OwnerUserId is null)
+            {
+                matchingPlace.OwnerUserId = application.UserId;
+            }
+
+            return;
+        }
+
+        var placeId = Guid.NewGuid();
+        var imageTimestamp = DateTimeOffset.UtcNow;
+        var copiedImageUrls = application.Images
+            .OrderBy(i => i.CreatedAt)
+            .ThenBy(i => i.Id)
+            .Select(image => LocalImageStorage.TryCopyStoredFile(
+                _env,
+                image.Url,
+                "place",
+                "places",
+                placeId.ToString("N")))
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Cast<string>()
+            .ToList();
+
+        var place = new PetPlaceModel
+        {
+            Id = placeId,
+            OwnerUserId = application.UserId,
+            Name = application.BusinessName.Trim(),
+            Phone = application.Phone.Trim(),
+            Email = application.Email.Trim().ToLowerInvariant(),
+            Photo = copiedImageUrls.FirstOrDefault(),
+            Description = NormalizeText(application.Description),
+            AddressLine1 = application.AddressLine1.Trim(),
+            AddressLine2 = NormalizeText(application.AddressLine2),
+            City = application.City.Trim(),
+            Country = application.Country.Trim(),
+            Status = PlaceStatus.Active,
+            Type = application.RequestedPlaceType,
+            CreatedAt = DateTimeOffset.UtcNow,
+            Images = copiedImageUrls
+                .Select(url => new PetPlaceImageModel
+                {
+                    PetPlaceId = placeId,
+                    Url = url,
+                    CreatedAt = imageTimestamp
+                })
+                .ToList()
+        };
+
+        _db.PetPlaces.Add(place);
+    }
+
+    private async Task<PetPlaceModel?> FindMatchingPlaceAsync(PlaceOwnerApplicationModel application)
+    {
+        var candidates = await _db.PetPlaces
+            .Where(place =>
+                place.Type == application.RequestedPlaceType &&
+                (place.OwnerUserId == null || place.OwnerUserId == application.UserId))
+            .ToListAsync();
+
+        var normalizedBusinessName = NormalizeForComparison(application.BusinessName);
+        var normalizedPhone = NormalizeForComparison(application.Phone);
+        var normalizedEmail = NormalizeForComparison(application.Email);
+        var normalizedAddressLine1 = NormalizeForComparison(application.AddressLine1);
+        var normalizedAddressLine2 = NormalizeForComparison(application.AddressLine2);
+        var normalizedCity = NormalizeForComparison(application.City);
+        var normalizedCountry = NormalizeForComparison(application.Country);
+
+        return candidates.FirstOrDefault(place =>
+            NormalizeForComparison(place.Name) == normalizedBusinessName &&
+            NormalizeForComparison(place.Phone) == normalizedPhone &&
+            NormalizeForComparison(place.Email) == normalizedEmail &&
+            NormalizeForComparison(place.AddressLine1) == normalizedAddressLine1 &&
+            NormalizeForComparison(place.AddressLine2) == normalizedAddressLine2 &&
+            NormalizeForComparison(place.City) == normalizedCity &&
+            NormalizeForComparison(place.Country) == normalizedCountry);
+    }
+
+    private static string NormalizeForComparison(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : value.Trim().ToLowerInvariant();
 
 }

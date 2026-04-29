@@ -111,7 +111,9 @@ export default function IndividualCharityScreen() {
             </View>
 
             <View style={styles.section}>
-              <AdaptiveText style={styles.sectionTitle}>Contact</AdaptiveText>
+              <AdaptiveText style={[styles.sectionTitle, { marginBottom: 14 }]}>
+                Contact
+              </AdaptiveText>
 
               <View style={styles.metaRow}>
                 <Text style={styles.metaLabel}>Address</Text>
@@ -142,7 +144,9 @@ export default function IndividualCharityScreen() {
 
             {canManagePlace ? (
               <View style={styles.section}>
-                <AdaptiveText style={styles.sectionTitle}>Manage Listing</AdaptiveText>
+                <AdaptiveText style={styles.sectionTitle}>
+                  Manage Listing
+                </AdaptiveText>
                 <AdaptiveText style={styles.description}>
                   This organisation belongs to your account, so you can update
                   the listing details and public status from here.
@@ -152,7 +156,7 @@ export default function IndividualCharityScreen() {
                   style={styles.manageButton}
                   onPress={() =>
                     router.push({
-                      pathname: "/profile/place-editor",
+                      pathname: "/place-editor-screen",
                       params: { id: organisation.Id },
                     })
                   }
@@ -210,14 +214,13 @@ const createStyles = ({ darkMode }: any) => {
       opacity: 0.8,
     },
     description: {
-      marginTop: 14,
+      marginTop: 10,
       fontFamily: "Poppins-Regular",
       lineHeight: 24,
     },
     sectionTitle: {
       fontFamily: "Poppins-SemiBold",
       fontSize: 18,
-      marginBottom: 14,
     },
     metaRow: {
       marginBottom: 14,

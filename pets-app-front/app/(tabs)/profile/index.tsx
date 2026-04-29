@@ -17,6 +17,7 @@ import { useCallback, useState } from "react";
 import {
   Animated,
   FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -99,6 +100,10 @@ export default function Profile() {
                     backgroundColor: darkMode
                       ? colors.veryDarkGrey
                       : colors.white,
+                    gap: Platform.select({
+                      ios: 6,
+                      android: 0,
+                    }),
                   }}
                 >
                   <AdaptiveText style={styles.title}>
@@ -175,6 +180,7 @@ export default function Profile() {
           ListEmptyComponent={
             <ProfileEmptyState
               style={{
+                marginTop: 12,
                 width: "95%",
               }}
               title="No pets added yet"
@@ -182,53 +188,85 @@ export default function Profile() {
             />
           }
           ListFooterComponent={
-            <View
-              style={{
-                width: "95%",
-                flexDirection: "row",
-                alignSelf: "center",
-                gap: 14,
-                marginTop: pets.length === 0 ? -10 : 0,
-                backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => {
-                  goTo({}, "/(tabs)/profile/settings", router);
-                }}
-                style={[
-                  styles.signOutBtn,
-                  {
-                    backgroundColor: darkMode
-                      ? colors.darkGrey
-                      : colors.lightGrey,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name="settings"
-                  size={24}
-                  color={darkMode ? colors.white : colors.black}
-                />
-                <Text
+            <View>
+              {profileInfo.IsApprovedPlaceOwner ? (
+                <TouchableOpacity
                   style={[
-                    styles.signOutBtnText,
-                    { color: darkMode ? colors.white : colors.black },
+                    styles.placeManagerCard,
+                    pets.length === 0 && { marginTop: -4 },
+                  ]}
+                  onPress={() => goTo({}, "/profile/place-manager", router)}
+                >
+                  <View style={styles.placeManagerCopy}>
+                    <AdaptiveText style={styles.placeManagerTitle}>
+                      Pet Place Manager
+                    </AdaptiveText>
+                    <AdaptiveText style={styles.placeManagerSubtitle}>
+                      Manage your registered place without digging through
+                      settings.
+                    </AdaptiveText>
+                  </View>
+                  <Feather
+                    name="arrow-right"
+                    size={24}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                </TouchableOpacity>
+              ) : null}
+
+              <View
+                style={{
+                  width: "95%",
+                  marginTop:
+                    pets.length === 0 && !profileInfo.IsApprovedPlaceOwner
+                      ? -16
+                      : 0,
+                  flexDirection: "row",
+                  alignSelf: "center",
+                  gap: 14,
+                  backgroundColor: darkMode
+                    ? colors.veryDarkGrey
+                    : colors.white,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    goTo({}, "/(tabs)/profile/settings", router);
+                  }}
+                  style={[
+                    styles.signOutBtn,
+                    {
+                      backgroundColor: darkMode
+                        ? colors.darkGrey
+                        : colors.lightGrey,
+                    },
                   ]}
                 >
-                  Settings
-                </Text>
-              </TouchableOpacity>
+                  <MaterialIcons
+                    name="settings"
+                    size={24}
+                    color={darkMode ? colors.white : colors.black}
+                  />
+                  <Text
+                    style={[
+                      styles.signOutBtnText,
+                      { color: darkMode ? colors.white : colors.black },
+                    ]}
+                  >
+                    Settings
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.signOutBtn}
-                onPress={() => setLogOutModal(true)}
-              >
-                <MaterialIcons name="logout" size={24} color={colors.white} />
-                <AdaptiveText style={styles.signOutBtnText}>
-                  Log Out
-                </AdaptiveText>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.signOutBtn}
+                  onPress={() => setLogOutModal(true)}
+                >
+                  <MaterialIcons name="logout" size={24} color={colors.white} />
+                  <AdaptiveText style={styles.signOutBtnText}>
+                    Log Out
+                  </AdaptiveText>
+                </TouchableOpacity>
+              </View>
             </View>
           }
         />
@@ -305,7 +343,6 @@ const createStyles = ({ darkMode, translateY }: any) => {
       alignItems: "center",
       paddingVertical: 4,
       borderRadius: 10,
-      marginTop: 4,
     },
     editProfileText: {
       fontFamily: "Poppins-Regular",
@@ -314,7 +351,7 @@ const createStyles = ({ darkMode, translateY }: any) => {
     placeManagerCard: {
       width: "95%",
       alignSelf: "center",
-      marginTop: 4,
+      marginTop: 14,
       paddingHorizontal: 20,
       paddingVertical: 16,
       borderRadius: 20,

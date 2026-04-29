@@ -2,7 +2,9 @@ import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
 import { PageHeader } from "@/components/PageHeader";
 import { colors } from "@/constants/colors";
+import { goTo } from "@/utils";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   Platform,
   ScrollView,
@@ -14,12 +16,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AccountSettingsScreen() {
+  const router = useRouter();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
 
   const settingsPage = (
     title: string,
-    imageTitle: "password" | "drive-file-rename-outline" | "alternate-email",
+    imageTitle: "password" | "alternate-email",
     fn: () => void,
   ) => {
     return (
@@ -66,9 +69,20 @@ export default function AccountSettingsScreen() {
           Account Settings
         </AdaptiveText>
         <AdaptiveView style={styles.container}>
-          {settingsPage("Change name", "drive-file-rename-outline", () => {})}
-          {settingsPage("Change email", "alternate-email", () => {})}
-          {settingsPage("Change password", "password", () => {})}
+          {settingsPage("Change email", "alternate-email", () => {
+            goTo(
+              {},
+              "/(tabs)/profile/settings/change-email-screen",
+              router,
+            );
+          })}
+          {settingsPage("Change password", "password", () => {
+            goTo(
+              {},
+              "/(tabs)/profile/settings/change-password-screen",
+              router,
+            );
+          })}
         </AdaptiveView>
       </ScrollView>
     </SafeAreaView>
