@@ -7,6 +7,7 @@ import { ForumPostsModel } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest } from "@/lib/api";
 import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
+import { applyRegisteredPlaceFlags, getRegisteredPlaceOwnerIds } from "@/lib/place-owner-lookup";
 import { goTo } from "@/utils";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -32,12 +33,16 @@ export default function Bookmarks() {
     const avatarCacheKey = Date.now();
 
     try {
-      const forumPosts = await apiRequest<ApiForumPostResponse[]>(
-        "/api/Users/bookmarks",
-      );
+      const [forumPosts, ownerIds] = await Promise.all([
+        apiRequest<ApiForumPostResponse[]>("/api/Users/bookmarks"),
+        getRegisteredPlaceOwnerIds(),
+      ]);
 
       setPosts(
-        forumPosts.map((post) => normalizeForumPost(post, avatarCacheKey)),
+        applyRegisteredPlaceFlags(
+          forumPosts.map((post) => normalizeForumPost(post, avatarCacheKey)),
+          ownerIds,
+        ),
       );
     } catch {
       setPosts([]);

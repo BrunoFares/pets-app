@@ -8,6 +8,7 @@ import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest } from "@/lib/api";
 import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
+import { applyRegisteredPlaceFlags, getRegisteredPlaceOwnerIds } from "@/lib/place-owner-lookup";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -37,11 +38,16 @@ export default function ForumScreen() {
     const avatarCacheKey = Date.now();
 
     try {
-      const forumPosts =
-        await apiRequest<ApiForumPostResponse[]>("/api/ForumPosts");
+      const [forumPosts, ownerIds] = await Promise.all([
+        apiRequest<ApiForumPostResponse[]>("/api/ForumPosts"),
+        getRegisteredPlaceOwnerIds(),
+      ]);
 
       setPosts(
-        forumPosts.map((post) => normalizeForumPost(post, avatarCacheKey)),
+        applyRegisteredPlaceFlags(
+          forumPosts.map((post) => normalizeForumPost(post, avatarCacheKey)),
+          ownerIds,
+        ),
       );
     } catch {
       setPosts([]);
