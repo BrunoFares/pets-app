@@ -1,0 +1,6 @@
+{
+  "Safe": 0,
+  "Spam": 1,
+  "Abusive": 2,
+  "Suspicious": 3
+}
