@@ -1,0 +1,35 @@
+{
+  "modelType": "bigger_audio_cnn_v1",
+  "classNames": [
+    "cat",
+    "dog",
+    "others"
+  ],
+  "sampleRate": 16000,
+  "clipDurationSeconds": 2.0,
+  "numSamples": 32000,
+  "windowHopSeconds": 0.5,
+  "clipAggregationTopK": 2,
+  "mel": {
+    "nFft": 1024,
+    "hopLength": 512,
+    "nMels": 64
+  },
+  "trainSeed": 7,
+  "training": {
+    "modelArchitecture": "bigger_audio_cnn_v1",
+    "epochs": 20,
+    "learningRate": 0.001,
+    "useWeightedSampler": true,
+    "useClassWeights": false,
+    "samplerWeightPower": 0.4,
+    "lrSchedulerFactor": 0.5,
+    "lrSchedulerPatience": 3,
+    "minLearningRate": 1e-05
+  },
+  "labelAliases": {
+    "cat_meow": "cat",
+    "dog_bark": "dog",
+    "none": "others"
+  }
+}
