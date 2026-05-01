@@ -14,7 +14,7 @@ const TabBarButton = ({
     onPress: () => void;
     onLongPress: () => void;
     isFocused: boolean;
-    routeName: 'index' | 'explore' | 'chatbot' | 'forum' | 'profile';
+    routeName: 'index' | 'explore' | 'messages' | 'forum' | 'profile';
     label: string;
 }) => {
     const scale = useSharedValue(0);
