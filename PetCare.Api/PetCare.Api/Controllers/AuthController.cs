@@ -7,6 +7,7 @@ using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
 using PetCare.Api.Security;
+using PetCare.Api.Services;
 using PetCare.Api.Services.Email;
 
 namespace PetCare.Api.Controllers;
@@ -43,7 +44,7 @@ public class AuthController : ControllerBase
 
     [EnableRateLimiting("auth")]
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest req)
+    public async Task<IActionResult> Register([FromBody] RegisterRequest req, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(req.Username) ||
             string.IsNullOrWhiteSpace(req.Email) ||
@@ -72,6 +73,7 @@ public class AuthController : ControllerBase
         var user = new AppUser
         {
             Username = username,
+            ChatCode = await CreateUniqueChatCodeAsync(cancellationToken),
             Email = email,
             FirstName = req.FirstName.Trim(),
             LastName = req.LastName.Trim(),
@@ -83,7 +85,7 @@ public class AuthController : ControllerBase
         user.EmailVerificationTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(GetVerificationTokenHours());
 
         _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         await SendVerificationEmailAsync(user, verificationCode);
         return Ok(new RegistrationResponse(
             user.Id,
@@ -274,6 +276,21 @@ public class AuthController : ControllerBase
     private int GetPasswordResetCodeMinutes()
     {
         return int.TryParse(_cfg["Email:PasswordResetCodeMinutes"], out var minutes) ? minutes : 30;
+    }
+
+    private async Task<string> CreateUniqueChatCodeAsync(CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            var code = UserChatCodeGenerator.Generate();
+            var exists = await _context.Users.AnyAsync(u => u.ChatCode == code, cancellationToken);
+            if (!exists)
+            {
+                return code;
+            }
+        }
+
+        throw new InvalidOperationException("Unable to generate a unique chat code.");
     }
 
     private async Task SendVerificationEmailAsync(AppUser user, string verificationCode)
