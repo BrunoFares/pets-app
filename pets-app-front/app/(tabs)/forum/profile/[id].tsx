@@ -11,6 +11,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { apiRequest, resolveApiUrlWithCacheBust } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
 import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
+import { createConversation } from "@/lib/messages-api";
 import {
   applyRegisteredPlaceFlags,
   getRegisteredPlaceOwnerIds,
@@ -125,6 +126,7 @@ const ProfileScreen = () => {
     useState<ReportReasonValue>("Spam");
   const [reportDescription, setReportDescription] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
   const selectedPost = useMemo(() => {
     if (!payload) {
       return null;
@@ -178,6 +180,7 @@ const ProfileScreen = () => {
   const isOwnProfile = currentUser
     ? String(currentUser.Id) === String(selectedUserID)
     : false;
+  const canStartConversation = Boolean(selectedUserID) && !isOwnProfile;
   const displayedUsername = useMemo(() => {
     if (isOwnProfile && currentUser?.Username) {
       return currentUser.Username;
@@ -339,6 +342,29 @@ const ProfileScreen = () => {
       setIsSubmittingReport(false);
     }
   };
+
+  const handleStartConversation = useCallback(async () => {
+    if (!selectedUserID || isStartingConversation) {
+      return;
+    }
+
+    try {
+      setIsStartingConversation(true);
+      const conversation = await createConversation(selectedUserID);
+
+      router.push({
+        pathname: "/(tabs)/messages/[id]",
+        params: { id: String(conversation.Id) },
+      });
+    } catch (error) {
+      presentApiError("Could not start direct message", error, {
+        fallbackMessage:
+          "We couldn't open a private chat with this user right now.",
+      });
+    } finally {
+      setIsStartingConversation(false);
+    }
+  }, [isStartingConversation, router, selectedUserID]);
 
   const renderProfileOptionsModal = () => (
     <CustomModal visible={isOptionsVisible} onClose={closeOptionsModal}>
@@ -540,20 +566,38 @@ const ProfileScreen = () => {
               ) : null}
             </View>
 
-            <TouchableOpacity
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: colors.green,
-                borderRadius: 16,
-                width: 40,
-                height: 40,
-                marginLeft: "auto",
-              }}
-              onPress={() => router.push("/(tabs)/forum/create")}
-            >
-              <Ionicons name="add" size={24} color={colors.white} />
-            </TouchableOpacity>
+            {isOwnProfile ? (
+              <TouchableOpacity
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.green,
+                  borderRadius: 16,
+                  width: 40,
+                  height: 40,
+                  marginLeft: "auto",
+                }}
+                onPress={() => router.push("/(tabs)/forum/create")}
+              >
+                <Ionicons name="add" size={24} color={colors.white} />
+              </TouchableOpacity>
+            ) : canStartConversation ? (
+              <TouchableOpacity
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.green,
+                  borderRadius: 16,
+                  width: 40,
+                  height: 40,
+                  marginLeft: "auto",
+                }}
+                onPress={() => void handleStartConversation()}
+                disabled={isStartingConversation}
+              >
+                <Ionicons name="paper-plane" size={24} color={colors.white} />
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {displayedUser.Description && (
@@ -722,6 +766,24 @@ const createStyles = ({ darkMode }: any) => {
     },
     verifiedBadgeStandalone: {
       marginTop: 4,
+    },
+    messageButton: {
+      marginHorizontal: 20,
+      marginTop: 2,
+      marginBottom: 10,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      borderRadius: 18,
+      backgroundColor: colors.green,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+    },
+    messageButtonText: {
+      color: colors.white,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 15,
     },
     headerOptionsButton: {
       alignItems: "center",

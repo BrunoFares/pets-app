@@ -17,11 +17,13 @@ export const PageHeader = ({
   style,
   onBackBtnPressed,
   rightElement,
+  titleElement,
 }: {
   title: string;
   style?: ViewStyle;
   onBackBtnPressed?: () => void;
   rightElement?: ReactNode;
+  titleElement?: ReactNode;
 }) => {
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
@@ -41,13 +43,16 @@ export const PageHeader = ({
         </TouchableOpacity>
       </View>
 
-      <AdaptiveText
-        style={{
-          fontFamily: "Poppins-Regular",
-        }}
-      >
-        {title}
-      </AdaptiveText>
+      <View style={styles.centerSlot}>
+        {titleElement ?? (
+          <AdaptiveText
+            numberOfLines={1}
+            style={styles.titleText}
+          >
+            {title}
+          </AdaptiveText>
+        )}
+      </View>
 
       <View style={[styles.sideSlot, styles.rightSlot]}>
         {rightElement ?? <View style={styles.sideSlotPlaceholder} />}
@@ -72,6 +77,16 @@ const createStyles = ({ darkMode }: any) => {
       width: 32,
       alignItems: "flex-start",
       justifyContent: "center",
+    },
+    centerSlot: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 12,
+    },
+    titleText: {
+      fontFamily: "Poppins-Regular",
+      textAlign: "center",
     },
     rightSlot: {
       alignItems: "flex-end",
