@@ -56,6 +56,11 @@ public sealed class PythonForumTextModerationService : IForumTextModerationServi
             }
 
             var confidence = ClampConfidence(prediction.Confidence);
+            _logger.LogInformation(
+                "Python forum moderation completed. Label: {Label} Confidence: {Confidence} TextLength: {TextLength}",
+                label,
+                confidence,
+                string.IsNullOrWhiteSpace(text) ? 0 : text.Length);
             return new ForumTextModerationResult(
                 label,
                 confidence,
