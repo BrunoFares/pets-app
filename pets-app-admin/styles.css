@@ -306,6 +306,10 @@ code {
   margin-bottom: 1.1rem;
 }
 
+.section-heading.ai-moderation-heading {
+  margin-top: 2rem;
+}
+
 .section-heading h2 {
   font-size: clamp(1.25rem, 2vw, 1.8rem);
   margin-bottom: 0.3rem;
