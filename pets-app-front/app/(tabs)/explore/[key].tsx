@@ -17,6 +17,7 @@ import {
   formatPlaceAddress,
   formatPlaceLocation,
 } from "@/lib/discovery-api";
+import { createConversation } from "@/lib/messages-api";
 import { isCharityPlaceType } from "@/lib/place-type-utils";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
@@ -46,6 +47,7 @@ export default function PlaceDetails() {
   const { user } = useAuth();
   const [place, setPlace] = useState<PlaceModel | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(key));
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
 
   const loadPlace = useCallback(async () => {
     if (!key) {
@@ -81,7 +83,35 @@ export default function PlaceDetails() {
     Boolean(place?.OwnerUserId) &&
     Boolean(user?.IsApprovedPlaceOwner) &&
     String(place?.OwnerUserId) === String(user?.Id);
+  const canMessagePlaceOwner =
+    Boolean(place?.OwnerUserId) &&
+    String(place?.OwnerUserId) !== String(user?.Id);
+  const showPlaceMessagingUnavailable =
+    Boolean(place) && !canManagePlace && !canMessagePlaceOwner;
   const galleryImages = useMemo(() => getPlaceGalleryImageUrls(place), [place]);
+
+  const handleStartConversation = useCallback(async () => {
+    if (!place?.OwnerUserId || isStartingConversation) {
+      return;
+    }
+
+    try {
+      setIsStartingConversation(true);
+      const conversation = await createConversation(place.OwnerUserId);
+
+      router.push({
+        pathname: "/(tabs)/messages/[id]",
+        params: { id: String(conversation.Id) },
+      });
+    } catch (error) {
+      presentApiError("Could not start direct message", error, {
+        fallbackMessage:
+          "We couldn't open a private chat for this place right now.",
+      });
+    } finally {
+      setIsStartingConversation(false);
+    }
+  }, [isStartingConversation, place?.OwnerUserId, router]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -110,6 +140,23 @@ export default function PlaceDetails() {
                   ? place.Description
                   : "No description has been added for this place yet."}
               </AdaptiveText>
+
+              {canMessagePlaceOwner ? (
+                <TouchableOpacity
+                  style={styles.dmButton}
+                  onPress={() => void handleStartConversation()}
+                  disabled={isStartingConversation}
+                  activeOpacity={0.85}
+                >
+                  <AdaptiveText style={styles.dmButtonText}>
+                    {isStartingConversation ? "Opening chat..." : "Send DM"}
+                  </AdaptiveText>
+                </TouchableOpacity>
+              ) : showPlaceMessagingUnavailable ? (
+                <AdaptiveText style={styles.contactHint}>
+                  Private DMs are not available for this place yet.
+                </AdaptiveText>
+              ) : null}
             </View>
 
             <View style={styles.section}>
@@ -210,6 +257,26 @@ const createStyles = ({ darkMode }: any) => {
       marginBottom: 10,
       fontFamily: "Poppins-Regular",
       lineHeight: 24,
+    },
+    dmButton: {
+      alignSelf: "flex-start",
+      marginTop: 6,
+      borderRadius: 18,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      backgroundColor: colors.green,
+    },
+    dmButtonText: {
+      color: colors.white,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 14,
+    },
+    contactHint: {
+      marginTop: 2,
+      fontFamily: "Poppins-Regular",
+      fontSize: 13,
+      lineHeight: 20,
+      opacity: 0.75,
     },
     sectionTitle: {
       fontFamily: "Poppins-SemiBold",

@@ -1496,11 +1496,14 @@ BEGIN
 END $EF$;
 
 DO $EF$
-DECLARE
-    user_record record;
-    candidate text;
 BEGIN
     IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260501065057_AddUserChatCodes') THEN
+
+    DO $$
+    DECLARE
+        user_record record;
+        candidate text;
+    BEGIN
         FOR user_record IN SELECT id FROM public.users WHERE chat_code IS NULL ORDER BY id LOOP
             LOOP
                 SELECT string_agg(substr('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', floor(random() * 32)::int + 1, 1), '')
@@ -1519,6 +1522,8 @@ BEGIN
             SET chat_code = candidate
             WHERE id = user_record.id;
         END LOOP;
+    END $$;
+
     END IF;
 END $EF$;
 
@@ -1606,26 +1611,3 @@ BEGIN
 END $EF$;
 COMMIT;
 
-START TRANSACTION;
-
-
-DO $EF$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM pg_roles
-        WHERE rolname = 'petapp'
-    ) THEN
-        GRANT USAGE ON SCHEMA public TO petapp;
-        GRANT USAGE ON TYPE public.pet_sex TO petapp;
-        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO petapp;
-        GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO petapp;
-        ALTER DEFAULT PRIVILEGES IN SCHEMA public
-            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO petapp;
-        ALTER DEFAULT PRIVILEGES IN SCHEMA public
-            GRANT USAGE, SELECT ON SEQUENCES TO petapp;
-    ELSE
-        RAISE NOTICE 'Role "petapp" does not exist. Skipping grants.';
-    END IF;
-END $EF$;
-COMMIT;

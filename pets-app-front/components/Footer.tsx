@@ -110,7 +110,7 @@ export function Footer({ state, descriptors, navigation }: BottomTabBarProps) {
             routeName={
               route.name === "index" ||
               route.name === "explore" ||
-              route.name === "chatbot" ||
+              route.name === "messages" ||
               route.name === "forum" ||
               route.name === "profile"
                 ? route.name

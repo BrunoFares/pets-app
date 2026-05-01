@@ -28,6 +28,9 @@ BEGIN;
 TRUNCATE TABLE
     public.admin_action_logs,
     public.reports,
+    public.direct_messages,
+    public.conversation_participants,
+    public.conversations,
     public.user_blocks,
     public.place_owner_application_images,
     public.place_owner_applications,
@@ -89,6 +92,7 @@ VALUES
 INSERT INTO public.users (
     id,
     username,
+    chat_code,
     first_name,
     last_name,
     email,
@@ -109,6 +113,7 @@ VALUES
     (
         1,
         'sara.haddad',
+        'SARA2CAT',
         'Sara',
         'Haddad',
         'sara.haddad@example.com',
@@ -128,6 +133,7 @@ VALUES
     (
         2,
         'maya.khoury',
+        'MAYA3PET',
         'Maya',
         'Khoury',
         'maya.khoury@example.com',
@@ -147,6 +153,7 @@ VALUES
     (
         3,
         'layla.issa',
+        'LAYA4BUN',
         'Layla',
         'Issa',
         'layla.issa@example.com',
@@ -166,6 +173,7 @@ VALUES
     (
         4,
         'nour.daher',
+        'NURA5BRD',
         'Nour',
         'Daher',
         'nour.daher@example.com',
@@ -185,6 +193,7 @@ VALUES
     (
         5,
         'yara.rahal',
+        'YARA6FSH',
         'Yara',
         'Rahal',
         'yara.rahal@example.com',
@@ -204,6 +213,7 @@ VALUES
     (
         6,
         'omar.nasser',
+        'AMAR7DGS',
         'Omar',
         'Nasser',
         'omar.nasser@example.com',
@@ -223,6 +233,7 @@ VALUES
     (
         7,
         'karim.farah',
+        'KARM8FER',
         'Karim',
         'Farah',
         'karim.farah@example.com',
@@ -242,6 +253,7 @@ VALUES
     (
         8,
         'elias.saad',
+        'ELAS2HRS',
         'Elias',
         'Saad',
         'elias.saad@example.com',
@@ -261,6 +273,7 @@ VALUES
     (
         9,
         'ziad.shahin',
+        'ZYAD3XTC',
         'Ziad',
         'Shahin',
         'ziad.shahin@example.com',
@@ -280,6 +293,7 @@ VALUES
     (
         10,
         'rami.shaheen',
+        'RAMY4SPM',
         'Rami',
         'Shaheen',
         'rami.shaheen@example.com',
@@ -844,6 +858,7 @@ VALUES
 INSERT INTO public.users (
     id,
     username,
+    chat_code,
     first_name,
     last_name,
     email,
@@ -864,6 +879,7 @@ VALUES
     (
         11,
         'nadia.khalil',
+        'NADA5GPG',
         'Nadia',
         'Khalil',
         'nadia.khalil@example.com',
@@ -883,6 +899,7 @@ VALUES
     (
         12,
         'firas.nassar',
+        'FRAS6REP',
         'Firas',
         'Nassar',
         'firas.nassar@example.com',
@@ -902,6 +919,7 @@ VALUES
     (
         13,
         'hana.tabbara',
+        'HANA7CHN',
         'Hana',
         'Tabbara',
         'hana.tabbara@example.com',
@@ -921,6 +939,7 @@ VALUES
     (
         14,
         'samer.barakat',
+        'SAMR8BDG',
         'Samer',
         'Barakat',
         'samer.barakat@example.com',
@@ -940,6 +959,7 @@ VALUES
     (
         15,
         'lara.younes',
+        'LARA2HGH',
         'Lara',
         'Younes',
         'lara.younes@example.com',
@@ -959,6 +979,7 @@ VALUES
     (
         16,
         'tarek.mansour',
+        'TARK3PRT',
         'Tarek',
         'Mansour',
         'tarek.mansour@example.com',
@@ -978,6 +999,7 @@ VALUES
     (
         17,
         'dina.karam',
+        'DYNA4CAT',
         'Dina',
         'Karam',
         'dina.karam@example.com',
@@ -997,6 +1019,7 @@ VALUES
     (
         18,
         'joseph.azar',
+        'JSPH5AQA',
         'Joseph',
         'Azar',
         'joseph.azar@example.com',
@@ -1016,6 +1039,7 @@ VALUES
     (
         19,
         'rania.wehbe',
+        'RANA6GRB',
         'Rania',
         'Wehbe',
         'rania.wehbe@example.com',
@@ -1035,6 +1059,7 @@ VALUES
     (
         20,
         'hassan.ibrahim',
+        'HASN7AXL',
         'Hassan',
         'Ibrahim',
         'hassan.ibrahim@example.com',
@@ -1051,6 +1076,57 @@ VALUES
         '2026-03-10T16:00:00Z',
         '2026-04-21T12:00:00Z'
     );
+
+-- Direct message sample data
+INSERT INTO public.conversations (
+    id,
+    participant_one_user_id,
+    participant_two_user_id,
+    created_at,
+    last_message_at
+)
+VALUES
+    (1, 1, 2, '2026-04-20T07:55:00Z', '2026-04-20T08:12:00Z'),
+    (2, 2, 6, '2026-04-21T18:30:00Z', '2026-04-21T18:46:00Z'),
+    (3, 15, 17, '2026-04-22T09:10:00Z', '2026-04-22T09:24:00Z'),
+    (4, 16, 18, '2026-04-22T10:45:00Z', '2026-04-22T11:05:00Z');
+
+INSERT INTO public.conversation_participants (
+    conversation_id,
+    user_id,
+    last_read_at
+)
+VALUES
+    (1, 1, '2026-04-20T08:12:00Z'),
+    (1, 2, '2026-04-20T08:03:00Z'),
+    (2, 2, '2026-04-21T18:45:00Z'),
+    (2, 6, '2026-04-21T18:46:00Z'),
+    (3, 15, '2026-04-22T09:24:00Z'),
+    (3, 17, '2026-04-22T09:24:00Z'),
+    (4, 16, '2026-04-22T11:30:00Z'),
+    (4, 18, '2026-04-22T11:05:00Z');
+
+INSERT INTO public.direct_messages (
+    id,
+    conversation_id,
+    sender_user_id,
+    content,
+    media_url,
+    media_type,
+    media_size_bytes,
+    created_at
+)
+VALUES
+    (1, 1, 1,  'Hi Maya, did Luna finish her antibiotics?', NULL, NULL, NULL, '2026-04-20T08:00:00Z'),
+    (2, 1, 2,  'Yes, she finished yesterday and finally started eating normally again.', NULL, NULL, NULL, '2026-04-20T08:03:00Z'),
+    (3, 1, 1,  'That is such a relief. I can share the reminder checklist I used for Mimi if you want.', NULL, NULL, NULL, '2026-04-20T08:12:00Z'),
+    (4, 2, 6,  'Do you know a good vet in Bellevue for dental cleaning?', NULL, NULL, NULL, '2026-04-21T18:33:00Z'),
+    (5, 2, 2,  'Northside Veterinary Clinic was great with follow-up notes and gentle handling.', NULL, NULL, NULL, '2026-04-21T18:41:00Z'),
+    (6, 2, 6,  'Perfect, I will book with them this week.', NULL, NULL, NULL, '2026-04-21T18:46:00Z'),
+    (7, 3, 15, 'Can you send the foster medication chart you mentioned in the forum?', NULL, NULL, NULL, '2026-04-22T09:18:00Z'),
+    (8, 3, 17, 'Absolutely. I split it by morning, evening, and refill dates so it is easier to follow.', NULL, NULL, NULL, '2026-04-22T09:24:00Z'),
+    (9, 4, 16, 'Here is Zeus after the new perch setup.', 'https://picsum.photos/seed/petcare-dm-zeus/1200/900.jpg', 'Image', 245812, '2026-04-22T11:02:00Z'),
+    (10, 4, 18, 'Looks much calmer already.', NULL, NULL, NULL, '2026-04-22T11:05:00Z');
 
 -- Additional admin users (11–20)
 INSERT INTO public.admin_users (id, username, first_name, last_name, email, password_hash, role, is_active, created_at, updated_at, last_login)
@@ -1275,17 +1351,17 @@ INSERT INTO public.pets (
     updated_at
 )
 VALUES
-    ('20000000-0000-4000-8000-000000000013', 11, 'Coco',    11, 35, 'female',  '2024-03-10T00:00:00Z', 0.95, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-coco/800/800.jpg',    'Very curious guinea pig with a love for bell peppers and extended floor time.',             '2026-03-15T10:00:00Z', '2026-04-20T10:00:00Z'),
-    ('20000000-0000-4000-8000-000000000014', 12, 'Noodle',  12, 37, 'male',    '2021-07-04T00:00:00Z', 1.40, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-noodle/800/800.jpg',  'Ball python on a strict bi-weekly feeding schedule with careful humidity logs.',            '2026-03-20T09:30:00Z', '2026-04-19T09:30:00Z'),
-    ('20000000-0000-4000-8000-000000000015', 13, 'Dusty',   15, 42, 'female',  '2022-11-19T00:00:00Z', 0.55, 'Gray',    false, 'https://picsum.photos/seed/petcare-pet-dusty/800/800.jpg',   'Standard chinchilla with a daily dust bath routine and a rotating toy selection.',          '2026-03-25T14:00:00Z', '2026-04-18T14:00:00Z'),
-    ('20000000-0000-4000-8000-000000000016', 14, 'Blaze',   18, 46, 'male',    '2022-06-12T00:00:00Z', 0.50, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-blaze/800/800.jpg',   'Inland bearded dragon with a structured basking and feeding schedule.',                    '2026-03-28T08:45:00Z', '2026-04-17T08:45:00Z'),
-    ('20000000-0000-4000-8000-000000000017', 15, 'Spike',   14, 41, 'male',    '2023-04-20T00:00:00Z', 0.06, 'Brown',   false, 'https://picsum.photos/seed/petcare-pet-spike/800/800.jpg',   'African pygmy hedgehog with a precise nighttime feeding window and exercise wheel.',        '2026-03-30T11:20:00Z', '2026-04-16T11:20:00Z'),
+    ('20000000-0000-4000-8000-000000000013', 11, 'Coco',    11, 35, 'female',  '2024-03-10T00:00:00Z', 0.95, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-coco/800/800.jpg',    'Very curious guinea pig with a love for bell peppers and extended floor time.',             '2026-03-15T10:00:00Z', '2026-04-20T10:00:00Z'),
+    ('20000000-0000-4000-8000-000000000014', 12, 'Noodle',  12, 37, 'male',    '2021-07-04T00:00:00Z', 1.40, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-noodle/800/800.jpg',  'Ball python on a strict bi-weekly feeding schedule with careful humidity logs.',            '2026-03-20T09:30:00Z', '2026-04-19T09:30:00Z'),
+    ('20000000-0000-4000-8000-000000000015', 13, 'Dusty',   15, 42, 'female',  '2022-11-19T00:00:00Z', 0.55, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-dusty/800/800.jpg',   'Standard chinchilla with a daily dust bath routine and a rotating toy selection.',          '2026-03-25T14:00:00Z', '2026-04-18T14:00:00Z'),
+    ('20000000-0000-4000-8000-000000000016', 14, 'Blaze',   18, 46, 'male',    '2022-06-12T00:00:00Z', 0.50, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-blaze/800/800.jpg',   'Inland bearded dragon with a structured basking and feeding schedule.',                    '2026-03-28T08:45:00Z', '2026-04-17T08:45:00Z'),
+    ('20000000-0000-4000-8000-000000000017', 15, 'Spike',   14, 41, 'male',    '2023-04-20T00:00:00Z', 0.06, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-spike/800/800.jpg',   'African pygmy hedgehog with a precise nighttime feeding window and exercise wheel.',        '2026-03-30T11:20:00Z', '2026-04-16T11:20:00Z'),
     ('20000000-0000-4000-8000-000000000018', 16, 'Zeus',    20, 50, 'male',    '2019-08-15T00:00:00Z', 0.85, 'White',   false, 'https://picsum.photos/seed/petcare-pet-zeus/800/800.jpg',    'Sulphur-crested cockatoo requiring extensive daily socialisation and enrichment.',          '2026-04-01T09:00:00Z', '2026-04-21T09:00:00Z'),
-    ('20000000-0000-4000-8000-000000000019', 17, 'Mittens', 1,  21, 'female',  '2020-10-05T00:00:00Z', 5.20, 'Gray',    true,  'https://picsum.photos/seed/petcare-pet-mittens/800/800.jpg', 'Maine Coon foster with a calm temperament and a careful medication schedule.',             '2026-04-03T10:30:00Z', '2026-04-20T10:30:00Z'),
+    ('20000000-0000-4000-8000-000000000019', 17, 'Mittens', 1,  21, 'female',  '2020-10-05T00:00:00Z', 5.20, 'Unknown', true,  'https://picsum.photos/seed/petcare-pet-mittens/800/800.jpg', 'Maine Coon foster with a calm temperament and a careful medication schedule.',             '2026-04-03T10:30:00Z', '2026-04-20T10:30:00Z'),
     ('20000000-0000-4000-8000-000000000020', 18, 'Finn',    6,  29, 'male',    '2025-02-14T00:00:00Z', NULL, 'Orange',  false, 'https://picsum.photos/seed/petcare-pet-finn/800/800.jpg',    'Guppy in a planted community tank with weekly water-parameter tracking.',                  '2026-04-05T17:00:00Z', '2026-04-19T17:00:00Z'),
-    ('20000000-0000-4000-8000-000000000021', 19, 'Maple',   16, 44, 'female',  '2023-12-01T00:00:00Z', 0.09, 'Gray',    false, 'https://picsum.photos/seed/petcare-pet-maple/800/800.jpg',   'Mongolian gerbil sharing a large sandbox enclosure with her bonded pair partner.',         '2026-04-07T09:15:00Z', '2026-04-18T09:15:00Z'),
+    ('20000000-0000-4000-8000-000000000021', 19, 'Maple',   16, 44, 'female',  '2023-12-01T00:00:00Z', 0.09, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-maple/800/800.jpg',   'Mongolian gerbil sharing a large sandbox enclosure with her bonded pair partner.',         '2026-04-07T09:15:00Z', '2026-04-18T09:15:00Z'),
     ('20000000-0000-4000-8000-000000000022', 20, 'Axel',    17, 45, 'unknown', '2023-05-30T00:00:00Z', 0.24, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-axel/800/800.jpg',    'Wild-type axolotl with daily temperature checks and a high-protein diet rotation.',        '2026-04-09T14:45:00Z', '2026-04-21T14:45:00Z'),
-    ('20000000-0000-4000-8000-000000000023', 11, 'Biscuit', 11, 36, 'male',    '2024-05-22T00:00:00Z', 0.88, 'Tan',     false, 'https://picsum.photos/seed/petcare-pet-biscuit/800/800.jpg', 'Abyssinian guinea pig with a rosette coat and very vocal feeding cues.',                   '2026-04-11T10:00:00Z', '2026-04-22T10:00:00Z'),
+    ('20000000-0000-4000-8000-000000000023', 11, 'Biscuit', 11, 36, 'male',    '2024-05-22T00:00:00Z', 0.88, 'Unknown', false, 'https://picsum.photos/seed/petcare-pet-biscuit/800/800.jpg', 'Abyssinian guinea pig with a rosette coat and very vocal feeding cues.',                   '2026-04-11T10:00:00Z', '2026-04-22T10:00:00Z'),
     ('20000000-0000-4000-8000-000000000024', 12, 'Ember',   12, 38, 'female',  '2022-03-17T00:00:00Z', 0.38, 'Orange',  false, 'https://picsum.photos/seed/petcare-pet-ember/800/800.jpg',   'Corn snake on a monthly shedding cycle with careful post-shed health checks.',             '2026-04-13T08:30:00Z', '2026-04-23T08:30:00Z');
 
 -- Additional consultations (13–24)
@@ -1537,11 +1613,25 @@ VALUES
     (31, 14, 'ReviewForumPost',              'ForumPost',             '40000000-0000-4000-8000-000000000014', 'Reviewed forum post flagged in report #11 and confirmed advice accuracy with the vet team.',                    'Outdated care advice corrected via a follow-up post.',        '2026-04-24T11:05:00Z'),
     (32, 11, 'ResolveReport',                'Report',                '12',                                   'Resolved report #12; deleted the condescending reply and issued a warning to the author.',                      'Policy violation confirmed: dismissive tone toward new users.','2026-04-24T14:05:00Z');
 
+-- Restrict app-supported taxonomy to cats and dogs only.
+-- Cascades cleanly remove dependent consultations, vaccine records,
+-- illness records, and medication records for unsupported pets.
+DELETE FROM public.pets
+WHERE species_id NOT IN (1, 2);
+
+DELETE FROM public.breeds
+WHERE species_id NOT IN (1, 2);
+
+DELETE FROM public.species
+WHERE id NOT IN (1, 2);
+
 SELECT setval(pg_get_serial_sequence('public.users', 'id'), (SELECT MAX(id) FROM public.users), true);
 SELECT setval(pg_get_serial_sequence('public.admin_users', 'id'), (SELECT MAX(id) FROM public.admin_users), true);
 SELECT setval(pg_get_serial_sequence('public.admin_action_logs', 'id'), (SELECT MAX(id) FROM public.admin_action_logs), true);
 SELECT setval(pg_get_serial_sequence('public.species', 'id'), (SELECT MAX(id) FROM public.species), true);
 SELECT setval(pg_get_serial_sequence('public.breeds', 'id'), (SELECT MAX(id) FROM public.breeds), true);
+SELECT setval(pg_get_serial_sequence('public.conversations', 'id'), (SELECT MAX(id) FROM public.conversations), true);
+SELECT setval(pg_get_serial_sequence('public.direct_messages', 'id'), (SELECT MAX(id) FROM public.direct_messages), true);
 SELECT setval(pg_get_serial_sequence('public.pet_place_images', 'id'), (SELECT MAX(id) FROM public.pet_place_images), true);
 SELECT setval(pg_get_serial_sequence('public.pet_place_schedules', 'id'), (SELECT MAX(id) FROM public.pet_place_schedules), true);
 SELECT setval(pg_get_serial_sequence('public.place_owner_applications', 'id'), (SELECT MAX(id) FROM public.place_owner_applications), true);
