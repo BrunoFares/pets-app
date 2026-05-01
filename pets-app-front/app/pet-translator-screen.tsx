@@ -22,7 +22,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -527,10 +526,6 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) => {
     statusPill: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      right: Platform.select({
-        ios: 120,
-        android: 130,
-      }),
       borderRadius: 999,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
     },

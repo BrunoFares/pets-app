@@ -29,13 +29,14 @@ public sealed class PetTranslatorService
         var modelScriptPath = ResolveModelScriptPath();
         var modelPath = ResolveModelPath();
         string? normalizedAudioFilePath = null;
+        var audioFileInfo = new FileInfo(audioFilePath);
 
         if (!File.Exists(audioFilePath))
         {
             throw new PetTranslatorInferenceException("The uploaded audio file could not be found for analysis.");
         }
 
-        if (!File.Exists(pythonExecutablePath))
+        if (!CanLaunchExecutable(pythonExecutablePath))
         {
             throw new PetTranslatorConfigurationException(
                 $"The pet translator Python runtime was not found at '{pythonExecutablePath}'.");
@@ -53,6 +54,15 @@ public sealed class PetTranslatorService
                 $"The pet translator model file was not found at '{modelPath}'.");
         }
 
+        _logger.LogInformation(
+            "Pet translator inference starting. AudioPath: {AudioPath} SizeBytes: {SizeBytes} PythonExecutablePath: {PythonExecutablePath} ModelScriptPath: {ModelScriptPath} ModelPath: {ModelPath} MinimumConfidence: {MinimumConfidence}",
+            audioFilePath,
+            audioFileInfo.Length,
+            pythonExecutablePath,
+            modelScriptPath,
+            modelPath,
+            _options.MinimumConfidence);
+
         try
         {
             try
@@ -67,6 +77,12 @@ public sealed class PetTranslatorService
             }
 
             var inferenceAudioFilePath = normalizedAudioFilePath ?? audioFilePath;
+
+            _logger.LogInformation(
+                "Pet translator audio prepared. SourcePath: {AudioPath} InferencePath: {InferenceAudioPath} UsedNormalizedCopy: {UsedNormalizedCopy}",
+                audioFilePath,
+                inferenceAudioFilePath,
+                normalizedAudioFilePath is not null);
 
             using var process = new Process
             {
@@ -124,7 +140,7 @@ public sealed class PetTranslatorService
 
             if (!string.IsNullOrWhiteSpace(stderr))
             {
-                _logger.LogInformation("Pet translator stderr: {Stderr}", stderr);
+                _logger.LogDebug("Pet translator stderr: {Stderr}", stderr);
             }
 
             if (process.ExitCode != 0)
@@ -162,9 +178,22 @@ public sealed class PetTranslatorService
                     "The pet translator model response was incomplete.");
             }
 
+            var rawLabel = NormalizeLabel(response.RawLabel ?? response.Label);
             var label = NormalizeLabel(response.Label);
-            var probabilities = response.Probabilities
-                .ToDictionary(pair => NormalizeLabel(pair.Key), pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+            var probabilities = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in response.Probabilities)
+            {
+                probabilities[NormalizeLabel(pair.Key)] = pair.Value;
+            }
+            var thresholdApplied = !string.Equals(label, rawLabel, StringComparison.OrdinalIgnoreCase);
+
+            _logger.LogInformation(
+                "Pet translator inference parsed. FinalLabel: {Label} RawLabel: {RawLabel} Confidence: {Confidence} ThresholdApplied: {ThresholdApplied} Probabilities: {@Probabilities}",
+                label,
+                rawLabel,
+                response.Confidence,
+                thresholdApplied,
+                probabilities);
 
             return new PetTranslatorAnalysisResult(
                 label,
@@ -184,37 +213,151 @@ public sealed class PetTranslatorService
     {
         if (!string.IsNullOrWhiteSpace(_options.PythonExecutablePath))
         {
-            return Path.GetFullPath(_options.PythonExecutablePath);
+            return ResolveConfiguredExecutablePath(_options.PythonExecutablePath);
         }
 
-        var audioMlRoot = ResolveAudioMlRoot();
-        var virtualEnvPython = Path.Combine(audioMlRoot, ".venv", "bin", "python");
-        return virtualEnvPython;
+        var candidates = GetDefaultPythonExecutableCandidates().ToArray();
+        return GetFirstExistingPathOrFallback(candidates);
     }
 
     private string ResolveModelScriptPath()
     {
         if (!string.IsNullOrWhiteSpace(_options.ModelScriptPath))
         {
-            return Path.GetFullPath(_options.ModelScriptPath);
+            return ResolveConfiguredPath(_options.ModelScriptPath);
         }
 
-        return Path.Combine(_env.ContentRootPath, "ML", "predict_pet_audio.py");
+        return Path.Combine(ResolveMlAssetsRoot(), "predict_pet_audio.py");
     }
 
     private string ResolveModelPath()
     {
         if (!string.IsNullOrWhiteSpace(_options.ModelPath))
         {
-            return Path.GetFullPath(_options.ModelPath);
+            return ResolveConfiguredPath(_options.ModelPath);
         }
 
-        var audioMlRoot = ResolveAudioMlRoot();
-        return Path.Combine(audioMlRoot, "models", "best_model.pth");
+        var candidates = new[]
+        {
+            Path.Combine(ResolveMlAssetsRoot(), "models", "best_model.pth"),
+            Path.Combine(ResolveMlAssetsRoot(), "models", "reference_model.json"),
+            Path.Combine(ResolveLegacyAudioMlRoot(), "models", "best_model.pth")
+        };
+
+        return GetFirstExistingPathOrFallback(candidates);
     }
 
-    private string ResolveAudioMlRoot() =>
+    private string ResolveMlAssetsRoot() =>
+        Path.Combine(_env.ContentRootPath, "ML");
+
+    private string ResolveLegacyAudioMlRoot() =>
         Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "..", "..", "audio-ml"));
+
+    private IEnumerable<string> GetDefaultPythonExecutableCandidates()
+    {
+        var localMlRoot = ResolveMlAssetsRoot();
+        var legacyMlRoot = ResolveLegacyAudioMlRoot();
+
+        if (OperatingSystem.IsWindows())
+        {
+            yield return Path.Combine(localMlRoot, ".venv", "Scripts", "python.exe");
+            yield return Path.Combine(legacyMlRoot, ".venv", "Scripts", "python.exe");
+            yield break;
+        }
+
+        yield return Path.Combine(localMlRoot, ".venv", "bin", "python");
+        yield return Path.Combine(localMlRoot, ".venv", "bin", "python3");
+        yield return Path.Combine(legacyMlRoot, ".venv", "bin", "python");
+        yield return Path.Combine(legacyMlRoot, ".venv", "bin", "python3");
+    }
+
+    private string ResolveConfiguredExecutablePath(string path)
+    {
+        if (LooksLikeRelativeOrAbsolutePath(path))
+        {
+            return ResolveConfiguredPath(path);
+        }
+
+        return path.Trim();
+    }
+
+    private string ResolveConfiguredPath(string path)
+    {
+        var trimmedPath = path.Trim();
+        if (Path.IsPathRooted(trimmedPath))
+        {
+            return Path.GetFullPath(trimmedPath);
+        }
+
+        return Path.GetFullPath(Path.Combine(_env.ContentRootPath, trimmedPath));
+    }
+
+    private static bool LooksLikeRelativeOrAbsolutePath(string value) =>
+        Path.IsPathRooted(value) ||
+        value.Contains(Path.DirectorySeparatorChar) ||
+        value.Contains(Path.AltDirectorySeparatorChar);
+
+    private static string GetFirstExistingPathOrFallback(IEnumerable<string> candidates)
+    {
+        var materializedCandidates = candidates.ToArray();
+
+        foreach (var candidate in materializedCandidates)
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return materializedCandidates[0];
+    }
+
+    private static bool CanLaunchExecutable(string executablePath)
+    {
+        if (File.Exists(executablePath))
+        {
+            return true;
+        }
+
+        if (LooksLikeRelativeOrAbsolutePath(executablePath))
+        {
+            return false;
+        }
+
+        var pathEntries = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (OperatingSystem.IsWindows())
+        {
+            var executableExtensions = (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.BAT;.CMD")
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var pathEntry in pathEntries)
+            {
+                foreach (var extension in executableExtensions)
+                {
+                    var candidate = Path.Combine(pathEntry, executablePath + extension);
+                    if (File.Exists(candidate))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        foreach (var pathEntry in pathEntries)
+        {
+            var candidate = Path.Combine(pathEntry, executablePath);
+            if (File.Exists(candidate))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private async Task<string?> TryConvertToWavAsync(string audioFilePath, CancellationToken cancellationToken)
     {
@@ -325,6 +468,7 @@ public sealed class PetTranslatorService
 
     private sealed record PetTranslatorPythonResponse(
         [property: JsonPropertyName("label")] string Label,
+        [property: JsonPropertyName("rawLabel")] string? RawLabel,
         [property: JsonPropertyName("confidence")] double Confidence,
         [property: JsonPropertyName("probabilities")] Dictionary<string, double> Probabilities
     );
