@@ -341,6 +341,8 @@ public class AdminModerationController : ControllerBase
     public async Task<IActionResult> SearchForumPostModeration(
         [FromQuery] ForumModerationStatus? status,
         [FromQuery] ForumAiModerationLabel? label,
+        [FromQuery] bool? onlyUnsafeAi,
+        [FromQuery] bool? onlyPendingReview,
         [FromQuery] bool? isReply,
         [FromQuery] string? sortBy = "moderatedAt",
         [FromQuery] string? sortDirection = "desc",
@@ -374,11 +376,21 @@ public class AdminModerationController : ControllerBase
             .AsNoTracking()
             .AsQueryable();
 
+        if (onlyUnsafeAi == true)
+        {
+            query = query.Where(p => p.AiModerationLabel.HasValue && p.AiModerationLabel != ForumAiModerationLabel.Safe);
+        }
+
+        if (onlyPendingReview == true)
+        {
+            query = query.Where(p => !p.ReviewedAt.HasValue);
+        }
+
         if (status.HasValue)
         {
             query = query.Where(p => p.ModerationStatus == status.Value);
         }
-        else if (!label.HasValue)
+        else if (!label.HasValue && onlyUnsafeAi != true)
         {
             query = query.Where(p => p.ModerationStatus != ForumModerationStatus.None);
         }

@@ -49,6 +49,8 @@ const state = {
   places: [],
   placeOwnerApplications: [],
   reports: [],
+  aiModerationPosts: [],
+  aiModerationLoadError: "",
   reportTargetDetails: {},
   editingPlaceId: null,
   editingPlaceSchedule: [],
@@ -89,6 +91,9 @@ const elements = {
   refreshReportsButton: document.querySelector("#refreshReportsButton"),
   reportsList: document.querySelector("#reportsList"),
   reportsEmptyState: document.querySelector("#reportsEmptyState"),
+  aiModerationStatus: document.querySelector("#aiModerationStatus"),
+  aiModerationList: document.querySelector("#aiModerationList"),
+  aiModerationEmptyState: document.querySelector("#aiModerationEmptyState"),
   profileHeadline: document.querySelector("#profileHeadline"),
   profileSummary: document.querySelector("#profileSummary"),
   profileUserId: document.querySelector("#profileUserId"),
@@ -332,6 +337,26 @@ function reportToneForPriority(priority) {
   if (priority === "High") return "danger";
   if (priority === "Medium") return "warning";
   return "success";
+}
+
+function reportToneForModerationStatus(status) {
+  if (status === "Reviewed") return "success";
+  if (status === "AutoHidden") return "danger";
+  return "warning";
+}
+
+function reportToneForModerationLabel(label) {
+  if (label === "Spam" || label === "Abusive") return "danger";
+  if (label === "Suspicious") return "warning";
+  return "success";
+}
+
+function isAdminAuthError(error) {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
+function logAdminSectionError(section, error) {
+  console.error(`[admin] Failed to load ${section}.`, error);
 }
 
 function formatReportTargetType(targetType) {
@@ -948,6 +973,169 @@ function renderReports() {
     .join("");
 }
 
+function renderAiModerationQueue() {
+  if (!elements.aiModerationList || !elements.aiModerationEmptyState) {
+    return;
+  }
+
+  const canReviewQueue = hasAdminSession();
+  if (!canReviewQueue) {
+    elements.aiModerationList.innerHTML = "";
+    if (elements.aiModerationStatus) {
+      elements.aiModerationStatus.textContent =
+        "Sign in as an admin to load the AI moderation queue.";
+    }
+    elements.aiModerationEmptyState.textContent =
+      "Sign in as an admin to review forum posts flagged by the AI moderator.";
+    elements.aiModerationEmptyState.classList.remove("hidden");
+    return;
+  }
+
+  if (elements.aiModerationStatus) {
+    if (state.aiModerationLoadError) {
+      elements.aiModerationStatus.textContent =
+        `Unable to load the AI moderation queue: ${state.aiModerationLoadError}`;
+    } else if (state.aiModerationPosts.length === 0) {
+      elements.aiModerationStatus.textContent =
+        "Loaded 0 AI-flagged forum posts that still need review.";
+    } else {
+      elements.aiModerationStatus.textContent =
+        `Loaded ${state.aiModerationPosts.length} AI-flagged forum post${
+          state.aiModerationPosts.length === 1 ? "" : "s"
+        } waiting for review.`;
+    }
+  }
+
+  elements.aiModerationEmptyState.textContent =
+    state.aiModerationLoadError
+      ? "The AI moderation queue could not be loaded. Check the browser console for details."
+      : "No AI-flagged forum posts are waiting for review.";
+  elements.aiModerationEmptyState.classList.toggle(
+    "hidden",
+    state.aiModerationPosts.length !== 0,
+  );
+
+  elements.aiModerationList.innerHTML = state.aiModerationPosts
+    .map((post) => {
+      const moderation = post.moderation || {};
+      const aiLabel = moderation.aiLabel || "Unknown";
+      const status = moderation.status || "Flagged";
+      const reviewStateLabel = moderation.reviewedByAdminUsername
+        ? `${moderation.reviewedByAdminUsername} · ${formatDateTime(moderation.reviewedAt)}`
+        : "Awaiting admin review";
+      const createdLabel = formatDateTime(post.createdAt);
+      const moderatedLabel = formatDateTime(moderation.moderatedAt || post.createdAt);
+      const confidenceLabel =
+        moderation.aiConfidence === null || moderation.aiConfidence === undefined
+          ? "Unknown"
+          : `${Math.round(Number(moderation.aiConfidence) * 100)}%`;
+      const attachmentsCount = Array.isArray(post.attachments) ? post.attachments.length : 0;
+      const replyLabel = post.isAReply ? "Reply" : "Forum post";
+
+      return `
+        <article class="request-card report-card">
+          <div class="place-card-top">
+            <div>
+              <h3 class="place-title">${escapeHtml(replyLabel)} flagged by AI</h3>
+              <p class="place-subtitle">
+                ${escapeHtml(post.userName || "Unknown user")} · ${escapeHtml(createdLabel)}
+              </p>
+            </div>
+            <div class="pill-row">
+              <span class="pill">AI moderation</span>
+              <span class="pill" data-tone="${reportToneForModerationLabel(aiLabel)}">${escapeHtml(aiLabel)}</span>
+              <span class="pill" data-tone="${reportToneForModerationStatus(status)}">${escapeHtml(status)}</span>
+            </div>
+          </div>
+
+          <div class="place-grid">
+            <div class="place-meta-block">
+              <span class="place-label">Confidence</span>
+              <p class="place-meta">${escapeHtml(confidenceLabel)}</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Moderated at</span>
+              <p class="place-meta">${escapeHtml(moderatedLabel)}</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Activity</span>
+              <p class="place-meta">${escapeHtml(String(post.likesCount || 0))} likes · ${escapeHtml(String(post.repliesCount || 0))} replies</p>
+            </div>
+            <div class="place-meta-block">
+              <span class="place-label">Attachments</span>
+              <p class="place-meta">${escapeHtml(String(attachmentsCount))}</p>
+            </div>
+          </div>
+
+          <div class="report-target-panel">
+            <span class="place-label">Flagged content</span>
+            <strong class="report-target-title">${escapeHtml(replyLabel)} by ${escapeHtml(post.userName || "Unknown user")}</strong>
+            <p class="report-target-body">${escapeHtml(truncateText(post.content || "No content."))}</p>
+          </div>
+
+          ${
+            moderation.aiReason
+              ? `<p class="request-notes">AI reason: ${escapeHtml(moderation.aiReason)}</p>`
+              : ""
+          }
+
+          <p class="place-meta">Review state: ${escapeHtml(reviewStateLabel)}</p>
+
+          <div class="place-actions">
+            ${
+              status === "AutoHidden"
+                ? `
+                  <button
+                    class="primary-button"
+                    type="button"
+                    data-action="confirm-ai-post-hidden"
+                    data-id="${escapeHtml(post.id)}"
+                  >
+                    Confirm hidden
+                  </button>
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    data-action="publish-ai-post"
+                    data-id="${escapeHtml(post.id)}"
+                  >
+                    Make public
+                  </button>
+                `
+                : `
+                  <button
+                    class="primary-button"
+                    type="button"
+                    data-action="auto-hide-ai-post"
+                    data-id="${escapeHtml(post.id)}"
+                  >
+                    Hide post
+                  </button>
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    data-action="review-ai-post"
+                    data-id="${escapeHtml(post.id)}"
+                  >
+                    Mark reviewed
+                  </button>
+                `
+            }
+            <button
+              class="secondary-button danger"
+              type="button"
+              data-action="delete-ai-post"
+              data-id="${escapeHtml(post.id)}"
+            >
+              Delete post
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderPlaceFormState() {
   if (state.editingPlaceId) {
     elements.placeFormMode.textContent = "Editing an existing place";
@@ -972,6 +1160,7 @@ function renderAll() {
   renderPlaces();
   renderPlaceOwnerApplications();
   renderReports();
+  renderAiModerationQueue();
   renderPlaceFormState();
 }
 
@@ -1003,6 +1192,8 @@ function clearSession() {
   state.places = [];
   state.placeOwnerApplications = [];
   state.reports = [];
+  state.aiModerationPosts = [];
+  state.aiModerationLoadError = "";
   state.reportTargetDetails = {};
   state.createdUserSession = null;
   state.lastSyncAt = null;
@@ -1153,21 +1344,94 @@ async function loadReports() {
   };
 }
 
+async function loadAiModerationQueue() {
+  if (!hasAdminSession()) {
+    state.aiModerationPosts = [];
+    state.aiModerationLoadError = "";
+    return;
+  }
+
+  const params = new URLSearchParams({
+    page: "1",
+    pageSize: "200",
+    sortBy: "confidence",
+    sortDirection: "desc",
+    onlyUnsafeAi: "true",
+    onlyPendingReview: "true",
+  });
+
+  const response = await apiRequest(
+    `/api/admin/forum-posts/moderation?${params.toString()}`,
+  );
+
+  const items = Array.isArray(response?.items) ? response.items : [];
+  state.aiModerationPosts = items.filter((post) => {
+    const moderation = post?.moderation || {};
+    return (
+      moderation.aiLabel &&
+      moderation.aiLabel !== "Safe" &&
+      !moderation.reviewedAt
+    );
+  });
+  state.aiModerationLoadError = "";
+  console.info("[admin] AI moderation queue loaded.", {
+    totalReceived: items.length,
+    visibleCount: state.aiModerationPosts.length,
+    postIds: state.aiModerationPosts.map((post) => post.id),
+  });
+}
+
 async function refreshDashboard({ quiet = false } = {}) {
+  let hasPartialFailures = false;
+
   try {
     setApiStatus("Refreshing...", "pending");
     await loadProfile({ quiet: true });
 
     if (hasAdminSession()) {
-      await loadPlaces();
-      await loadPlaceOwnerApplications();
-      await loadReports();
+      const sectionNames = [
+        "places",
+        "place owner applications",
+        "reports",
+        "AI moderation queue",
+      ];
+      const results = await Promise.allSettled([
+        loadPlaces(),
+        loadPlaceOwnerApplications(),
+        loadReports(),
+        loadAiModerationQueue(),
+      ]);
+      hasPartialFailures = results.some((result) => result.status === "rejected");
+      const authFailure = results.find(
+        (result) => result.status === "rejected" && isAdminAuthError(result.reason),
+      );
+
+      if (authFailure) {
+        clearSession();
+        renderAll();
+        redirectToAdminLogin();
+        return false;
+      }
+
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          logAdminSectionError(sectionNames[index], result.reason);
+          if (sectionNames[index] === "AI moderation queue") {
+            state.aiModerationPosts = [];
+            state.aiModerationLoadError =
+              result.reason?.message || "Unknown error while loading AI moderation queue.";
+          }
+        }
+      });
+
       state.lastSyncAt = new Date().toISOString();
       state.apiReachable = true;
     } else {
       state.places = [];
       state.placeOwnerApplications = [];
       state.reports = [];
+      state.aiModerationPosts = [];
+      state.aiModerationLoadError = "";
       state.reportTargetDetails = {};
       state.apiReachable = null;
     }
@@ -1177,9 +1441,11 @@ async function refreshDashboard({ quiet = false } = {}) {
     if (!quiet) {
       showToast(
         hasAdminSession()
-          ? "Dashboard data refreshed."
+          ? hasPartialFailures
+            ? "Dashboard refreshed, but some admin sections failed. Check the browser console."
+            : "Dashboard data refreshed."
           : "Ready for admin sign-in.",
-        "success",
+        hasPartialFailures ? "warning" : "success",
       );
     }
 
@@ -1199,20 +1465,56 @@ async function refreshDashboard({ quiet = false } = {}) {
 async function refreshReports({ quiet = false } = {}) {
   if (!hasAdminSession()) {
     state.reports = [];
+    state.aiModerationPosts = [];
+    state.aiModerationLoadError = "";
     state.reportTargetDetails = {};
     renderReports();
+    renderAiModerationQueue();
     return false;
   }
 
   try {
-    await loadReports();
-    renderReports();
+    const results = await Promise.allSettled([
+      loadReports(),
+      loadAiModerationQueue(),
+    ]);
+    const authFailure = results.find(
+      (result) => result.status === "rejected" && isAdminAuthError(result.reason),
+    );
 
-    if (!quiet) {
-      showToast("Reports refreshed.", "success");
+    if (authFailure) {
+      clearSession();
+      renderAll();
+      redirectToAdminLogin();
+      return false;
     }
 
-    return true;
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        logAdminSectionError(index === 0 ? "reports" : "AI moderation queue", result.reason);
+      }
+    });
+
+    if (results[1]?.status === "rejected") {
+      state.aiModerationPosts = [];
+      state.aiModerationLoadError =
+        results[1].reason?.message || "Unknown error while loading AI moderation queue.";
+    }
+
+    renderReports();
+    renderAiModerationQueue();
+
+    if (!quiet) {
+      const hasFailures = results.some((result) => result.status === "rejected");
+      showToast(
+        hasFailures
+          ? "Reports refreshed, but part of the moderation data failed to load. Check the browser console."
+          : "Reports and AI moderation queue refreshed.",
+        hasFailures ? "warning" : "success",
+      );
+    }
+
+    return results.every((result) => result.status === "fulfilled");
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       clearSession();
@@ -1222,6 +1524,7 @@ async function refreshReports({ quiet = false } = {}) {
     }
 
     renderReports();
+    renderAiModerationQueue();
 
     if (!quiet) {
       showToast(error.message || "Unable to refresh reports.", "error");
@@ -1674,6 +1977,126 @@ async function takeReportAction(report) {
   return takeForumPostReportAction(report, targetDetails);
 }
 
+async function updateAiModerationPost(post, status) {
+  const aiLabel = post?.moderation?.aiLabel || null;
+  const isPublishingHiddenPost =
+    status === "Reviewed" && post?.moderation?.status === "AutoHidden";
+  const defaultNote =
+    status === "AutoHidden"
+      ? post?.moderation?.aiReason || "Confirmed the AI moderation result and kept the post hidden."
+      : isPublishingHiddenPost
+        ? "Reviewed the AI moderation result and made the post visible to the public."
+        : "Reviewed the AI moderation result and left the post visible.";
+  const promptLabel =
+    status === "AutoHidden"
+      ? `Keep forum post ${post.id} hidden?
+
+Optional admin note:`
+      : isPublishingHiddenPost
+        ? `Make forum post ${post.id} visible to the public again?
+
+Optional admin note:`
+        : `Mark forum post ${post.id} as reviewed?
+
+Optional admin note:`;
+
+  const note = window.prompt(promptLabel, post?.moderation?.adminNotes || defaultNote);
+  if (note === null) {
+    return false;
+  }
+
+  await apiRequest(`/api/admin/forum-posts/${post.id}/moderation-review`, {
+    method: "POST",
+    body: {
+      status,
+      finalModerationLabel: status === "AutoHidden" ? aiLabel : null,
+      adminNotes: note.trim() || null,
+    },
+  });
+
+  showToast(
+    status === "AutoHidden"
+      ? `Forum post ${post.id} was kept hidden.`
+      : isPublishingHiddenPost
+        ? `Forum post ${post.id} is public again.`
+        : `Forum post ${post.id} was marked as reviewed.`,
+    "success",
+  );
+  return true;
+}
+
+async function deleteAiModerationPost(post) {
+  const confirmed = window.confirm(
+    `Delete the AI-flagged forum post by ${post.userName || "the original author"}?`,
+  );
+
+  if (!confirmed) {
+    return false;
+  }
+
+  await apiRequest(`/api/admin/forum-posts/${post.id}`, {
+    method: "DELETE",
+  });
+
+  showToast(`Forum post ${post.id} was deleted.`, "success");
+  return true;
+}
+
+async function handleAiModerationListClick(event) {
+  const actionButton = event.target.closest("button[data-action]");
+  if (!actionButton) return;
+
+  const action = actionButton.dataset.action;
+  if (!["auto-hide-ai-post", "review-ai-post", "confirm-ai-post-hidden", "publish-ai-post", "delete-ai-post"].includes(action)) {
+    return;
+  }
+
+  if (!hasAdminSession()) {
+    showToast("Sign in as an admin before reviewing AI-flagged posts.", "warning");
+    return;
+  }
+
+  const postId = String(actionButton.dataset.id || "");
+  const post = state.aiModerationPosts.find((item) => item.id === postId);
+
+  if (!post) {
+    showToast("The selected AI-moderated post could not be found.", "warning");
+    return;
+  }
+
+  const restore = withBusyState(
+    actionButton,
+    action === "delete-ai-post"
+      ? "Deleting..."
+      : action === "publish-ai-post"
+        ? "Publishing..."
+      : action === "review-ai-post"
+        ? "Reviewing..."
+        : "Updating...",
+  );
+
+  try {
+    const didUpdate =
+      action === "delete-ai-post"
+        ? await deleteAiModerationPost(post)
+        : action === "publish-ai-post"
+          ? await updateAiModerationPost(post, "Reviewed")
+        : action === "review-ai-post"
+          ? await updateAiModerationPost(post, "Reviewed")
+          : await updateAiModerationPost(post, "AutoHidden");
+
+    if (!didUpdate) {
+      return;
+    }
+
+    await refreshReports({ quiet: true });
+  } catch (error) {
+    showToast(error.message || "Unable to review the AI-moderated post.", "error");
+  } finally {
+    restore();
+  }
+}
+
 async function handleReportsListClick(event) {
   const actionButton = event.target.closest("button[data-action]");
   if (!actionButton) return;
@@ -1866,6 +2289,7 @@ function bindEvents() {
   elements.placesTableBody.addEventListener("click", handlePlaceTableClick);
   elements.applicationsList.addEventListener("click", handleApplicationsListClick);
   elements.reportsList?.addEventListener("click", handleReportsListClick);
+  elements.aiModerationList?.addEventListener("click", handleAiModerationListClick);
 }
 
 async function init() {
