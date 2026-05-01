@@ -20,6 +20,9 @@ public class AppDbContext : DbContext
     public DbSet<ForumPostBookmarkModel> ForumPostBookmarks => Set<ForumPostBookmarkModel>();
     public DbSet<ForumPostLikeModel> ForumPostLikes => Set<ForumPostLikeModel>();
     public DbSet<UserBlockModel> UserBlocks => Set<UserBlockModel>();
+    public DbSet<ConversationModel> Conversations => Set<ConversationModel>();
+    public DbSet<ConversationParticipantModel> ConversationParticipants => Set<ConversationParticipantModel>();
+    public DbSet<DirectMessageModel> DirectMessages => Set<DirectMessageModel>();
     public DbSet<PlaceOwnerApplicationModel> PlaceOwnerApplications => Set<PlaceOwnerApplicationModel>();
     public DbSet<PlaceOwnerApplicationImageModel> PlaceOwnerApplicationImages => Set<PlaceOwnerApplicationImageModel>();
     public DbSet<ReportModel> Reports => Set<ReportModel>();
@@ -41,6 +44,7 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.Username).HasColumnName("username").HasMaxLength(100).IsRequired();
+            e.Property(x => x.ChatCode).HasColumnName("chat_code").HasMaxLength(8).IsRequired();
             e.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired();
             e.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
@@ -64,6 +68,7 @@ public class AppDbContext : DbContext
 
             e.HasIndex(x => x.Email).IsUnique();
             e.HasIndex(x => x.Username).IsUnique();
+            e.HasIndex(x => x.ChatCode).IsUnique();
         });
 
         b.Entity<AdminUser>(e =>
@@ -390,6 +395,99 @@ public class AppDbContext : DbContext
 
             e.HasIndex(x => x.BlockedUserId);
             e.HasIndex(x => x.CreatedAt);
+        });
+
+        b.Entity<ConversationModel>(e =>
+        {
+            e.ToTable("conversations", "public", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_conversations_participant_order",
+                    "participant_one_user_id < participant_two_user_id");
+            });
+
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.ParticipantOneUserId).HasColumnName("participant_one_user_id").IsRequired();
+            e.Property(x => x.ParticipantTwoUserId).HasColumnName("participant_two_user_id").IsRequired();
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            e.Property(x => x.LastMessageAt).HasColumnName("last_message_at");
+
+            e.HasOne(x => x.ParticipantOneUser)
+                .WithMany()
+                .HasForeignKey(x => x.ParticipantOneUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.ParticipantTwoUser)
+                .WithMany()
+                .HasForeignKey(x => x.ParticipantTwoUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.ParticipantOneUserId, x.ParticipantTwoUserId }).IsUnique();
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.LastMessageAt);
+        });
+
+        b.Entity<ConversationParticipantModel>(e =>
+        {
+            e.ToTable("conversation_participants", "public");
+            e.HasKey(x => new { x.ConversationId, x.UserId });
+            e.Property(x => x.ConversationId).HasColumnName("conversation_id").IsRequired();
+            e.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+            e.Property(x => x.LastReadAt).HasColumnName("last_read_at");
+
+            e.HasOne(x => x.Conversation)
+                .WithMany(x => x.Participants)
+                .HasForeignKey(x => x.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+                .WithMany(x => x.ConversationParticipants)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => new { x.UserId, x.LastReadAt });
+        });
+
+        b.Entity<DirectMessageModel>(e =>
+        {
+            e.ToTable("direct_messages", "public", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_direct_messages_content_or_media",
+                    "length(btrim(content)) > 0 OR media_url IS NOT NULL");
+                table.HasCheckConstraint(
+                    "CK_direct_messages_media_metadata_complete",
+                    "(media_url IS NULL AND media_type IS NULL AND media_size_bytes IS NULL) OR (media_url IS NOT NULL AND media_type IS NOT NULL AND media_size_bytes IS NOT NULL)");
+                table.HasCheckConstraint(
+                    "CK_direct_messages_media_size_positive",
+                    "media_size_bytes IS NULL OR media_size_bytes > 0");
+            });
+
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.ConversationId).HasColumnName("conversation_id").IsRequired();
+            e.Property(x => x.SenderUserId).HasColumnName("sender_user_id").IsRequired();
+            e.Property(x => x.Content).HasColumnName("content").HasMaxLength(5000).IsRequired();
+            e.Property(x => x.MediaUrl).HasColumnName("media_url").HasMaxLength(1024);
+            e.Property(x => x.MediaType).HasColumnName("media_type").HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.MediaSizeBytes).HasColumnName("media_size_bytes");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            e.HasOne(x => x.Conversation)
+                .WithMany(x => x.Messages)
+                .HasForeignKey(x => x.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.SenderUser)
+                .WithMany(x => x.SentDirectMessages)
+                .HasForeignKey(x => x.SenderUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.SenderUserId);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => new { x.ConversationId, x.CreatedAt });
         });
 
         b.Entity<ReportModel>(e =>

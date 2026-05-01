@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PetCare.Api.Data;
@@ -13,9 +14,11 @@ using PetCare.Api.Model;
 namespace PetCare.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260430122739_AddDirectMessages")]
+    partial class AddDirectMessages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -184,12 +187,6 @@ namespace PetCare.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("banned_at");
 
-                    b.Property<string>("ChatCode")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)")
-                        .HasColumnName("chat_code");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -280,9 +277,6 @@ namespace PetCare.Api.Migrations
                         .HasColumnName("username");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ChatCode")
-                        .IsUnique();
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -460,20 +454,6 @@ namespace PetCare.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<long?>("MediaSizeBytes")
-                        .HasColumnType("bigint")
-                        .HasColumnName("media_size_bytes");
-
-                    b.Property<string>("MediaType")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("media_type");
-
-                    b.Property<string>("MediaUrl")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
-                        .HasColumnName("media_url");
-
                     b.Property<long>("SenderUserId")
                         .HasColumnType("bigint")
                         .HasColumnName("sender_user_id");
@@ -488,11 +468,7 @@ namespace PetCare.Api.Migrations
 
                     b.ToTable("direct_messages", "public", t =>
                         {
-                            t.HasCheckConstraint("CK_direct_messages_content_or_media", "length(btrim(content)) > 0 OR media_url IS NOT NULL");
-
-                            t.HasCheckConstraint("CK_direct_messages_media_metadata_complete", "(media_url IS NULL AND media_type IS NULL AND media_size_bytes IS NULL) OR (media_url IS NOT NULL AND media_type IS NOT NULL AND media_size_bytes IS NOT NULL)");
-
-                            t.HasCheckConstraint("CK_direct_messages_media_size_positive", "media_size_bytes IS NULL OR media_size_bytes > 0");
+                            t.HasCheckConstraint("CK_direct_messages_content_not_blank", "length(btrim(content)) > 0");
                         });
                 });
 
