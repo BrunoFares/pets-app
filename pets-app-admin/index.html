@@ -8,8 +8,8 @@
       name="description"
       content="Admin dashboard for PetsApp request review, account creation, and pet-friendly place management."
     />
-    <link rel="stylesheet" href="./styles.css" />
-    <script defer src="./app.js"></script>
+    <link rel="stylesheet" href="./styles.css?v=20260501-3" />
+    <script defer src="./app.js?v=20260501-3"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -396,6 +396,25 @@
 
           <p id="reportsEmptyState" class="empty-state hidden">
             No reports match the current filters.
+          </p>
+
+          <div class="section-heading ai-moderation-heading">
+            <span class="section-tag">AI moderation</span>
+            <h3>Review forum posts flagged by the AI moderator</h3>
+            <p>
+              These posts were classified as not safe and are waiting for an
+              admin decision.
+            </p>
+          </div>
+
+          <p id="aiModerationStatus" class="place-meta">
+            Checking the AI moderation queue...
+          </p>
+
+          <div id="aiModerationList" class="places-list"></div>
+
+          <p id="aiModerationEmptyState" class="empty-state hidden">
+            No AI-flagged forum posts are waiting for review.
           </p>
         </section>
 

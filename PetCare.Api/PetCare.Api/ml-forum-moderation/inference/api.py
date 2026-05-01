@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 
-DEFAULT_MODEL_PATH = "models/baseline/forum_moderation_baseline.joblib"
+DEFAULT_MODEL_PATH = "../models/baseline/forum_moderation_baseline.joblib"
 VALID_LABELS = {"Safe", "Spam", "Abusive", "Suspicious"}
 
 app = FastAPI(title="Forum Moderation Baseline Inference", version="0.1.0")
