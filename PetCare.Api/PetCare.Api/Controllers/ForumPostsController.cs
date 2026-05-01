@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using PetCare.Api.Data;
 using PetCare.Api.DTOs;
 using PetCare.Api.Model;
@@ -18,13 +19,19 @@ public class ForumPostsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly IForumTextModerationService _forumTextModerationService;
+    private readonly ForumModerationOptions _forumModerationOptions;
     private static readonly string[] AllowedSorts = ["newest", "oldest", "mostliked", "mostbookmarked", "mostrelevant"];
 
-    public ForumPostsController(AppDbContext db, IWebHostEnvironment env, IForumTextModerationService forumTextModerationService)
+    public ForumPostsController(
+        AppDbContext db,
+        IWebHostEnvironment env,
+        IForumTextModerationService forumTextModerationService,
+        IOptions<ForumModerationOptions> forumModerationOptions)
     {
         _db = db;
         _env = env;
         _forumTextModerationService = forumTextModerationService;
+        _forumModerationOptions = forumModerationOptions.Value;
     }
 
     [HttpGet]
@@ -200,7 +207,13 @@ public class ForumPostsController : ControllerBase
         _db.ForumPosts.Add(post);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return CreatedAtAction(nameof(GetById), new { id = post.Id }, new { post.Id });
+        return CreatedAtAction(nameof(GetById), new { id = post.Id }, new
+        {
+            post.Id,
+            post.ModerationStatus,
+            post.AiModerationLabel,
+            post.AiModerationConfidence
+        });
     }
 
     [HttpPost("{id:guid}/reply")]
@@ -229,7 +242,13 @@ public class ForumPostsController : ControllerBase
         _db.ForumPosts.Add(post);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return CreatedAtAction(nameof(GetById), new { id = post.Id }, new { post.Id });
+        return CreatedAtAction(nameof(GetById), new { id = post.Id }, new
+        {
+            post.Id,
+            post.ModerationStatus,
+            post.AiModerationLabel,
+            post.AiModerationConfidence
+        });
     }
 
     [HttpPut("{id:guid}")]
@@ -244,7 +263,13 @@ public class ForumPostsController : ControllerBase
         await ApplyAiModerationAsync(post, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return Ok(new { message = "Post updated." });
+        return Ok(new
+        {
+            message = "Post updated.",
+            post.ModerationStatus,
+            post.AiModerationLabel,
+            post.AiModerationConfidence
+        });
     }
 
     [HttpPost("{id:guid}/attachments")]
@@ -596,23 +621,32 @@ public class ForumPostsController : ControllerBase
         post.AdminModerationNotes = null;
     }
 
-    private static ForumModerationStatus DetermineModerationStatus(ForumAiModerationLabel label, decimal confidence)
+    private ForumModerationStatus DetermineModerationStatus(ForumAiModerationLabel label, decimal confidence)
     {
         if (label == ForumAiModerationLabel.Safe)
         {
             return ForumModerationStatus.None;
         }
 
-        if (confidence >= 0.90m && label is ForumAiModerationLabel.Spam or ForumAiModerationLabel.Abusive)
+        var reviewThreshold = ClampThreshold(_forumModerationOptions.ReviewThreshold, 0.50m);
+        var autoHideThreshold = Math.Max(reviewThreshold, ClampThreshold(_forumModerationOptions.AutoHideThreshold, 0.75m));
+
+        if (confidence >= autoHideThreshold && label is ForumAiModerationLabel.Spam or ForumAiModerationLabel.Abusive)
         {
             return ForumModerationStatus.AutoHidden;
         }
 
-        return confidence >= 0.60m ? ForumModerationStatus.Flagged : ForumModerationStatus.None;
+        return confidence >= reviewThreshold ? ForumModerationStatus.Flagged : ForumModerationStatus.None;
     }
 
     private static decimal ClampConfidence(decimal confidence) =>
         Math.Min(1.0m, Math.Max(0.0m, confidence));
+
+    private static decimal ClampThreshold(decimal threshold, decimal defaultValue)
+    {
+        var candidate = threshold <= 0 ? defaultValue : threshold;
+        return Math.Min(1.0m, Math.Max(0.0m, candidate));
+    }
 
     private static string? TruncateOptional(string? value, int maxLength)
     {
