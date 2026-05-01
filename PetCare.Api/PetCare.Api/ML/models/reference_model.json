@@ -1,0 +1,43 @@
+{
+  "modelType": "centroid_classifier_v1",
+  "classNames": ["cat", "dog", "neither"],
+  "featureOrder": [
+    "rms",
+    "zero_crossing_rate",
+    "spectral_centroid",
+    "spectral_rolloff",
+    "low_frequency_ratio"
+  ],
+  "featureScales": {
+    "rms": 0.08,
+    "zero_crossing_rate": 0.05,
+    "spectral_centroid": 0.12,
+    "spectral_rolloff": 0.14,
+    "low_frequency_ratio": 0.18
+  },
+  "classCentroids": {
+    "cat": {
+      "rms": 0.16,
+      "zero_crossing_rate": 0.12,
+      "spectral_centroid": 0.46,
+      "spectral_rolloff": 0.7,
+      "low_frequency_ratio": 0.34
+    },
+    "dog": {
+      "rms": 0.14,
+      "zero_crossing_rate": 0.03,
+      "spectral_centroid": 0.05,
+      "spectral_rolloff": 0.08,
+      "low_frequency_ratio": 0.97
+    },
+    "neither": {
+      "rms": 0.03,
+      "zero_crossing_rate": 0.02,
+      "spectral_centroid": 0.08,
+      "spectral_rolloff": 0.12,
+      "low_frequency_ratio": 0.8
+    }
+  },
+  "silenceRmsThreshold": 0.015,
+  "temperature": 0.45
+}

@@ -36,7 +36,7 @@ public class PetTranslatorController : ControllerBase
 
         await using (var stream = System.IO.File.Create(tempFilePath))
         {
-            await request.File.CopyToAsync(stream, cancellationToken);
+            await request.File!.CopyToAsync(stream, cancellationToken);
         }
 
         try

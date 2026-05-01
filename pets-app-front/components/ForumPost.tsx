@@ -784,7 +784,7 @@ const ForumPost = ({
           style={[
             styles.videoViewerFrame,
             {
-              width: Math.max(attachmentViewerWidth - 24, 0),
+              width: Math.max(attachmentViewerWidth, 0),
               height: Math.min(attachmentViewerHeight * 0.72, 520),
             },
           ]}
@@ -1506,7 +1506,6 @@ const createStyles = ({ darkMode }: any) => {
     },
     videoViewerFrame: {
       overflow: "hidden",
-      borderRadius: 22,
       backgroundColor: colors.black,
     },
     videoViewerCloseButton: {

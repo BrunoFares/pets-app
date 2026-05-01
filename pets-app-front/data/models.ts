@@ -70,6 +70,45 @@ export interface ChatModel {
   CreatedAt: number;
 }
 
+export interface DirectMessageUserModel {
+  Id: string | number;
+  Username: string;
+  FirstName: string;
+  LastName: string;
+  DisplayName: string;
+  AvatarUrl: string;
+  IsApprovedPlaceOwner: boolean;
+}
+
+export interface DirectMessageModel {
+  Id: string | number;
+  ConversationId: string | number;
+  SenderUserId: string | number;
+  Content: string;
+  MediaUrl?: string | null;
+  MediaType?: "Image" | "Video" | null;
+  MediaSizeBytes?: number | null;
+  CreatedAt: number | string;
+}
+
+export interface DirectMessageConversationSummaryModel {
+  Id: string | number;
+  OtherParticipant: DirectMessageUserModel;
+  LastMessagePreview?: string | null;
+  LastMessageAt?: number | string | null;
+  UnreadCount: number;
+  CreatedAt: number | string;
+}
+
+export interface DirectMessageConversationModel {
+  Id: string | number;
+  OtherParticipant: DirectMessageUserModel;
+  CreatedAt: number | string;
+  LastMessageAt?: number | string | null;
+  LastReadAt?: number | string | null;
+  Messages: DirectMessageModel[];
+}
+
 export interface PlaceModel {
   Id: string;
   OwnerUserId?: string | number | null;

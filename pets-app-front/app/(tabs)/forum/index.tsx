@@ -11,8 +11,8 @@ import { ApiForumPostResponse, normalizeForumPost } from "@/lib/forum-api";
 import { applyRegisteredPlaceFlags, getRegisteredPlaceOwnerIds } from "@/lib/place-owner-lookup";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
@@ -27,11 +27,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ForumScreen() {
   const router = useRouter();
+  const { openProfileId, openProfileToken } = useLocalSearchParams<{
+    openProfileId?: string;
+    openProfileToken?: string;
+  }>();
   const darkMode = useColorScheme() === "dark";
   const styles = createStyles({ darkMode });
   const [posts, setPosts] = useState<ForumPostsModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { setShowFooter } = useGlobal();
+  const handledOpenProfileTokenRef = useRef<string | null>(null);
 
   const loadPosts = useCallback(async () => {
     setIsLoading(true);
@@ -61,6 +66,23 @@ export default function ForumScreen() {
       void loadPosts();
     }, [loadPosts]),
   );
+
+  useEffect(() => {
+    if (!openProfileId || !openProfileToken) {
+      return;
+    }
+
+    if (handledOpenProfileTokenRef.current === openProfileToken) {
+      return;
+    }
+
+    handledOpenProfileTokenRef.current = openProfileToken;
+
+    router.push({
+      pathname: "/(tabs)/forum/profile/[id]",
+      params: { id: String(openProfileId) },
+    });
+  }, [openProfileId, openProfileToken, router]);
 
   const { isRefreshing, onRefresh } = usePullToRefresh(loadPosts);
   const showLoadingOverlay = isLoading && !isRefreshing;
