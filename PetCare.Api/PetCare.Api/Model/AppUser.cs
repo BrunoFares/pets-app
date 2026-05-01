@@ -4,6 +4,7 @@ public class AppUser
 {
     public long Id { get; set; }
     public string Username { get; set; } = default!;
+    public string ChatCode { get; set; } = default!;
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string Email { get; set; } = default!;
@@ -36,4 +37,6 @@ public class AppUser
     public List<ReportModel> SubmittedReports { get; set; } = new();
     public List<UserBlockModel> BlocksInitiated { get; set; } = new();
     public List<UserBlockModel> BlocksReceived { get; set; } = new();
+    public List<ConversationParticipantModel> ConversationParticipants { get; set; } = new();
+    public List<DirectMessageModel> SentDirectMessages { get; set; } = new();
 }

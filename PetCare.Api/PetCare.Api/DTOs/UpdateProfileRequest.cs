@@ -20,6 +20,7 @@ public class UpdateProfileRequest
 public record UserProfileResponse(
     long Id,
     string Username,
+    string ChatCode,
     string FirstName,
     string LastName,
     string Email,
@@ -28,6 +29,16 @@ public record UserProfileResponse(
     bool IsApprovedPlaceOwner,
     DateTimeOffset CreatedAt,
     DateTimeOffset? LastLogin
+);
+
+public record ChatCodeUserLookupResponse(
+    long Id,
+    string Username,
+    string FirstName,
+    string LastName,
+    string? AvatarUrl,
+    bool IsApprovedPlaceOwner,
+    string ChatCode
 );
 
 public record ForumUserProfileResponse(

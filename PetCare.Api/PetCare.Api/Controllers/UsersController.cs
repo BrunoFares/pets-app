@@ -38,6 +38,7 @@ public class UsersController : ControllerBase
         return Ok(new UserProfileResponse(
             user.Id,
             user.Username,
+            user.ChatCode,
             user.FirstName,
             user.LastName,
             user.Email,
@@ -47,6 +48,46 @@ public class UsersController : ControllerBase
             user.CreatedAt,
             user.LastLogin
         ));
+    }
+
+    [HttpGet("find-by-chat-code/{code}")]
+    public async Task<IActionResult> FindByChatCode(string code)
+    {
+        var normalizedCode = UserChatCodeGenerator.Normalize(code);
+        if (normalizedCode is null)
+        {
+            return BadRequest(new { message = "Chat code is invalid." });
+        }
+
+        var me = User.GetUserId();
+        var user = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.ChatCode == normalizedCode)
+            .Select(u => new ChatCodeUserLookupResponse(
+                u.Id,
+                u.Username,
+                u.FirstName,
+                u.LastName,
+                u.AvatarUrl,
+                u.IsApprovedPlaceOwner,
+                u.ChatCode
+            ))
+            .FirstOrDefaultAsync();
+
+        if (user is null)
+        {
+            return NotFound(new { message = "User not found." });
+        }
+
+        if (user.Id == me)
+        {
+            return BadRequest(new { message = "You cannot start a conversation with yourself." });
+        }
+
+        return Ok(user with
+        {
+            AvatarUrl = ToVersionedStaticFileUrl(user.AvatarUrl)
+        });
     }
 
     [HttpGet("{id:long}/forum-profile")]
