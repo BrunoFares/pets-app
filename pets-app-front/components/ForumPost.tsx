@@ -4,6 +4,7 @@ import { useGlobal } from "@/contexts/GlobalProvider";
 import { ForumPostAttachmentModel, ForumPostsModel } from "@/data/models";
 import { apiRequest } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
+import { blockUser, isUserBlocked, unblockUser } from "@/lib/user-blocks";
 import { EvilIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -191,6 +192,8 @@ const ForumPost = ({
     useState<ReportReasonValue>("Spam");
   const [reportDescription, setReportDescription] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [isBlockingUser, setIsBlockingUser] = useState(false);
+  const [isAuthorBlocked, setIsAuthorBlocked] = useState(false);
   const [isAttachmentViewerVisible, setIsAttachmentViewerVisible] =
     useState(false);
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(0);
@@ -223,6 +226,31 @@ const ForumPost = ({
         },
       });
     });
+
+  useEffect(() => {
+    if (isOwnPost) {
+      setIsAuthorBlocked(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    void isUserBlocked(item.UserId)
+      .then((isBlocked) => {
+        if (isMounted) {
+          setIsAuthorBlocked(isBlocked);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsAuthorBlocked(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOwnPost, item.UserId]);
 
   const openAttachmentViewer = useCallback((index: number) => {
     setSelectedAttachmentIndex(index);
@@ -327,7 +355,7 @@ const ForumPost = ({
   };
 
   const closeOptionsModal = () => {
-    if (isDeleting || isSubmittingReport) {
+    if (isDeleting || isSubmittingReport || isBlockingUser) {
       return;
     }
 
@@ -476,6 +504,58 @@ const ForumPost = ({
     } finally {
       setIsSubmittingReport(false);
     }
+  };
+
+  const togglePostAuthorBlock = () => {
+    if (isOwnPost || isBlockingUser) {
+      return;
+    }
+
+    Alert.alert(
+      isAuthorBlocked ? "Unblock user?" : "Block user?",
+      isAuthorBlocked
+        ? "They will be able to interact with you again."
+        : "They won't be able to interact with you. You can unblock them later from your account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: isAuthorBlocked ? "Unblock" : "Block",
+          style: isAuthorBlocked ? "default" : "destructive",
+          onPress: async () => {
+            try {
+              setIsBlockingUser(true);
+              if (isAuthorBlocked) {
+                await unblockUser(item.UserId);
+              } else {
+                await blockUser(item.UserId);
+              }
+              setIsAuthorBlocked(!isAuthorBlocked);
+              setIsOptionsVisible(false);
+              resetReportDraft();
+              Alert.alert(
+                isAuthorBlocked ? "User unblocked" : "User blocked",
+                isAuthorBlocked
+                  ? "This user has been removed from your blocked list."
+                  : "This user has been added to your blocked list.",
+              );
+            } catch (error) {
+              presentApiError(
+                isAuthorBlocked
+                  ? "Unable to unblock user"
+                  : "Unable to block user",
+                error,
+                {
+                  networkMessage:
+                    "We couldn't reach the server, so the block status was not updated.",
+                },
+              );
+            } finally {
+              setIsBlockingUser(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const renderAttachments = (variant: "small" | "big") => {
@@ -854,23 +934,50 @@ const ForumPost = ({
                 </AdaptiveText>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
-                onPress={() => setOptionsStep("report")}
-                style={[styles.modalActionButton, styles.reportActionButton]}
-              >
-                <AdaptiveText style={styles.reportActionText}>
-                  Report post
-                </AdaptiveText>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  onPress={() => setOptionsStep("report")}
+                  disabled={isBlockingUser}
+                  style={[
+                    styles.modalActionButton,
+                    styles.reportActionButton,
+                    isBlockingUser ? styles.modalActionButtonDisabled : null,
+                  ]}
+                >
+                  <AdaptiveText style={styles.reportActionText}>
+                    Report post
+                  </AdaptiveText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={togglePostAuthorBlock}
+                  disabled={isBlockingUser}
+                  style={[
+                    styles.modalActionButton,
+                    styles.blockActionButton,
+                    isBlockingUser ? styles.modalActionButtonDisabled : null,
+                  ]}
+                >
+                  <AdaptiveText style={styles.blockActionText}>
+                    {isBlockingUser
+                      ? isAuthorBlocked
+                        ? "Unblocking..."
+                        : "Blocking..."
+                      : isAuthorBlocked
+                        ? "Unblock user"
+                        : "Block user"}
+                  </AdaptiveText>
+                </TouchableOpacity>
+              </>
             )}
 
             <TouchableOpacity
               onPress={closeOptionsModal}
-              disabled={isDeleting || isSubmittingReport}
+              disabled={isDeleting || isSubmittingReport || isBlockingUser}
               style={[
                 styles.modalActionButton,
                 styles.closeActionButton,
-                isDeleting || isSubmittingReport
+                isDeleting || isSubmittingReport || isBlockingUser
                   ? styles.modalActionButtonDisabled
                   : null,
               ]}
@@ -1628,6 +1735,14 @@ const createStyles = ({ darkMode }: any) => {
     },
     reportActionText: {
       color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    blockActionButton: {
+      backgroundColor: darkMode ? "#3A2424" : "#FCE8E8",
+    },
+    blockActionText: {
+      color: darkMode ? colors.white : "#B3261E",
       fontFamily: "Poppins-SemiBold",
       fontSize: 16,
     },
