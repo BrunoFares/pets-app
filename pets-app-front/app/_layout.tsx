@@ -1,5 +1,6 @@
 import { SoftErrorBanner } from "@/components/SoftErrorBanner";
 // import * as Device from "expo-device";
+import { KeyboardAvoidingScreen } from "@/components/KeyboardAvoidingScreen";
 import { AuthProvider, useAuth } from "@/contexts/AuthProvider";
 import { useFonts } from "expo-font";
 import {
@@ -137,8 +138,10 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootNavigator fontsLoaded={fontsLoaded} />
-      <SoftErrorBanner />
+      <KeyboardAvoidingScreen>
+        <RootNavigator fontsLoaded={fontsLoaded} />
+        <SoftErrorBanner />
+      </KeyboardAvoidingScreen>
     </AuthProvider>
   );
 }

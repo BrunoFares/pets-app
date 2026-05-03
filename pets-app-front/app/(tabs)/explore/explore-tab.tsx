@@ -6,10 +6,15 @@ import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
 import { PlaceModel } from "@/data/models";
 import { formatPlaceLocation } from "@/lib/discovery-api";
+import {
+  getDisplayedPlaces,
+  PlaceFilter,
+  PlaceSortOrder,
+} from "@/lib/place-list-utils";
 import { formatPlaceReviewSummaryLabel } from "@/lib/place-reviews";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Keyboard,
@@ -38,13 +43,11 @@ const ExploreTab = ({
   const { setShowFooter } = useGlobal();
   const [sortByModal, setSortByModal] = useState(false);
   const [filterByModal, setFilterByModal] = useState(false);
-  const [displayedItems, setDisplayedItems] = useState(items);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilters, setActiveFilters] = useState<PlaceFilter[]>([]);
+  const [sortOrder, setSortOrder] = useState<PlaceSortOrder>("popular");
   const placeholderText =
     "Search for " + (title === "Pet Shops" ? "pet shops..." : "vet clinics...");
-
-  useEffect(() => {
-    setDisplayedItems(items);
-  }, [items]);
 
   useEffect(() => {
     return () => {
@@ -52,31 +55,16 @@ const ExploreTab = ({
     };
   }, [setShowFooter]);
 
-  const searchItems = (prompt: string) => {
-    const display = items.filter((item) => {
-      return item.Name.toLowerCase().includes(prompt.toLowerCase());
-    });
-    setDisplayedItems(display);
-  };
-
-  const filterItems = (_filters: string[]) => {};
-
-  const sortItems = (order: string) => {
-    const nextItems = [...displayedItems];
-
-    switch (order) {
-      case "atoz":
-        nextItems.sort((a, b) => a.Name.localeCompare(b.Name));
-        break;
-      case "ztoa":
-        nextItems.sort((a, b) => b.Name.localeCompare(a.Name));
-        break;
-      default:
-        break;
-    }
-
-    setDisplayedItems(nextItems);
-  };
+  const displayedItems = useMemo(
+    () =>
+      getDisplayedPlaces({
+        places: items,
+        searchTerm,
+        filters: activeFilters,
+        sortOrder,
+      }),
+    [activeFilters, items, searchTerm, sortOrder],
+  );
 
   return (
     <View
@@ -105,7 +93,7 @@ const ExploreTab = ({
         </TouchableOpacity>
 
         <TextInput
-          onChangeText={searchItems}
+          onChangeText={setSearchTerm}
           style={styles.textInput}
           placeholder={placeholderText}
           placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
@@ -176,12 +164,13 @@ const ExploreTab = ({
       <FilterByModal
         visible={filterByModal}
         onClose={() => setFilterByModal(false)}
-        onDone={(value) => filterItems(value)}
+        selectedFilters={activeFilters}
+        onDone={setActiveFilters}
       />
       <SortByModal
         visible={sortByModal}
         onClose={() => setSortByModal(false)}
-        onDone={(value) => sortItems(value)}
+        onDone={(value) => setSortOrder(value as PlaceSortOrder)}
       />
     </View>
   );
