@@ -74,7 +74,7 @@ const createStyles = ({ darkMode }: any) => {
       width: "100%",
     },
     sideSlot: {
-      width: 32,
+      width: 72,
       alignItems: "flex-start",
       justifyContent: "center",
     },

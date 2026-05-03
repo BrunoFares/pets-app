@@ -16,6 +16,7 @@ import {
   applyRegisteredPlaceFlags,
   getRegisteredPlaceOwnerIds,
 } from "@/lib/place-owner-lookup";
+import { blockUser, isUserBlocked, unblockUser } from "@/lib/user-blocks";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -126,6 +127,8 @@ const ProfileScreen = () => {
     useState<ReportReasonValue>("Spam");
   const [reportDescription, setReportDescription] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [isBlockingUser, setIsBlockingUser] = useState(false);
+  const [isProfileUserBlocked, setIsProfileUserBlocked] = useState(false);
   const [isStartingConversation, setIsStartingConversation] = useState(false);
   const selectedPost = useMemo(() => {
     if (!payload) {
@@ -181,6 +184,31 @@ const ProfileScreen = () => {
     ? String(currentUser.Id) === String(selectedUserID)
     : false;
   const canStartConversation = Boolean(selectedUserID) && !isOwnProfile;
+
+  useEffect(() => {
+    if (!selectedUserID || isOwnProfile) {
+      setIsProfileUserBlocked(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    void isUserBlocked(selectedUserID)
+      .then((isBlocked) => {
+        if (isMounted) {
+          setIsProfileUserBlocked(isBlocked);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsProfileUserBlocked(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOwnProfile, selectedUserID]);
   const displayedUsername = useMemo(() => {
     if (isOwnProfile && currentUser?.Username) {
       return currentUser.Username;
@@ -297,7 +325,7 @@ const ProfileScreen = () => {
   };
 
   const closeOptionsModal = () => {
-    if (isSubmittingReport) {
+    if (isSubmittingReport || isBlockingUser) {
       return;
     }
 
@@ -343,6 +371,58 @@ const ProfileScreen = () => {
     }
   };
 
+  const toggleProfileUserBlock = () => {
+    if (!selectedUserID || isOwnProfile || isBlockingUser) {
+      return;
+    }
+
+    Alert.alert(
+      isProfileUserBlocked ? "Unblock user?" : "Block user?",
+      isProfileUserBlocked
+        ? "They will be able to interact with you again."
+        : "They won't be able to interact with you. You can unblock them later from your account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: isProfileUserBlocked ? "Unblock" : "Block",
+          style: isProfileUserBlocked ? "default" : "destructive",
+          onPress: async () => {
+            try {
+              setIsBlockingUser(true);
+              if (isProfileUserBlocked) {
+                await unblockUser(selectedUserID);
+              } else {
+                await blockUser(selectedUserID);
+              }
+              setIsProfileUserBlocked(!isProfileUserBlocked);
+              setIsOptionsVisible(false);
+              resetReportDraft();
+              Alert.alert(
+                isProfileUserBlocked ? "User unblocked" : "User blocked",
+                isProfileUserBlocked
+                  ? "This user has been removed from your blocked list."
+                  : "This user has been added to your blocked list.",
+              );
+            } catch (error) {
+              presentApiError(
+                isProfileUserBlocked
+                  ? "Unable to unblock user"
+                  : "Unable to block user",
+                error,
+                {
+                  networkMessage:
+                    "We couldn't reach the server, so the block status was not updated.",
+                },
+              );
+            } finally {
+              setIsBlockingUser(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const handleStartConversation = useCallback(async () => {
     if (!selectedUserID || isStartingConversation) {
       return;
@@ -386,23 +466,52 @@ const ProfileScreen = () => {
             </AdaptiveText>
 
             {!isOwnProfile ? (
-              <TouchableOpacity
-                onPress={() => setOptionsStep("report")}
-                style={[styles.modalActionButton, styles.reportActionButton]}
-              >
-                <AdaptiveText style={styles.reportActionText}>
-                  Report user
-                </AdaptiveText>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  onPress={() => setOptionsStep("report")}
+                  disabled={isBlockingUser}
+                  style={[
+                    styles.modalActionButton,
+                    styles.reportActionButton,
+                    isBlockingUser ? styles.modalActionButtonDisabled : null,
+                  ]}
+                >
+                  <AdaptiveText style={styles.reportActionText}>
+                    Report user
+                  </AdaptiveText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={toggleProfileUserBlock}
+                  disabled={isBlockingUser}
+                  style={[
+                    styles.modalActionButton,
+                    styles.blockActionButton,
+                    isBlockingUser ? styles.modalActionButtonDisabled : null,
+                  ]}
+                >
+                  <AdaptiveText style={styles.blockActionText}>
+                    {isBlockingUser
+                      ? isProfileUserBlocked
+                        ? "Unblocking..."
+                        : "Blocking..."
+                      : isProfileUserBlocked
+                        ? "Unblock user"
+                        : "Block user"}
+                  </AdaptiveText>
+                </TouchableOpacity>
+              </>
             ) : null}
 
             <TouchableOpacity
               onPress={closeOptionsModal}
-              disabled={isSubmittingReport}
+              disabled={isSubmittingReport || isBlockingUser}
               style={[
                 styles.modalActionButton,
                 styles.closeActionButton,
-                isSubmittingReport ? styles.modalActionButtonDisabled : null,
+                isSubmittingReport || isBlockingUser
+                  ? styles.modalActionButtonDisabled
+                  : null,
               ]}
             >
               <AdaptiveText style={styles.closeActionText}>Close</AdaptiveText>
@@ -872,6 +981,14 @@ const createStyles = ({ darkMode }: any) => {
     },
     reportActionText: {
       color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    blockActionButton: {
+      backgroundColor: darkMode ? "#3A2424" : "#FCE8E8",
+    },
+    blockActionText: {
+      color: darkMode ? colors.white : "#B3261E",
       fontFamily: "Poppins-SemiBold",
       fontSize: 16,
     },

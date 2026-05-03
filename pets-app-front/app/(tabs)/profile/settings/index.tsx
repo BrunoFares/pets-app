@@ -22,7 +22,12 @@ export default function SettingsScreen() {
 
   const settingsPage = (
     title: string,
-    imageTitle: "privacy-tip" | "account-circle" | "notifications" | "store",
+    imageTitle:
+      | "privacy-tip"
+      | "account-circle"
+      | "notifications"
+      | "store"
+      | "block",
     fn: () => void,
   ) => {
     return (
@@ -87,6 +92,13 @@ export default function SettingsScreen() {
             goTo(
               {},
               "/(tabs)/profile/settings/notifications-settings-screen",
+              router,
+            );
+          })}
+          {settingsPage("Blocked Users", "block", () => {
+            goTo(
+              {},
+              "/(tabs)/profile/settings/blocked-users-screen",
               router,
             );
           })}

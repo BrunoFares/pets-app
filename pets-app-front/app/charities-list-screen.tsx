@@ -12,10 +12,15 @@ import {
   fetchCharityOrganisations,
   formatPlaceLocation,
 } from "@/lib/discovery-api";
+import {
+  getDisplayedPlaces,
+  PlaceFilter,
+  PlaceSortOrder,
+} from "@/lib/place-list-utils";
 import { formatPlaceReviewSummaryLabel } from "@/lib/place-reviews";
 import { FontAwesome, FontAwesome6, MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Keyboard,
@@ -37,7 +42,9 @@ const CharitiesListScreen = () => {
   const [charityOrganisations, setCharityOrganisations] = useState<
     PlaceModel[]
   >([]);
-  const [displayedItems, setDisplayedItems] = useState<PlaceModel[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilters, setActiveFilters] = useState<PlaceFilter[]>([]);
+  const [sortOrder, setSortOrder] = useState<PlaceSortOrder>("popular");
   const [isLoading, setIsLoading] = useState(true);
 
   const loadCharityOrganisations = useCallback(async () => {
@@ -54,10 +61,6 @@ const CharitiesListScreen = () => {
     }
   }, []);
 
-  useEffect(() => {
-    setDisplayedItems(charityOrganisations);
-  }, [charityOrganisations]);
-
   useFocusEffect(
     useCallback(() => {
       void loadCharityOrganisations();
@@ -70,40 +73,16 @@ const CharitiesListScreen = () => {
     loadCharityOrganisations,
   );
   const showLoadingOverlay = isLoading && !isRefreshing;
-
-  const searchItems = (prompt: string) => {
-    const normalizedPrompt = prompt.trim().toLowerCase();
-
-    if (!normalizedPrompt) {
-      setDisplayedItems(charityOrganisations);
-      return;
-    }
-
-    setDisplayedItems(
-      charityOrganisations.filter((item) =>
-        item.Name.toLowerCase().includes(normalizedPrompt),
-      ),
-    );
-  };
-
-  const filterItems = (_filters: string[]) => {};
-
-  const sortItems = (order: string) => {
-    const nextItems = [...displayedItems];
-
-    switch (order) {
-      case "atoz":
-        nextItems.sort((a, b) => a.Name.localeCompare(b.Name));
-        break;
-      case "ztoa":
-        nextItems.sort((a, b) => b.Name.localeCompare(a.Name));
-        break;
-      default:
-        break;
-    }
-
-    setDisplayedItems(nextItems);
-  };
+  const displayedItems = useMemo(
+    () =>
+      getDisplayedPlaces({
+        places: charityOrganisations,
+        searchTerm,
+        filters: activeFilters,
+        sortOrder,
+      }),
+    [activeFilters, charityOrganisations, searchTerm, sortOrder],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -126,7 +105,7 @@ const CharitiesListScreen = () => {
         </TouchableOpacity>
 
         <TextInput
-          onChangeText={searchItems}
+          onChangeText={setSearchTerm}
           style={styles.textInput}
           placeholder="Search for charity orgs..."
           placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
@@ -195,12 +174,13 @@ const CharitiesListScreen = () => {
       <FilterByModal
         visible={filterByModal}
         onClose={() => setFilterByModal(false)}
-        onDone={(value) => filterItems(value)}
+        selectedFilters={activeFilters}
+        onDone={setActiveFilters}
       />
       <SortByModal
         visible={sortByModal}
         onClose={() => setSortByModal(false)}
-        onDone={(value) => sortItems(value)}
+        onDone={(value) => setSortOrder(value as PlaceSortOrder)}
       />
 
       {showLoadingOverlay && <LoadingOverlay />}
