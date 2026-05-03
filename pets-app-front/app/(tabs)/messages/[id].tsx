@@ -31,9 +31,7 @@ import {
   Dimensions,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -683,10 +681,7 @@ const ConversationScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.screen}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View style={styles.screen}>
         <PageHeader
           title={getConversationParticipantName(conversation?.OtherParticipant)}
           style={styles.pageHeader}
@@ -868,7 +863,7 @@ const ConversationScreen = () => {
             </View>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </View>
 
       {showLoadingOverlay && <LoadingOverlay />}
 
