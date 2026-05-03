@@ -48,3 +48,7 @@ EXPO_PUBLIC_API_BASE_URL=http://YOUR_HOST:5063
 
 - Frontend details: `pets-app-front/README.md`
 - Backend details: `PetCare.Api/README.md`
+
+## Dedication
+
+To Kalinka and Minouche, and every living being that makes life the beautiful symphony that it is.
