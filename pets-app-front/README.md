@@ -1,50 +1,71 @@
-# Welcome to your Expo app 👋
+# Pets App Frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Mobile client for the Pets App ecosystem, built with Expo, React Native, and Expo Router.
 
-## Get started
+## What It Includes
 
-1. Install dependencies
+- Authentication, email verification, password reset, and account settings
+- Pet profiles, vaccines, illnesses, medication reminders, and consultations
+- Place discovery for vets, pet shops, and charities
+- Place owner application and place management flows
+- Forum posts, replies, bookmarks, likes, reports, and user blocking
+- Direct messages with text, image, and video attachments
+- Pet translator audio workflow
+- Push notification setup for reminders
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+- Expo 54
+- React 19 / React Native 0.81
+- Expo Router
+- TypeScript
+- React Navigation
 
-   ```bash
-   npx expo start
-   ```
+## Setup
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Install dependencies:
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Start the Expo dev server:
 
-## Learn more
+```bash
+npm start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Run on a platform:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm run ios
+npm run android
+npm run web
+```
 
-## Join the community
+## API Configuration
 
-Join our community of developers creating universal apps.
+By default the app tries to reach the backend on port `5063`. You can override the API base URL with:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+EXPO_PUBLIC_API_BASE_URL=http://YOUR_HOST:5063
+```
+
+The API client also attempts common local development hosts for simulator, emulator, and LAN use.
+
+## Useful Commands
+
+```bash
+npm run lint
+npx tsc --noEmit
+```
+
+## Project Structure
+
+- `app/` - Expo Router screens and nested navigation
+- `components/` - shared UI components
+- `contexts/` - auth and global UI state
+- `lib/` - API clients and domain helpers
+- `hooks/` - reusable React hooks
+- `data/` - models, translations, and local static data
+- `assets/` - fonts, images, and icons
