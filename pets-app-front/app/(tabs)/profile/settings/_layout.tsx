@@ -34,6 +34,10 @@ export default function ItemsStack() {
         name="notifications-settings-screen"
         options={{ title: "Notifications Settings" }}
       />
+      <Stack.Screen
+        name="blocked-users-screen"
+        options={{ title: "Blocked Users" }}
+      />
     </Stack>
   );
 }
