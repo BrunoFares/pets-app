@@ -1,8 +1,8 @@
 import { SoftErrorBanner } from "@/components/SoftErrorBanner";
 // import * as Device from "expo-device";
 import { KeyboardAvoidingScreen } from "@/components/KeyboardAvoidingScreen";
+import { colors } from "@/constants/colors";
 import { AuthProvider, useAuth } from "@/contexts/AuthProvider";
-import { useFonts } from "expo-font";
 import {
   addNotificationReceivedListener,
   addNotificationResponseReceivedListener,
@@ -11,11 +11,25 @@ import {
   registerForPushNotificationsAsync,
   syncMedicationReminderNotifications,
 } from "@/lib/notifications";
-import { Stack, router, usePathname, useRouter, useSegments } from "expo-router";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import {
+  router,
+  Stack,
+  usePathname,
+  useRouter,
+  useSegments,
+} from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, useColorScheme, View } from "react-native";
 
 function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
+  const darkMode = useColorScheme() === "dark";
+  const appBackground = darkMode ? colors.veryDarkGrey : colors.white;
   const appRouter = useRouter();
   const pathname = usePathname();
   const segments = useSegments();
@@ -62,14 +76,24 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
 
   if (!fontsLoaded || isHydrating) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: appBackground,
+        }}
+      >
         <ActivityIndicator size="large" />
       </View>
     );
   }
 
   return (
-    <Stack initialRouteName="index">
+    <Stack
+      initialRouteName="index"
+      screenOptions={{ contentStyle: { backgroundColor: appBackground } }}
+    >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login-screen" options={{ headerShown: false }} />
       <Stack.Screen
@@ -102,6 +126,16 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
 }
 
 export default function RootLayout() {
+  const darkMode = useColorScheme() === "dark";
+  const appBackground = darkMode ? colors.veryDarkGrey : colors.white;
+  const navigationTheme = {
+    ...(darkMode ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(darkMode ? DarkTheme.colors : DefaultTheme.colors),
+      background: appBackground,
+      card: appBackground,
+    },
+  };
   const [fontsLoaded] = useFonts({
     "PlayfairDisplay-Regular": require("../assets/fonts/PlayfairDisplay-Regular.ttf"),
     "PlayfairDisplay-Bold": require("../assets/fonts/PlayfairDisplay-Bold.ttf"),
@@ -137,11 +171,13 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider>
-      <KeyboardAvoidingScreen>
-        <RootNavigator fontsLoaded={fontsLoaded} />
-        <SoftErrorBanner />
-      </KeyboardAvoidingScreen>
-    </AuthProvider>
+    <ThemeProvider value={navigationTheme}>
+      <AuthProvider>
+        <KeyboardAvoidingScreen style={{ backgroundColor: appBackground }}>
+          <RootNavigator fontsLoaded={fontsLoaded} />
+          <SoftErrorBanner />
+        </KeyboardAvoidingScreen>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
