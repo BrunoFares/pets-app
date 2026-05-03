@@ -12,8 +12,6 @@ import { useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -288,116 +286,111 @@ export function PlaceReviewsSection({ place }: { place: PlaceModel }) {
       )}
 
       <CustomModal visible={isComposerVisible} onClose={closeComposer}>
-        <KeyboardAvoidingView
-          style={styles.modalKeyboard}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        <ScrollView
+          style={styles.modalScroll}
+          contentContainerStyle={styles.modalContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            style={styles.modalScroll}
-            contentContainerStyle={styles.modalContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <AdaptiveText style={styles.modalTitle}>
-              {currentUserReview ? "Edit your review" : `Review ${place.Name}`}
-            </AdaptiveText>
-            <AdaptiveText style={styles.modalSubtitle}>
-              Tell other pet owners what stood out about this{" "}
-              {getPlaceTypeLabel(place)}.
-            </AdaptiveText>
+          <AdaptiveText style={styles.modalTitle}>
+            {currentUserReview ? "Edit your review" : `Review ${place.Name}`}
+          </AdaptiveText>
+          <AdaptiveText style={styles.modalSubtitle}>
+            Tell other pet owners what stood out about this{" "}
+            {getPlaceTypeLabel(place)}.
+          </AdaptiveText>
 
-            <View style={styles.ratingSelector}>
-              {Array.from({ length: 5 }).map((_, index) => {
-                const value = index + 1;
+          <View style={styles.ratingSelector}>
+            {Array.from({ length: 5 }).map((_, index) => {
+              const value = index + 1;
 
-                return (
-                  <Pressable
-                    key={`${place.Id}-draft-star-${value}`}
-                    style={styles.ratingButton}
-                    onPress={() => setDraftRating(value)}
-                  >
-                    <FontAwesome
-                      name={index < draftRating ? "star" : "star-o"}
-                      size={34}
-                      color={colors.lightOrange}
-                    />
-                  </Pressable>
-                );
-              })}
-            </View>
+              return (
+                <Pressable
+                  key={`${place.Id}-draft-star-${value}`}
+                  style={styles.ratingButton}
+                  onPress={() => setDraftRating(value)}
+                >
+                  <FontAwesome
+                    name={index < draftRating ? "star" : "star-o"}
+                    size={34}
+                    color={colors.lightOrange}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
 
-            <AdaptiveText style={styles.ratingHint}>
-              {draftRating
-                ? `${draftRating} out of 5 stars`
-                : "Tap a star to rate this place."}
-            </AdaptiveText>
+          <AdaptiveText style={styles.ratingHint}>
+            {draftRating
+              ? `${draftRating} out of 5 stars`
+              : "Tap a star to rate this place."}
+          </AdaptiveText>
 
-            <TextInput
-              style={styles.commentInput}
-              value={draftComment}
-              onChangeText={setDraftComment}
-              placeholder="Share your experience..."
-              placeholderTextColor={
-                darkMode ? colors.lightGrey : colors.mildDarkGrey
-              }
-              multiline
-              numberOfLines={5}
-              maxLength={500}
-              textAlignVertical="top"
-              editable={!isSaving}
-            />
+          <TextInput
+            style={styles.commentInput}
+            value={draftComment}
+            onChangeText={setDraftComment}
+            placeholder="Share your experience..."
+            placeholderTextColor={
+              darkMode ? colors.lightGrey : colors.mildDarkGrey
+            }
+            multiline
+            numberOfLines={5}
+            maxLength={500}
+            textAlignVertical="top"
+            editable={!isSaving}
+          />
 
-            <AdaptiveText style={styles.characterCount}>
-              {draftComment.trim().length}/500
-            </AdaptiveText>
+          <AdaptiveText style={styles.characterCount}>
+            {draftComment.trim().length}/500
+          </AdaptiveText>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.secondaryAction}
-                onPress={closeComposer}
-                disabled={isSaving}
-                activeOpacity={0.85}
-              >
-                <AdaptiveText style={styles.secondaryActionText}>
-                  Cancel
-                </AdaptiveText>
-              </TouchableOpacity>
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={closeComposer}
+              disabled={isSaving}
+              activeOpacity={0.85}
+            >
+              <AdaptiveText style={styles.secondaryActionText}>
+                Cancel
+              </AdaptiveText>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.primaryAction,
-                  isSaving ? styles.primaryActionDisabled : null,
-                ]}
-                onPress={() => {
-                  void handleSaveReview();
-                }}
-                disabled={isSaving}
-                activeOpacity={0.85}
-              >
-                <AdaptiveText style={styles.primaryActionText}>
-                  {isSaving
-                    ? "Saving..."
-                    : currentUserReview
-                      ? "Update Review"
-                      : "Post Review"}
-                </AdaptiveText>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[
+                styles.primaryAction,
+                isSaving ? styles.primaryActionDisabled : null,
+              ]}
+              onPress={() => {
+                void handleSaveReview();
+              }}
+              disabled={isSaving}
+              activeOpacity={0.85}
+            >
+              <AdaptiveText style={styles.primaryActionText}>
+                {isSaving
+                  ? "Saving..."
+                  : currentUserReview
+                    ? "Update Review"
+                    : "Post Review"}
+              </AdaptiveText>
+            </TouchableOpacity>
+          </View>
 
-            {currentUserReview ? (
-              <TouchableOpacity
-                style={styles.deleteAction}
-                onPress={handleDeletePress}
-                disabled={isSaving}
-                activeOpacity={0.85}
-              >
-                <AdaptiveText style={styles.deleteActionText}>
-                  Delete review
-                </AdaptiveText>
-              </TouchableOpacity>
-            ) : null}
-          </ScrollView>
-        </KeyboardAvoidingView>
+          {currentUserReview ? (
+            <TouchableOpacity
+              style={styles.deleteAction}
+              onPress={handleDeletePress}
+              disabled={isSaving}
+              activeOpacity={0.85}
+            >
+              <AdaptiveText style={styles.deleteActionText}>
+                Delete review
+              </AdaptiveText>
+            </TouchableOpacity>
+          ) : null}
+        </ScrollView>
       </CustomModal>
     </View>
   );
@@ -470,10 +463,6 @@ const createStyles = ({ darkMode }: { darkMode: boolean }) =>
       marginTop: 16,
       marginBottom: 0,
       backgroundColor: darkMode ? colors.veryDarkGrey : colors.white,
-    },
-    modalKeyboard: {
-      width: "100%",
-      maxHeight: "100%",
     },
     modalScroll: {
       width: "100%",

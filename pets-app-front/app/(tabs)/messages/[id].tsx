@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomImage from "@/components/CustomImage";
+import CustomModal from "@/components/CustomModal";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
@@ -12,6 +13,7 @@ import {
   DirectMessageModel,
 } from "@/data/models";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { apiRequest } from "@/lib/api";
 import { presentApiError } from "@/lib/api-feedback";
 import {
   fetchConversationById,
@@ -20,6 +22,7 @@ import {
   markConversationRead,
   sendDirectMessage,
 } from "@/lib/messages-api";
+import { blockUser, isUserBlocked, unblockUser } from "@/lib/user-blocks";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -31,9 +34,7 @@ import {
   Dimensions,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -133,6 +134,41 @@ function buildVideoPlayerHtml(videoUrl: string) {
 
 const POLLING_INTERVAL_MS = 3000;
 
+const REPORT_REASONS = [
+  {
+    value: "Spam",
+    label: "Spam",
+    description: "Promotional, repetitive, or misleading behavior.",
+  },
+  {
+    value: "Harassment",
+    label: "Harassment",
+    description: "Targeted bullying, threats, or hostile behavior.",
+  },
+  {
+    value: "Abuse",
+    label: "Abuse",
+    description: "Cruel, violent, or exploitative behavior.",
+  },
+  {
+    value: "Scam",
+    label: "Scam",
+    description: "Fraudulent, deceptive, or suspicious activity.",
+  },
+  {
+    value: "InappropriateContent",
+    label: "Inappropriate content",
+    description: "Content or behavior that is graphic or unsafe.",
+  },
+  {
+    value: "Other",
+    label: "Other",
+    description: "Something else that should be reviewed.",
+  },
+] as const;
+
+type ReportReasonValue = (typeof REPORT_REASONS)[number]["value"];
+
 function hasUnreadIncomingMessage(
   conversation: DirectMessageConversationModel,
 ) {
@@ -179,6 +215,14 @@ const ConversationScreen = () => {
     useState<DirectMessageModel | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(id));
   const [isSending, setIsSending] = useState(false);
+  const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
+  const [optionsStep, setOptionsStep] = useState<"menu" | "report">("menu");
+  const [selectedReason, setSelectedReason] =
+    useState<ReportReasonValue>("Spam");
+  const [reportDescription, setReportDescription] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [isBlockingUser, setIsBlockingUser] = useState(false);
+  const [isParticipantBlocked, setIsParticipantBlocked] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const imageViewerScrollRef = useRef<ScrollView>(null);
   const conversationRef = useRef<DirectMessageConversationModel | null>(null);
@@ -207,7 +251,41 @@ const ConversationScreen = () => {
     setSelectedMediaAsset(null);
     setSelectedImageIndex(null);
     setSelectedVideoMessage(null);
+    setIsOptionsModalVisible(false);
+    setOptionsStep("menu");
+    setSelectedReason("Spam");
+    setReportDescription("");
+    setIsSubmittingReport(false);
+    setIsBlockingUser(false);
+    setIsParticipantBlocked(false);
   }, [id]);
+
+  useEffect(() => {
+    const participantId = conversation?.OtherParticipant?.Id;
+
+    if (!participantId) {
+      setIsParticipantBlocked(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    void isUserBlocked(participantId)
+      .then((isBlocked) => {
+        if (isMounted) {
+          setIsParticipantBlocked(isBlocked);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsParticipantBlocked(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [conversation?.OtherParticipant?.Id]);
 
   const loadConversation = useCallback(
     async ({
@@ -632,6 +710,283 @@ const ConversationScreen = () => {
     });
   }, [conversation?.OtherParticipant?.Id, router]);
 
+  const closeReportModal = useCallback(() => {
+    if (isSubmittingReport || isBlockingUser) {
+      return;
+    }
+
+    setIsOptionsModalVisible(false);
+    setOptionsStep("menu");
+    setSelectedReason("Spam");
+    setReportDescription("");
+  }, [isBlockingUser, isSubmittingReport]);
+
+  const toggleConversationParticipantBlock = useCallback(() => {
+    const participant = conversation?.OtherParticipant;
+
+    if (!participant?.Id || isBlockingUser) {
+      return;
+    }
+
+    Alert.alert(
+      isParticipantBlocked ? "Unblock user?" : "Block user?",
+      isParticipantBlocked
+        ? "They will be able to interact with you again."
+        : "They won't be able to interact with you. You can unblock them later from your account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: isParticipantBlocked ? "Unblock" : "Block",
+          style: isParticipantBlocked ? "default" : "destructive",
+          onPress: async () => {
+            try {
+              setIsBlockingUser(true);
+              if (isParticipantBlocked) {
+                await unblockUser(participant.Id);
+              } else {
+                await blockUser(participant.Id);
+              }
+              setIsParticipantBlocked(!isParticipantBlocked);
+              setIsOptionsModalVisible(false);
+              setOptionsStep("menu");
+              setSelectedReason("Spam");
+              setReportDescription("");
+              Keyboard.dismiss();
+              Alert.alert(
+                isParticipantBlocked ? "User unblocked" : "User blocked",
+                isParticipantBlocked
+                  ? "This user has been removed from your blocked list."
+                  : "This user has been added to your blocked list.",
+              );
+            } catch (error) {
+              presentApiError(
+                isParticipantBlocked
+                  ? "Unable to unblock user"
+                  : "Unable to block user",
+                error,
+                {
+                  networkMessage:
+                    "We couldn't reach the server, so the block status was not updated.",
+                },
+              );
+            } finally {
+              setIsBlockingUser(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [conversation?.OtherParticipant, isBlockingUser, isParticipantBlocked]);
+
+  const submitUserReport = useCallback(async () => {
+    const participant = conversation?.OtherParticipant;
+
+    if (!participant?.Id) {
+      Alert.alert(
+        "User unavailable",
+        "We couldn't determine which user to report.",
+      );
+      return;
+    }
+
+    try {
+      setIsSubmittingReport(true);
+      await apiRequest("/api/Reports", {
+        method: "POST",
+        body: JSON.stringify({
+          targetType: "User",
+          targetId: String(participant.Id),
+          reasonType: selectedReason,
+          description: reportDescription.trim() || null,
+        }),
+      });
+
+      setIsOptionsModalVisible(false);
+      setOptionsStep("menu");
+      setSelectedReason("Spam");
+      setReportDescription("");
+      Keyboard.dismiss();
+      Alert.alert(
+        "Report submitted",
+        "Thanks for the report. We'll review this user.",
+      );
+    } catch (error) {
+      presentApiError("Unable to submit report", error, {
+        networkMessage:
+          "We couldn't reach the server, so the report was not submitted.",
+      });
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }, [conversation?.OtherParticipant, reportDescription, selectedReason]);
+
+  const renderOptionsModal = () => (
+    <CustomModal visible={isOptionsModalVisible} onClose={closeReportModal}>
+      <ScrollView
+        style={styles.reportModalScroll}
+        contentContainerStyle={styles.reportModalContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {optionsStep === "menu" ? (
+          <>
+            <AdaptiveText style={styles.reportModalTitle}>
+              User options
+            </AdaptiveText>
+            <AdaptiveText style={styles.reportModalSubtitle}>
+              Report this user or block them from interacting with you.
+            </AdaptiveText>
+
+            <TouchableOpacity
+              onPress={() => setOptionsStep("report")}
+              disabled={isBlockingUser}
+              style={[
+                styles.reportModalActionButton,
+                styles.reportActionButton,
+                isBlockingUser ? styles.reportModalActionButtonDisabled : null,
+              ]}
+            >
+              <AdaptiveText style={styles.reportActionText}>
+                Report user
+              </AdaptiveText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={toggleConversationParticipantBlock}
+              disabled={isBlockingUser}
+              style={[
+                styles.reportModalActionButton,
+                styles.blockActionButton,
+                isBlockingUser ? styles.reportModalActionButtonDisabled : null,
+              ]}
+            >
+              <AdaptiveText style={styles.blockActionText}>
+                {isBlockingUser
+                  ? isParticipantBlocked
+                    ? "Unblocking..."
+                    : "Blocking..."
+                  : isParticipantBlocked
+                    ? "Unblock user"
+                    : "Block user"}
+              </AdaptiveText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={closeReportModal}
+              disabled={isBlockingUser}
+              style={[
+                styles.reportModalActionButton,
+                styles.closeReportButton,
+                isBlockingUser ? styles.reportModalActionButtonDisabled : null,
+              ]}
+            >
+              <AdaptiveText style={styles.closeReportText}>Close</AdaptiveText>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <AdaptiveText style={styles.reportModalTitle}>
+              Report user
+            </AdaptiveText>
+            <AdaptiveText style={styles.reportModalSubtitle}>
+              Choose the reason that best fits, then add any helpful details.
+            </AdaptiveText>
+
+            <View style={styles.reportReasonList}>
+              {REPORT_REASONS.map((reason) => {
+                const isSelected = reason.value === selectedReason;
+
+                return (
+                  <TouchableOpacity
+                    key={reason.value}
+                    onPress={() => setSelectedReason(reason.value)}
+                    disabled={isSubmittingReport}
+                    style={[
+                      styles.reportReasonButton,
+                      isSelected ? styles.reportReasonButtonSelected : null,
+                    ]}
+                  >
+                    <AdaptiveText
+                      style={[
+                        styles.reportReasonLabel,
+                        isSelected ? styles.reportReasonLabelSelected : null,
+                      ]}
+                    >
+                      {reason.label}
+                    </AdaptiveText>
+                    <AdaptiveText
+                      style={[
+                        styles.reportReasonDescription,
+                        isSelected
+                          ? styles.reportReasonDescriptionSelected
+                          : null,
+                      ]}
+                    >
+                      {reason.description}
+                    </AdaptiveText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TextInput
+              value={reportDescription}
+              onChangeText={setReportDescription}
+              multiline
+              editable={!isSubmittingReport}
+              textAlignVertical="top"
+              placeholder="Additional details (optional)"
+              placeholderTextColor={
+                darkMode ? colors.lightGrey : colors.darkGrey
+              }
+              style={styles.reportDescriptionInput}
+            />
+
+            <AdaptiveText style={styles.reportDescriptionHint}>
+              A little context helps the moderation team review the report.
+            </AdaptiveText>
+
+            <TouchableOpacity
+              onPress={submitUserReport}
+              disabled={isSubmittingReport}
+              style={[
+                styles.reportModalActionButton,
+                styles.submitReportButton,
+                isSubmittingReport
+                  ? styles.reportModalActionButtonDisabled
+                  : null,
+              ]}
+            >
+              <AdaptiveText style={styles.submitReportText}>
+                {isSubmittingReport ? "Submitting..." : "Submit report"}
+              </AdaptiveText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (isSubmittingReport) {
+                  return;
+                }
+
+                setOptionsStep("menu");
+              }}
+              disabled={isSubmittingReport}
+              style={[
+                styles.reportModalActionButton,
+                styles.closeReportButton,
+                isSubmittingReport
+                  ? styles.reportModalActionButtonDisabled
+                  : null,
+              ]}
+            >
+              <AdaptiveText style={styles.closeReportText}>Back</AdaptiveText>
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+    </CustomModal>
+  );
+
   const selectedImage =
     selectedImageIndex === null
       ? null
@@ -683,13 +1038,25 @@ const ConversationScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.screen}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View style={styles.screen}>
         <PageHeader
           title={getConversationParticipantName(conversation?.OtherParticipant)}
           style={styles.pageHeader}
+          rightElement={
+            conversation?.OtherParticipant ? (
+              <TouchableOpacity
+                style={styles.headerOptionsButton}
+                onPress={() => setIsOptionsModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Feather
+                  name="more-horizontal"
+                  size={20}
+                  color={darkMode ? colors.white : colors.veryDarkGrey}
+                />
+              </TouchableOpacity>
+            ) : undefined
+          }
           titleElement={
             conversation?.OtherParticipant ? (
               <TouchableOpacity
@@ -868,9 +1235,11 @@ const ConversationScreen = () => {
             </View>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </View>
 
       {showLoadingOverlay && <LoadingOverlay />}
+
+      {renderOptionsModal()}
 
       <Modal
         visible={selectedImage !== null}
@@ -979,6 +1348,14 @@ const createStyles = ({ darkMode }: any) => {
       width: 34,
       height: 34,
       borderRadius: 17,
+    },
+    headerOptionsButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,
     },
     messages: {
       flex: 1,
@@ -1181,6 +1558,128 @@ const createStyles = ({ darkMode }: any) => {
       justifyContent: "center",
       paddingHorizontal: 16,
       paddingBottom: 40,
+    },
+    reportModalScroll: {
+      width: "100%",
+    },
+    reportModalContent: {
+      width: "100%",
+      alignItems: "center",
+      paddingBottom: 28,
+    },
+    reportModalTitle: {
+      fontFamily: "Poppins-Bold",
+      fontSize: 24,
+      textAlign: "center",
+    },
+    reportModalSubtitle: {
+      marginTop: 8,
+      marginBottom: 22,
+      fontFamily: "Poppins-Regular",
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: "center",
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    reportReasonList: {
+      width: "100%",
+      gap: 10,
+      marginBottom: 18,
+    },
+    reportReasonButton: {
+      width: "100%",
+      borderRadius: 18,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
+      borderWidth: 1,
+      borderColor: "transparent",
+      gap: 4,
+    },
+    reportReasonButtonSelected: {
+      borderColor: colors.green,
+      backgroundColor: darkMode ? "#1E2A20" : "#EEF7EF",
+    },
+    reportReasonLabel: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 15,
+      color: darkMode ? colors.white : colors.black,
+    },
+    reportReasonLabelSelected: {
+      color: colors.green,
+    },
+    reportReasonDescription: {
+      fontFamily: "Poppins-Regular",
+      fontSize: 12,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+      lineHeight: 18,
+    },
+    reportReasonDescriptionSelected: {
+      color: darkMode ? "#CFE7D3" : "#47624C",
+    },
+    reportDescriptionInput: {
+      width: "100%",
+      minHeight: 112,
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginBottom: 10,
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-Regular",
+      fontSize: 15,
+      textAlignVertical: "top",
+    },
+    reportDescriptionHint: {
+      width: "100%",
+      marginBottom: 22,
+      fontFamily: "Poppins-Regular",
+      fontSize: 12,
+      lineHeight: 18,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    reportModalActionButton: {
+      width: "100%",
+      borderRadius: 18,
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12,
+    },
+    reportModalActionButtonDisabled: {
+      opacity: 0.6,
+    },
+    reportActionButton: {
+      backgroundColor: darkMode ? "#243327" : "#E8F4EA",
+    },
+    reportActionText: {
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    blockActionButton: {
+      backgroundColor: darkMode ? "#3A2424" : "#FCE8E8",
+    },
+    blockActionText: {
+      color: darkMode ? colors.white : "#B3261E",
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    submitReportButton: {
+      backgroundColor: colors.green,
+    },
+    submitReportText: {
+      color: colors.white,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+    },
+    closeReportButton: {
+      backgroundColor: darkMode ? colors.veryDarkGrey : colors.lightGrey,
+    },
+    closeReportText: {
+      color: darkMode ? colors.white : colors.black,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
     },
     attachmentViewerOverlay: {
       flex: 1,

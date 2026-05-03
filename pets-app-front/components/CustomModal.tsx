@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { KeyboardAvoidingScreen } from "@/components/KeyboardAvoidingScreen";
 import { BlurView } from "expo-blur";
 import React, { useRef, useState } from "react";
 import { Animated, Dimensions, Easing, Modal, PanResponder, Platform, StyleSheet, TouchableOpacity, View, ViewStyle, useColorScheme } from 'react-native';
@@ -83,25 +84,27 @@ const CustomModal: React.FC<CustomModalProps> = ({
 
     return (
         <Modal visible={true} animationType="none" transparent={true}>
-            {blurSupported ? (
-                <BlurView style={styles.overlay}>
-                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-                    <Animated.View style={[styles.modalView, { transform: [{ translateY: slideAnim }] }, style]}>
-                        <View style={styles.closeHandle} {...panResponder.panHandlers}/>
-                        <View style={styles.centerHorizontalLine} />
-                        {children}
-                    </Animated.View>
-                </BlurView>
-            ) : (
-                <View style={[styles.overlay]}> 
-                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-                    <Animated.View style={[styles.modalView, { transform: [{ translateY: slideAnim }] }, style]}>
-                        <View style={styles.closeHandle} {...panResponder.panHandlers}/>
-                        <View style={styles.centerHorizontalLine} />
-                        {children}
-                    </Animated.View>
-                </View>
-            )}
+            <KeyboardAvoidingScreen>
+                {blurSupported ? (
+                    <BlurView style={styles.overlay}>
+                        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+                        <Animated.View style={[styles.modalView, { transform: [{ translateY: slideAnim }] }, style]}>
+                            <View style={styles.closeHandle} {...panResponder.panHandlers}/>
+                            <View style={styles.centerHorizontalLine} />
+                            {children}
+                        </Animated.View>
+                    </BlurView>
+                ) : (
+                    <View style={[styles.overlay]}>
+                        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+                        <Animated.View style={[styles.modalView, { transform: [{ translateY: slideAnim }] }, style]}>
+                            <View style={styles.closeHandle} {...panResponder.panHandlers}/>
+                            <View style={styles.centerHorizontalLine} />
+                            {children}
+                        </Animated.View>
+                    </View>
+                )}
+            </KeyboardAvoidingScreen>
         </Modal>
     )
 }
