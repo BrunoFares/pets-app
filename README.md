@@ -1,4 +1,4 @@
-# Pets App
+# Iggy - The Pet Care App
 
 Full-stack pet care application with a mobile frontend, ASP.NET Core backend, and a lightweight admin UI.
 
