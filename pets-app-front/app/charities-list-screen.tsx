@@ -92,7 +92,7 @@ const CharitiesListScreen = () => {
           <FontAwesome6
             name="filter"
             size={24}
-            color={darkMode ? colors.white : colors.black}
+            color={darkMode ? colors.white : colors.green}
           />
         </TouchableOpacity>
 
@@ -100,7 +100,7 @@ const CharitiesListScreen = () => {
           <MaterialIcons
             name="sort"
             size={24}
-            color={darkMode ? colors.white : colors.black}
+            color={darkMode ? colors.white : colors.green}
           />
         </TouchableOpacity>
 
@@ -115,7 +115,7 @@ const CharitiesListScreen = () => {
           <FontAwesome
             name="search"
             size={24}
-            color={darkMode ? colors.white : colors.black}
+            color={darkMode ? colors.white : colors.green}
           />
         </TouchableOpacity>
       </View>

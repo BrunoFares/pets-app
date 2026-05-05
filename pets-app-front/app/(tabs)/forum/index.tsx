@@ -115,7 +115,7 @@ export default function ForumScreen() {
             <Ionicons
               name="bookmark"
               size={24}
-              color={darkMode ? colors.white : colors.black}
+              color={darkMode ? colors.white : colors.green}
             />
           </TouchableOpacity>
 
