@@ -181,8 +181,11 @@ function buildPlaceImagesFormData(assets: ImagePicker.ImagePickerAsset[]) {
         : extension === "webp"
           ? "image/webp"
           : "image/jpeg";
-    const name =
-      asset.fileName?.trim() || `place-image-${index + 1}.${extension}`;
+    const originalName = asset.fileName?.trim();
+    const baseName = originalName
+      ? originalName.replace(/\.[^/.]+$/, "")
+      : `place-image-${index + 1}`;
+    const name = `${baseName}.${extension}`;
 
     formData.append("files", {
       uri: asset.uri,
@@ -318,6 +321,15 @@ export async function updateManagedPlace(
 
 export async function deleteManagedPlace(placeId: string) {
   await apiRequest(`/api/Places/${placeId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteManagedPlaceImage(
+  placeId: string,
+  imageId: string | number,
+) {
+  await apiRequest(`/api/Places/${placeId}/images/${imageId}`, {
     method: "DELETE",
   });
 }

@@ -15,7 +15,6 @@ type LoadingOverlayProps = {
 };
 
 const lightLogo = require("../assets/images/petsapp-logo-light.png");
-const darkLogo = require("../assets/images/petsapp-logo-dark.png");
 
 export const LoadingOverlay = ({
   logoSize = 86,

@@ -81,7 +81,7 @@ export default function Bookmarks() {
   return (
     <SafeAreaView style={styles.container}>
       <View>
-        <PageHeader title="" />
+        <PageHeader title="My Bookmarks" />
 
         <FlatList
           data={posts}
