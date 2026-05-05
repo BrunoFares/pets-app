@@ -451,7 +451,7 @@ const IllnessesScreen = () => {
         <Feather
           name="plus"
           size={34}
-          color={darkMode ? colors.white : colors.black}
+          color={colors.white}
         />
       </TouchableOpacity>
 
@@ -486,7 +486,7 @@ const createStyles = ({ darkMode }: any) => {
       borderRadius: 20,
       marginBottom: 16,
       overflow: "hidden",
-      backgroundColor: darkMode ? colors.averageDarkGrey : "#fcfbf7",
+      backgroundColor: darkMode ? colors.averageDarkGrey : "#f3f1eb",
       shadowColor: colors.black,
       shadowOpacity: darkMode ? 0 : 0.04,
       shadowRadius: 14,

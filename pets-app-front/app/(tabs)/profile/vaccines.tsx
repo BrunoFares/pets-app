@@ -112,15 +112,20 @@ const VaccinesScreen = () => {
                 goTo({ item, pet }, "/profile/modify-add-vaccine", router);
               }}
               style={{
-                alignSelf: "center",
-                width: "90%",
-                borderColor: colors.darkGrey,
-                borderWidth: 1,
-                borderRadius: 14,
-                marginBottom: 10,
-                paddingVertical: 10,
-                paddingHorizontal: 20,
-              }}
+      alignSelf: "center",
+      width: "90%",
+      borderRadius: 20,
+      marginBottom: 16,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      overflow: "hidden",
+      backgroundColor: darkMode ? colors.averageDarkGrey : "#f3f1eb",
+      shadowColor: colors.black,
+      shadowOpacity: darkMode ? 0 : 0.04,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: darkMode ? 0 : 1,
+    }}
             >
               <AdaptiveText
                 style={{ fontFamily: "Poppins-SemiBold", fontSize: 17 }}
@@ -171,7 +176,7 @@ const VaccinesScreen = () => {
         <Feather
           name="plus"
           size={34}
-          color={darkMode ? colors.white : colors.black}
+          color={colors.white}
         />
       </TouchableOpacity>
 

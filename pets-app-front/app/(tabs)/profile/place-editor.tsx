@@ -19,6 +19,7 @@ import {
   createManagedPlace,
   createPlaceOwnerApplication,
   deleteManagedPlace,
+  deleteManagedPlaceImage,
   fetchMyPlaceOwnerAccessStatus,
   ManagedPlaceInput,
   MAX_PLACE_IMAGES,
@@ -303,6 +304,9 @@ export default function PlaceEditorScreen() {
   const [isLoading, setIsLoading] = useState(Boolean(id));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingImageId, setDeletingImageId] = useState<string | number | null>(
+    null,
+  );
   const [activeTimePicker, setActiveTimePicker] =
     useState<ActiveTimePicker | null>(null);
   const [iosTimeValue, setIosTimeValue] = useState(new Date());
@@ -549,6 +553,47 @@ export default function PlaceEditorScreen() {
       );
     },
     [],
+  );
+
+  const confirmRemoveExistingImage = useCallback(
+    (image: PlaceModel["Images"][number]) => {
+      if (!id || deletingImageId !== null || isSubmitting) {
+        return;
+      }
+
+      Alert.alert(
+        "Remove this photo?",
+        "This photo will be removed from the place listing.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: () => {
+              void (async () => {
+                try {
+                  setDeletingImageId(image.Id);
+                  await deleteManagedPlaceImage(id, image.Id);
+                  setExistingImages((currentImages) =>
+                    currentImages.filter(
+                      (currentImage) => currentImage.Id !== image.Id,
+                    ),
+                  );
+                } catch (error) {
+                  presentApiError("Could not remove photo", error, {
+                    fallbackMessage:
+                      "We couldn't remove this photo right now.",
+                  });
+                } finally {
+                  setDeletingImageId(null);
+                }
+              })();
+            },
+          },
+        ],
+      );
+    },
+    [deletingImageId, id, isSubmitting],
   );
 
   const openTimePicker = useCallback(
@@ -807,7 +852,11 @@ export default function PlaceEditorScreen() {
     );
   }, [id, router]);
 
-  const showLoadingOverlay = isSubmitting || isDeleting || isCheckingOwnerAccess;
+  const showLoadingOverlay =
+    isSubmitting ||
+    isDeleting ||
+    isCheckingOwnerAccess ||
+    deletingImageId !== null;
 
   if (!user) {
     return (
@@ -996,6 +1045,20 @@ export default function PlaceEditorScreen() {
                       source={{ uri: image.Url }}
                       style={styles.imagePreview}
                     />
+                    {isEditing ? (
+                      <TouchableOpacity
+                        onPress={() => confirmRemoveExistingImage(image)}
+                        style={styles.removeImageButton}
+                        disabled={deletingImageId !== null || isSubmitting}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons
+                          name="close"
+                          size={14}
+                          color={colors.white}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                 ))}
               </View>
