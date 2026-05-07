@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import CustomImage from "@/components/CustomImage";
+import CustomModal from "@/components/CustomModal";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { ProfileEmptyState } from "@/components/ProfileEmptyState";
 import { colors } from "@/constants/colors";
@@ -9,7 +10,9 @@ import { useHeaderSlide } from "@/hooks/useHeaderSlide";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { presentApiError } from "@/lib/api-feedback";
 import {
+  createConversation,
   fetchConversations,
+  findUserByChatCode,
   getConversationParticipantName,
   getConversationPreviewLabel,
 } from "@/lib/messages-api";
@@ -20,6 +23,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Animated,
   FlatList,
+  Keyboard,
   RefreshControl,
   StyleSheet,
   TextInput,
@@ -67,6 +71,10 @@ export default function MessagesScreen() {
     DirectMessageConversationSummaryModel[]
   >([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [chatCode, setChatCode] = useState("");
+  const [isCodeModalVisible, setIsCodeModalVisible] = useState(false);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { setShowFooter } = useGlobal();
   const { translateY } = useHeaderSlide({ height: 180, duration: 250 });
@@ -127,6 +135,48 @@ export default function MessagesScreen() {
     });
   }, [conversations, trimmedSearchQuery]);
 
+  const openCodePrompt = useCallback(() => {
+    setChatCode("");
+    setIsCodeModalVisible(true);
+    setShowFooter?.(false);
+  }, [setShowFooter]);
+
+  const closeCodePrompt = useCallback(() => {
+    if (isStartingConversation) {
+      return;
+    }
+
+    setIsCodeModalVisible(false);
+    setChatCode("");
+    setShowFooter?.(true);
+  }, [isStartingConversation, setShowFooter]);
+
+  const handleStartConversationFromCode = useCallback(async () => {
+    const normalizedCode = chatCode.trim();
+    if (!normalizedCode || isStartingConversation) {
+      return;
+    }
+
+    try {
+      setIsStartingConversation(true);
+      const user = await findUserByChatCode(normalizedCode);
+      const conversation = await createConversation(user.Id);
+      setIsCodeModalVisible(false);
+      setChatCode("");
+      setShowFooter?.(true);
+      router.push({
+        pathname: "/(tabs)/messages/[id]",
+        params: { id: String(conversation.Id) },
+      });
+    } catch (error) {
+      presentApiError("Could not start chat", error, {
+        fallbackMessage: "Check the code and try again.",
+      });
+    } finally {
+      setIsStartingConversation(false);
+    }
+  }, [chatCode, isStartingConversation, router, setShowFooter]);
+
   const emptyState = useMemo(
     () => (
       <ProfileEmptyState
@@ -168,8 +218,14 @@ export default function MessagesScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             clearButtonMode="while-editing"
-            onFocus={() => setShowFooter?.(false)}
-            onBlur={() => setShowFooter?.(true)}
+            onFocus={() => {
+              setIsSearchFocused(true);
+              setShowFooter?.(false);
+            }}
+            onBlur={() => {
+              setIsSearchFocused(false);
+              setShowFooter?.(true);
+            }}
           />
         </View>
 
@@ -186,6 +242,7 @@ export default function MessagesScreen() {
           }
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.conversationCard}
@@ -242,6 +299,64 @@ export default function MessagesScreen() {
         />
       </View>
 
+      <CustomModal
+        visible={isCodeModalVisible}
+        onClose={closeCodePrompt}
+        style={styles.codeModal}
+      >
+        <AdaptiveText style={styles.modalTitle}>Enter Chat Code</AdaptiveText>
+        <AdaptiveText style={styles.modalSubtitle}>
+          Ask the other user for the code shown on their profile.
+        </AdaptiveText>
+        <View style={styles.codeInputWrap}>
+          <AdaptiveText style={styles.codeInputPrefix}>#</AdaptiveText>
+          <TextInput
+            value={chatCode}
+            onChangeText={setChatCode}
+            placeholder="Chat code"
+            placeholderTextColor={darkMode ? colors.lightGrey : colors.darkGrey}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            style={styles.codeInput}
+            editable={!isStartingConversation}
+            onSubmitEditing={handleStartConversationFromCode}
+          />
+        </View>
+        <View style={styles.modalActions}>
+          <TouchableOpacity
+            style={[
+              styles.modalPrimaryButton,
+              (!chatCode.trim() || isStartingConversation) &&
+                styles.modalPrimaryButtonDisabled,
+            ]}
+            onPress={handleStartConversationFromCode}
+            disabled={!chatCode.trim() || isStartingConversation}
+            activeOpacity={0.88}
+          >
+            <AdaptiveText style={styles.modalPrimaryText}>
+              {isStartingConversation ? "Starting..." : "Start Chat"}
+            </AdaptiveText>
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
+
+
+        {!isSearchFocused ? (
+          <TouchableOpacity
+            style={{
+              alignSelf: "flex-end",
+              backgroundColor: colors.green,
+              padding: 10,
+              marginRight: 20,
+              borderRadius: 20,
+              marginBottom: 110,
+            }}
+            onPress={openCodePrompt}
+          >
+            <Ionicons name="add" size={32} color={colors.white} />
+          </TouchableOpacity>
+        ) : null}
+
       {showLoadingOverlay && <LoadingOverlay />}
     </SafeAreaView>
   );
@@ -290,6 +405,23 @@ const createStyles = ({ darkMode }: any) => {
       paddingVertical: 0,
       color: darkMode ? colors.white : colors.black,
       fontFamily: "Poppins-Regular",
+      fontSize: 15,
+    },
+    codeButton: {
+      width: "92%",
+      alignSelf: "center",
+      marginBottom: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.lightLightGreen1,
+    },
+    codeButtonText: {
+      fontFamily: "Poppins-SemiBold",
       fontSize: 15,
     },
     list: {
@@ -374,6 +506,80 @@ const createStyles = ({ darkMode }: any) => {
     emptyState: {
       width: "85%",
       marginTop: 0,
+    },
+    codeModal: {
+      width: "100%",
+      paddingBottom: 80,
+    },
+    modalTitle: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 24,
+      marginBottom: 10,
+      textAlign: 'center',
+    },
+    modalSubtitle: {
+      marginVertical: 6,
+      fontFamily: "Poppins-Regular",
+      fontSize: 18,
+      textAlign: 'center',
+      lineHeight: 20,
+      color: darkMode ? colors.lightGrey : colors.darkGrey,
+    },
+    codeInputWrap: {
+      marginTop: 16,
+      borderRadius: 14,
+      width: '80%',
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.lightGrey,
+    },
+    codeInputPrefix: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 18,
+      letterSpacing: 0,
+      color: darkMode ? colors.white : colors.black,
+      marginRight: 2,
+    },
+    codeInput: {
+      flex: 1,
+      paddingVertical: 8,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 18,
+      marginLeft: 3,
+      letterSpacing: 0,
+      color: darkMode ? colors.white : colors.black,
+    },
+    modalActions: {
+      marginTop: 18,
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: 12,
+    },
+    modalSecondaryButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 12,
+      backgroundColor: darkMode ? colors.averageDarkGrey : colors.lightGrey,
+    },
+    modalSecondaryText: {
+      fontFamily: "Poppins-Medium",
+      fontSize: 14,
+    },
+    modalPrimaryButton: {
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 20,
+      marginTop: 10,
+      backgroundColor: colors.green,
+    },
+    modalPrimaryButtonDisabled: {
+      opacity: 0.5,
+    },
+    modalPrimaryText: {
+      color: colors.white,
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 20,
     },
   });
 };

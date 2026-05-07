@@ -1,5 +1,6 @@
 import { AdaptiveText } from "@/components/AdaptiveText";
 import { AdaptiveView } from "@/components/AdaptiveView";
+import { CodeCopiedBanner } from "@/components/CodeCopiedBanner";
 import CustomImage from "@/components/CustomImage";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import LogOutModal from "@/components/LogOutModal";
@@ -12,6 +13,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { presentApiError } from "@/lib/api-feedback";
 import { goTo } from "@/utils";
 import { Feather, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -34,6 +36,8 @@ export default function Profile() {
   const router = useRouter();
   const styles = createStyles({ darkMode, translateY });
   const [logOutModal, setLogOutModal] = useState(false);
+  const [isCodeCopiedBannerVisible, setIsCodeCopiedBannerVisible] =
+    useState(false);
   const { setShowFooter } = useGlobal();
   const {
     user: profileInfo,
@@ -64,6 +68,19 @@ export default function Profile() {
 
   const { isRefreshing, onRefresh } = usePullToRefresh(handleReloadProfile);
   const showLoadingOverlay = isLoading && !isRefreshing;
+
+  const copyChatCode = useCallback(async () => {
+    const chatCode = profileInfo?.ChatCode;
+    if (!chatCode) {
+      return;
+    }
+
+    await Clipboard.setStringAsync(chatCode);
+    setIsCodeCopiedBannerVisible(true);
+    setTimeout(() => {
+      setIsCodeCopiedBannerVisible(false);
+    }, 1800);
+  }, [profileInfo?.ChatCode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -113,6 +130,20 @@ export default function Profile() {
                     <AdaptiveText style={styles.username}>
                       @{profileInfo.Username}
                     </AdaptiveText>
+                  ) : null}
+                  {profileInfo.ChatCode ? (
+                    <TouchableOpacity
+                      style={styles.chatCodeBadge}
+                      onPress={copyChatCode}
+                      activeOpacity={0.82}
+                      accessibilityRole="button"
+                      accessibilityLabel="Copy chat code"
+                    >
+                      {/* <AdaptiveText style={styles.chatCodeValue}>
+                        # 
+                      </AdaptiveText> */}
+                      <Text style={[styles.chatCodeValue, {color: darkMode ? colors.white : colors.green}]}>#{profileInfo.ChatCode}</Text>
+                    </TouchableOpacity>
                   ) : null}
                   <TouchableOpacity
                     style={styles.editProfile}
@@ -279,6 +310,7 @@ export default function Profile() {
           }}
         />
 
+        <CodeCopiedBanner visible={isCodeCopiedBannerVisible} />
         {showLoadingOverlay && <LoadingOverlay />}
       </SafeAreaView>
     );
@@ -328,13 +360,24 @@ const createStyles = ({ darkMode, translateY }: any) => {
     title: {
       fontFamily: "Poppins-SemiBold",
       fontSize: 24,
-      marginBottom: -6,
+      marginBottom: -10,
     },
     username: {
       fontFamily: "Poppins-Regular",
       fontSize: 14,
       opacity: 0.7,
       marginBottom: 2,
+    },
+    chatCodeBadge: {
+      alignSelf: "flex-start",
+      flexDirection: 'row',
+      marginTop: -8,
+      marginBottom: 10
+    },
+    chatCodeValue: {
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 16,
+      letterSpacing: 0,
     },
     editProfile: {
       backgroundColor: darkMode ? colors.darkGrey : colors.lightGrey,

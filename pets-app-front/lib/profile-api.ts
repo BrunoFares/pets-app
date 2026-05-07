@@ -15,6 +15,7 @@ import { normalizeMedicationReminderRecord } from "@/lib/medication-reminders";
 type ApiUserResponse = {
   id: number;
   username: string;
+  chatCode?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -146,6 +147,7 @@ export function mapApiUserToModel(user: ApiUserResponse): AppUsersModel {
     Id: user.id,
     Name: fullName || user.username,
     Username: user.username,
+    ChatCode: user.chatCode,
     FirstName: user.firstName,
     LastName: user.lastName,
     Email: user.email,

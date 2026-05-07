@@ -282,12 +282,12 @@ const VerifyEmailScreen = () => {
 
               <View style={styles.tipCard}>
                 <AdaptiveText style={styles.tipTitle}>
-                  Didn&apos;t get the code?
+                  Code expired or missing?
                 </AdaptiveText>
                 <AdaptiveText style={styles.tipText}>
-                  Check spam first, then use resend if you still don&apos;t see
-                  it. In local development, the backend may log the code instead
-                  of emailing it.
+                  Request another verification code and use the newest one in
+                  your inbox. In local development, the backend may log the code
+                  instead of emailing it.
                 </AdaptiveText>
               </View>
 
@@ -307,7 +307,9 @@ const VerifyEmailScreen = () => {
                 disabled={isBusy}
               >
                 <Text style={styles.secondaryButtonText}>
-                  {pendingAction === "resend" ? "Sending..." : "Resend code"}
+                  {pendingAction === "resend"
+                    ? "Sending..."
+                    : "Request new verification code"}
                 </Text>
               </TouchableOpacity>
             </View>
