@@ -473,7 +473,9 @@ static bool ShouldUseAdminCookieToken(HttpRequest request)
         return true;
     }
 
-    if (!request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase))
+    var isAdminApiRequest = request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase);
+    var isAdminManagedPlaceRequest = request.Path.StartsWithSegments("/api/places", StringComparison.OrdinalIgnoreCase);
+    if (!isAdminApiRequest && !isAdminManagedPlaceRequest)
     {
         return false;
     }

@@ -34,6 +34,7 @@ const PROFILE_CACHE_TTL_MS = 10 * 60 * 1000;
 type ApiUserResponse = {
   id: number;
   username: string;
+  chatCode?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -85,6 +86,7 @@ function mapUserToModel(user: ApiUserResponse): AppUsersModel {
     Id: user.id,
     Name: fullName || user.username,
     Username: user.username,
+    ChatCode: user.chatCode,
     FirstName: user.firstName,
     LastName: user.lastName,
     Email: user.email,
