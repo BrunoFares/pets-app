@@ -5,7 +5,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const API_PORT = "5063";
-const API_REQUEST_TIMEOUT_MS = 8000;
+const API_REQUEST_TIMEOUT_MS = 30000;
 const ACCESS_TOKEN_KEY = "access_token";
 const USER_ID_KEY = "user_id";
 const LAST_OPENED_AT_KEY = "auth_last_opened_at";

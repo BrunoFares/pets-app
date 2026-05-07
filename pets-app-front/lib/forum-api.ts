@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   ForumPostAttachmentModel,
   ForumPostsModel,
@@ -199,11 +200,28 @@ export function normalizeForumPost(
 }
 
 function buildForumAttachmentsFormData(
-  assets: ImagePicker.ImagePickerAsset[],
+  files: { uri: string; name: string; type: string }[],
 ) {
   const formData = new FormData();
 
-  for (const [index, asset] of assets.entries()) {
+  for (const file of files) {
+    formData.append("files", file as any);
+  }
+
+  return formData;
+}
+
+function sanitizeUploadBaseName(name: string) {
+  const trimmed = name.trim().replace(/\.[^/.]+$/, "");
+  const sanitized = trimmed.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "");
+
+  return sanitized || "forum-attachment";
+}
+
+async function prepareForumAttachmentFile(
+  asset: ImagePicker.ImagePickerAsset,
+  index: number,
+) {
     const normalizedMimeType = asset.mimeType?.toLowerCase() ?? "";
     const isVideo = isVideoAsset(asset);
 
@@ -231,40 +249,53 @@ function buildForumAttachmentsFormData(
               : "video/mp4");
       const name =
         asset.fileName?.trim() || `forum-video-${index + 1}.${extension}`;
-      formData.append("files", { uri: asset.uri, name, type: mimeType } as any);
-    } else {
-      const extensionFromMimeType =
-        normalizedMimeType === "image/png"
-          ? "png"
-          : normalizedMimeType === "image/webp"
-            ? "webp"
-            : "jpg";
-      const extensionFromFileName =
-        asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
-      const extension =
-        extensionFromFileName === "png" || extensionFromFileName === "webp"
-          ? extensionFromFileName
-          : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
-            ? "jpg"
-            : extensionFromMimeType;
-      const type =
-        extension === "png"
-          ? "image/png"
-          : extension === "webp"
-            ? "image/webp"
-            : "image/jpeg";
-      const name =
-        asset.fileName?.trim() || `forum-attachment-${index + 1}.${extension}`;
 
-      formData.append("files", {
-        uri: asset.uri,
-        name,
-        type,
-      } as any);
+      return { uri: asset.uri, name, type: mimeType };
     }
-  }
 
-  return formData;
+    const extensionFromMimeType =
+      normalizedMimeType === "image/png"
+        ? "png"
+        : normalizedMimeType === "image/webp"
+          ? "webp"
+          : "jpg";
+    const extensionFromFileName =
+      asset.fileName?.split(".").pop()?.toLowerCase() ?? "";
+    const extension =
+      extensionFromFileName === "png" || extensionFromFileName === "webp"
+        ? extensionFromFileName
+        : extensionFromFileName === "jpg" || extensionFromFileName === "jpeg"
+          ? "jpg"
+          : extensionFromMimeType;
+    const type =
+      extension === "png"
+        ? "image/png"
+        : extension === "webp"
+          ? "image/webp"
+          : "image/jpeg";
+    const originalName = asset.fileName?.trim();
+    const baseName = sanitizeUploadBaseName(
+      originalName || `forum-attachment-${index + 1}`,
+    );
+    const name = `${baseName}.${extension}`;
+
+    if (!FileSystem.cacheDirectory) {
+      return { uri: asset.uri, name, type };
+    }
+
+    const cachedUri = `${FileSystem.cacheDirectory}forum-upload-${Date.now()}-${index + 1}.${extension}`;
+    await FileSystem.copyAsync({
+      from: asset.uri,
+      to: cachedUri,
+    });
+
+    return { uri: cachedUri, name, type };
+}
+
+async function prepareForumAttachmentFiles(
+  assets: ImagePicker.ImagePickerAsset[],
+) {
+  return Promise.all(assets.map(prepareForumAttachmentFile));
 }
 
 export async function createForumPost(content: string) {
@@ -292,11 +323,19 @@ export async function uploadForumPostAttachments(
     return [];
   }
 
+  const files = await prepareForumAttachmentFiles(assets);
+
   return apiRequest<ApiForumPostAttachmentResponse[]>(
     `/api/ForumPosts/${postId}/attachments`,
     {
       method: "POST",
-      body: buildForumAttachmentsFormData(assets),
+      body: buildForumAttachmentsFormData(files),
     },
   );
+}
+
+export async function deleteForumPost(postId: string) {
+  await apiRequest(`/api/ForumPosts/${postId}`, {
+    method: "DELETE",
+  });
 }

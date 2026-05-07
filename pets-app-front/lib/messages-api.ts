@@ -17,6 +17,16 @@ type ApiDirectMessageUserResponse = {
   isApprovedPlaceOwner: boolean;
 };
 
+type ApiChatCodeUserLookupResponse = {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl?: string | null;
+  isApprovedPlaceOwner: boolean;
+  chatCode: string;
+};
+
 type ApiDirectMessageResponse = {
   id: number;
   conversationId: number;
@@ -238,6 +248,22 @@ export async function createConversation(otherUserId: string | number) {
   );
 
   return mapConversationSummaryToModel(response);
+}
+
+export async function findUserByChatCode(code: string) {
+  const response = await apiRequest<ApiChatCodeUserLookupResponse>(
+    `/api/Users/find-by-chat-code/${encodeURIComponent(code.trim())}`,
+  );
+
+  return mapParticipantToModel({
+    id: response.id,
+    username: response.username,
+    firstName: response.firstName,
+    lastName: response.lastName,
+    displayName: `${response.firstName} ${response.lastName}`.trim() || response.username,
+    avatarUrl: response.avatarUrl,
+    isApprovedPlaceOwner: response.isApprovedPlaceOwner,
+  });
 }
 
 export async function sendDirectMessage(

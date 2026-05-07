@@ -188,6 +188,19 @@ function redirectToAdminDashboard() {
 function extractErrorMessage(payload) {
   if (!payload) return null;
 
+  if (payload.errors && typeof payload.errors === "object") {
+    const combined = Object.entries(payload.errors)
+      .flatMap(([field, messages]) =>
+        []
+          .concat(messages || [])
+          .filter(Boolean)
+          .map((message) => `${field}: ${message}`),
+      )
+      .join(" ");
+
+    if (combined) return combined;
+  }
+
   if (typeof payload.message === "string" && payload.message.trim()) {
     return payload.message.trim();
   }
@@ -202,15 +215,6 @@ function extractErrorMessage(payload) {
 
   if (Array.isArray(payload.errors) && payload.errors.length > 0) {
     return payload.errors.join(" ");
-  }
-
-  if (payload.errors && typeof payload.errors === "object") {
-    const combined = Object.values(payload.errors)
-      .flat()
-      .filter(Boolean)
-      .join(" ");
-
-    if (combined) return combined;
   }
 
   return null;
@@ -236,6 +240,7 @@ async function apiRequest(path, options = {}) {
     method: options.method || "GET",
     headers,
     body,
+    credentials: "same-origin",
   });
 
   const raw = await response.text();
@@ -302,22 +307,31 @@ function buildDefaultWeeklySchedule() {
     return {
       dayOfWeek,
       isClosed: !isOpenWeekday,
-      openTime: isOpenWeekday ? "09:00" : null,
-      closeTime: isOpenWeekday ? "17:00" : null,
+      openTime: isOpenWeekday ? "09:00:00" : null,
+      closeTime: isOpenWeekday ? "17:00:00" : null,
       breakStartTime: null,
       breakEndTime: null,
     };
   });
 }
 
+function formatApiTime(value) {
+  if (!value) return null;
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  return /^\d{2}:\d{2}$/.test(text) ? `${text}:00` : text;
+}
+
 function normalizeScheduleEntry(entry) {
   return {
     dayOfWeek: String(entry?.dayOfWeek || "Monday"),
     isClosed: Boolean(entry?.isClosed),
-    openTime: entry?.openTime || null,
-    closeTime: entry?.closeTime || null,
-    breakStartTime: entry?.breakStartTime || null,
-    breakEndTime: entry?.breakEndTime || null,
+    openTime: formatApiTime(entry?.openTime),
+    closeTime: formatApiTime(entry?.closeTime),
+    breakStartTime: formatApiTime(entry?.breakStartTime),
+    breakEndTime: formatApiTime(entry?.breakEndTime),
   };
 }
 

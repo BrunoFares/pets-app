@@ -3,6 +3,7 @@ export interface AppUsersModel {
   Id: string | number;
   Name: string;
   Username?: string;
+  ChatCode?: string;
   FirstName: string;
   LastName: string;
   Email: string;

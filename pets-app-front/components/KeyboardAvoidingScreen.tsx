@@ -4,6 +4,7 @@ import {
   Platform,
   StyleProp,
   StyleSheet,
+  View,
   ViewStyle,
 } from "react-native";
 
@@ -16,9 +17,13 @@ export function KeyboardAvoidingScreen({
   children,
   style,
 }: KeyboardAvoidingScreenProps) {
+  if (Platform.OS === "android") {
+    return <View style={[styles.container, style]}>{children}</View>;
+  }
+
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="padding"
       keyboardVerticalOffset={0}
       style={[styles.container, style]}
     >

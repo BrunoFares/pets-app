@@ -5,9 +5,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { VideoThumbnail } from "@/components/VideoThumbnail";
 import { colors } from "@/constants/colors";
 import { useGlobal } from "@/contexts/GlobalProvider";
-import { presentApiError } from "@/lib/api-feedback";
+import { getApiErrorMessage, presentApiError } from "@/lib/api-feedback";
 import {
   createForumPost,
+  deleteForumPost,
   getForumPostIdFromCreateResponse,
   MAX_FORUM_ATTACHMENTS,
   uploadForumPostAttachments,
@@ -195,10 +196,19 @@ export default function CreateForumPostScreen() {
 
         try {
           await uploadForumPostAttachments(createdPostId, attachmentAssets);
-        } catch {
+        } catch (error) {
+          try {
+            await deleteForumPost(createdPostId);
+          } catch {
+            // The upload failure is the useful error to show here.
+          }
+
           Alert.alert(
-            "Post published without media",
-            "Your text was published, but the selected media could not be uploaded.",
+            "Media upload failed",
+            getApiErrorMessage(
+              error,
+              "The selected media could not be uploaded, so the post was not published.",
+            ),
           );
           router.back();
           return;
